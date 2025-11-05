@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Plan {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  price       Decimal? @db.Decimal(10, 2)
+  intervals   String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  members     Member[]
+  userPrograms UserProgram[]
+
+  @@map("plans")
+}
+
+model Member {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  email       String   @unique @db.VarChar(255)
+  phone       String?  @db.VarChar(20)
+  planId      Int?     @map("plan_id")
+  plan        Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("members")
+}
+
+model Location {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  address     String   @db.VarChar(255)
+  phone       String?  @db.VarChar(20)
+  mapUrl      String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("locations")
+}
+
+model TrainingProgram {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  category    String   @db.VarChar(100)
+  description String?  @db.Text
+  imageUrl    String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  userPrograms UserProgram[]
+
+  @@map("training_programs")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique @db.VarChar(255)
+  password  String   @db.VarChar(255)
+  name      String   @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  role      String   @default("member") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  programs  UserProgram[]
+
+  @@map("users")
+}
+
+model UserProgram {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  planId      Int?     @map("plan_id")
+  programId   Int?     @map("program_id")
+  status      String   @default("active") @db.VarChar(50)
+  purchasedAt DateTime @default(now()) @map("purchased_at")
+  expiresAt   DateTime? @map("expires_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan        Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  program     TrainingProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@map("user_programs")
+}
+

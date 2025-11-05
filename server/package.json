@@ -1,0 +1,38 @@
+{
+  "name": "fitness-practica-api",
+  "version": "1.0.0",
+  "description": "Backend API for Fitness Practica",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1",
+    "axios": "^1.13.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "react-router-dom": "^7.9.5",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.10.5",
+    "@types/react-router-dom": "^5.3.3",
+    "nodemon": "^3.0.2",
+    "prisma": "^5.7.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
