@@ -83,7 +83,7 @@ const Index = () => {
     Pilates: { 
       intervals: [
         "Monday: 5:00 AM - 11:00 PM",
-        "Tuesday: 5:00 AM - 11:00 PM",+
+        "Tuesday: 5:00 AM - 11:00 PM",
         "Wednesday: 5:00 AM - 11:00 PM",
         "Thursday: 5:00 AM - 11:00 PM",
         "Friday: 5:00 AM - 11:00 PM",
