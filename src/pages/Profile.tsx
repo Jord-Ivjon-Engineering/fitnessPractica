@@ -219,7 +219,9 @@ const Profile = () => {
                     Browse our plans and training programs to get started!
                   </p>
                   <Button
-                    onClick={() => navigate("/")}
+                    onClick={() => {
+                      navigate("/#programs");
+                    }}
                     className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
                   >
                     Browse Programs

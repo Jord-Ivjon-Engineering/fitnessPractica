@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MapPin, Phone, Mail, Dumbbell } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { MapPin } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import {
   Carousel,
   CarouselContent,
@@ -20,17 +22,75 @@ import planMuscleGrow from "@/assets/plan-muscle-grow.jpg";
 import planCardio from "@/assets/plan-cardio.jpg";
 import planFlexibility from "@/assets/plan-flexibility.jpg";
 import planFunctional from "@/assets/plan-functional.jpg";
-
+import heroVideo from "@/assets/viedo.mp4";
 const Index = () => {
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState(false);
+  const [openPlan, setOpenPlan] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { language, t } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+
+  const videoUrl = heroVideo;
+
+  // Handle hash navigation to scroll to specific sections
+  useEffect(() => {
+    if (location.hash) {
+      const elementId = location.hash.substring(1); // Remove the # symbol
+      setTimeout(() => {
+        const element = document.getElementById(elementId);
+        if (element) {
+          // Account for fixed header height
+          const headerOffset = 80; // Adjust based on your header height
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth"
+          });
+        }
+      }, 300); // Give time for page to load
+    }
+  }, [location.hash]);
 
   const planDetails: Record<string, { intervals?: string[]; message?: string }> = {
-    Individual: { intervals: ["Monday - Friday: 5:00 AM - 11:00 PM", "Saturday - Sunday: 7:00 AM - 9:00 PM"] },
+    Individual: { 
+      intervals: [
+        "Monday: 5:00 AM - 11:00 PM",
+        "Tuesday: 5:00 AM - 11:00 PM",
+        "Wednesday: 5:00 AM - 11:00 PM",
+        "Thursday: 5:00 AM - 11:00 PM",
+        "Friday: 5:00 AM - 11:00 PM",
+        "Saturday: 7:00 AM - 9:00 PM",
+        "Sunday: 7:00 AM - 9:00 PM"
+      ] 
+    },
     Instructor: { message: "Contact our gym" },
-    Children: { intervals: ["Monday - Friday: 5:00 AM - 11:00 PM", "Saturday - Sunday: 7:00 AM - 9:00 PM"] },
-    Pilates: { intervals: ["Monday - Friday: 5:00 AM - 11:00 PM", "Saturday - Sunday: 7:00 AM - 9:00 PM"] },
-    Boxing: { intervals: ["Monday - Friday: 5:00 AM - 11:00 PM", "Saturday - Sunday: 7:00 AM - 9:00 PM"] },
+    Children: { 
+      intervals: [
+        "Monday: 5:00 AM - 11:00 PM",
+        "Tuesday: 5:00 AM - 11:00 PM",
+        "Wednesday: 5:00 AM - 11:00 PM",
+        "Thursday: 5:00 AM - 11:00 PM",
+        "Friday: 5:00 AM - 11:00 PM",
+        "Saturday: 7:00 AM - 9:00 PM",
+        "Sunday: 7:00 AM - 9:00 PM"
+      ] 
+    },
+    Pilates: { 
+      intervals: [
+        "Monday: 5:00 AM - 11:00 PM",
+        "Tuesday: 5:00 AM - 11:00 PM",+
+        "Wednesday: 5:00 AM - 11:00 PM",
+        "Thursday: 5:00 AM - 11:00 PM",
+        "Friday: 5:00 AM - 11:00 PM",
+        "Saturday: 7:00 AM - 9:00 PM",
+        "Sunday: 7:00 AM - 9:00 PM"
+      ] 
+    },
   };
 
   return (
@@ -38,11 +98,27 @@ const Index = () => {
 
       {/* Hero Banner */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden pt-0">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroImage})` }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(14,90%,55%,0.95)] to-[hsl(25,95%,53%,0.9)]"></div>
+        {/* Video Background */}
+        <div className="absolute inset-0">
+          {videoUrl && !videoError ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+              poster={heroImage}
+              onError={() => setVideoError(true)}
+             src={videoUrl}
+            />
+          ) : (
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${heroImage})` }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(14,90%,55%,0.4)] to-[hsl(25,95%,53%,0.35)]"></div>
         </div>
         <div className="relative z-10 text-center px-4">
           <h1 className="text-7xl md:text-8xl font-bold text-white mb-6 tracking-tight">
@@ -53,7 +129,19 @@ const Index = () => {
           </p>
           <Button 
             size="lg" 
-            className="bg-white text-[hsl(14,90%,55%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
+            className="bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
+            onClick={() => {
+              const element = document.getElementById("plans");
+              if (element) {
+                const headerOffset = 80;
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                window.scrollTo({
+                  top: offsetPosition,
+                  behavior: "smooth"
+                });
+              }
+            }}
           >
             {t('hero.button')}
           </Button>
@@ -62,37 +150,79 @@ const Index = () => {
       </section>
 
       {/* Plans Section */}
-      <section className="py-24 px-4 bg-background">
+      <section id="plans" className="py-24 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.plans.title')}</h2>
             <p className="text-xl text-muted-foreground">{t('section.plans.subtitle')}</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[
               { name: "Individual", icon: "💪" },
               { name: "Instructor", icon: "🏋️" },
               { name: "Children", icon: "👶" },
-              { name: "Pilates", icon: "🧘" },
-              { name: "Boxing", icon: "🥊" }
-            ].map((plan) => (
-              <Card 
-                key={plan.name} 
-                className="p-6 text-center hover:shadow-xl transition-all hover:scale-105 bg-card border-border cursor-pointer group"
-                onClick={() => setSelectedPlan(plan.name)}
-              >
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">{plan.icon}</div>
-                <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
-                <div className="w-12 h-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] mx-auto rounded-full"></div>
-              </Card>
-            ))}
+              { name: "Pilates", icon: "🧘" }
+            ].map((plan) => {
+              const details = planDetails[plan.name];
+              const isOpen = openPlan === plan.name;
+              return (
+                <div key={plan.name} className="relative">
+                  <Card 
+                    className="p-6 text-center hover:shadow-xl transition-all bg-card border-border group"
+                  >
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => {
+                        if (details?.intervals) {
+                          setOpenPlan(isOpen ? null : plan.name);
+                        }
+                      }}
+                    >
+                      <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">{plan.icon}</div>
+                      <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
+                      <div className="w-12 h-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] mx-auto rounded-full mb-4"></div>
+                      
+                      {details?.message ? (
+                        <p className="text-sm text-muted-foreground mt-4">{details.message}</p>
+                      ) : details?.intervals ? (
+                        <div className="mt-4">
+                          <div className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
+                            View Hours
+                            <svg 
+                              className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </Card>
+                  
+                  {details?.intervals && isOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-card border border-border shadow-lg rounded-lg z-10">
+                      <div className="space-y-2">
+                        {details.intervals.map((interval, index) => (
+                          <p key={index} className="text-sm text-muted-foreground text-left">
+                            {interval}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* Training Programs Slideshow */}
-      <section className="py-24 px-4 bg-muted/30">
+      <section id="programs" className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.programs.title')}</h2>
@@ -125,8 +255,20 @@ const Index = () => {
                         <Button 
                           size="lg"
                           className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"
+                          onClick={() => {
+                            if (isAuthenticated) {
+                              addToCart({
+                                id: program.name.toLowerCase().replace(/\s+/g, '-'),
+                                name: program.name,
+                                category: program.category,
+                                image: program.image,
+                              });
+                            } else {
+                              navigate('/login');
+                            }
+                          }}
                         >
-                          {t('button.learnMore')}
+                          {isAuthenticated ? t('button.addToCart') : t('button.loginToPurchase')}
                         </Button>
                       </div>
                     </div>
@@ -250,74 +392,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-foreground text-background py-12 px-4">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-3 gap-8 items-start">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Dumbbell className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-bold">Fitness Practica</span>
-              </div>
-              <p className="text-background/70">{t('footer.tagline')}</p>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold mb-4">{t('footer.contact')}</h4>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-primary" />
-                  <span className="text-background/90">info@fitnesspractica.com</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-primary" />
-                  <span className="text-background/90">+1 (555) 123-4567</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold mb-4">{t('footer.hours')}</h4>
-              <div className="space-y-2 text-background/90">
-                <p>{t('footer.hours.weekdays')}</p>
-                <p>{t('footer.hours.weekend')}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-12 pt-8 border-t border-background/20 text-center text-background/70">
-            <p>{t('footer.copyright')}</p>
-          </div>
-        </div>
-      </footer>
-
-      {/* Plan Details Dialog */}
-      <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedPlan}</DialogTitle>
-            <DialogDescription>
-              {selectedPlan && planDetails[selectedPlan]?.message ? (
-                <div className="text-center py-8">
-                  <p className="text-lg font-semibold text-foreground">{planDetails[selectedPlan].message}</p>
-                </div>
-              ) : (
-                <div className="py-4">
-                  <p className="mb-4 text-foreground font-semibold">Available Hours:</p>
-                  <div className="space-y-2">
-                    {selectedPlan && planDetails[selectedPlan]?.intervals?.map((interval) => (
-                      <p key={interval} className="text-foreground">
-                        {interval}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

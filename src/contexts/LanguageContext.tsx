@@ -50,9 +50,24 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.hours.weekend': 'Saturday - Sunday: 7:00 AM - 9:00 PM',
     'footer.copyright': '© 2024 Fitness Practica. All rights reserved.',
     
+    // Checkout
+    'checkout.title': 'Checkout',
+    'checkout.empty': 'Your cart is empty',
+    'checkout.emptyMessage': 'Add some programs to your cart to get started!',
+    'checkout.program': 'Program',
+    'checkout.category': 'Category',
+    'checkout.remove': 'Remove',
+    'checkout.total': 'Total',
+    'checkout.programs': 'programs',
+    'checkout.completeOrder': 'Complete Order',
+    'checkout.backToPrograms': 'Back to Programs',
+    
     // Buttons
     'button.learnMore': 'Learn More',
     'button.browsePrograms': 'Browse Programs',
+    'button.loginToPurchase': 'Log in to purchase',
+    'button.continue': 'Continue',
+    'button.addToCart': 'Add to Cart',
   },
   al: {
     // Header
@@ -84,9 +99,24 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.hours.weekend': 'E Shtunë - E Dielë: 7:00 - 21:00',
     'footer.copyright': '© 2024 Fitness Practica. Të gjitha të drejtat e rezervuara.',
     
+    // Checkout
+    'checkout.title': 'Blerje',
+    'checkout.empty': 'Shporta juaj është e zbrazët',
+    'checkout.emptyMessage': 'Shtoni disa programe në shportën tuaj për të filluar!',
+    'checkout.program': 'Programi',
+    'checkout.category': 'Kategoria',
+    'checkout.remove': 'Hiq',
+    'checkout.total': 'Totali',
+    'checkout.programs': 'programe',
+    'checkout.completeOrder': 'Përfundo Porosinë',
+    'checkout.backToPrograms': 'Kthehu te Programet',
+    
     // Buttons
     'button.learnMore': 'Më Shumë',
     'button.browsePrograms': 'Shfleto Programet',
+    'button.loginToPurchase': 'Hyr për të blerë',
+    'button.continue': 'Vazhdo',
+    'button.addToCart': 'Shto në Shportë',
   },
 };
 

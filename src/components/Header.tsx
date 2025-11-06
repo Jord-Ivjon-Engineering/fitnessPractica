@@ -1,13 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { Dumbbell, User, LogOut, Languages } from "lucide-react";
+import { Dumbbell, User, LogOut, Languages, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useCart } from "@/contexts/CartContext";
 
 const Header = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const { cartCount, clearCart } = useCart();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    clearCart();
+    logout();
+    navigate('/');
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -34,6 +42,20 @@ const Header = () => {
               <Button 
                 variant="ghost" 
                 size="lg"
+                onClick={() => navigate('/checkout')}
+                className="relative"
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+                <span className="hidden md:inline">Cart</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="lg"
                 onClick={() => navigate('/profile')}
               >
                 <User className="w-5 h-5 mr-2" />
@@ -42,10 +64,7 @@ const Header = () => {
               <Button 
                 variant="ghost" 
                 size="lg"
-                onClick={() => {
-                  logout();
-                  navigate('/');
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="w-5 h-5 mr-2" />
                 {t('header.logout')}

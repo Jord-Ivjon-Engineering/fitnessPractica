@@ -37,3 +37,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  details[open] summary svg {
+    transform: rotate(180deg);
+  }
+}
