@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import planRoutes from './routes/plans';
@@ -6,6 +7,7 @@ import memberRoutes from './routes/members';
 import locationRoutes from './routes/locations';
 import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
+import videoRoutes from './routes/video'; // new
 import paymentRoutes from './routes/payment';
 import trainingProgramRoutes from './routes/trainingPrograms';
 import { handleWebhook } from './controllers/paymentController';
@@ -54,12 +56,16 @@ app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), hand
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// serve uploads so edited files are accessible
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/video', videoRoutes); // new
 app.use('/api/training-programs', trainingProgramRoutes);
 app.use('/api/payment', paymentRoutes);
 
