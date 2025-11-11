@@ -6,6 +6,9 @@ import memberRoutes from './routes/members';
 import locationRoutes from './routes/locations';
 import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
+import paymentRoutes from './routes/payment';
+import trainingProgramRoutes from './routes/trainingPrograms';
+import { handleWebhook } from './controllers/paymentController';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
 dotenv.config();
@@ -44,6 +47,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+// Stripe webhook must be before express.json() middleware
+// because it needs the raw body for signature verification
+app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -53,6 +60,8 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/training-programs', trainingProgramRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

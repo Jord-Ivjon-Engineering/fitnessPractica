@@ -2,9 +2,11 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 export interface CartItem {
   id: string;
+  programId?: number; // Database ID for the program
   name: string;
   category: string;
   image: string;
+  price?: number;
 }
 
 interface CartContextType {

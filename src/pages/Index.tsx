@@ -232,11 +232,11 @@ const Index = () => {
           <Carousel className="w-full max-w-5xl mx-auto">
             <CarouselContent>
               {[
-                { image: planWeightLoss, name: "Fat Burn Program", category: "Weight Loss" },
-                { image: planMuscleGrow, name: "Strength Builder", category: "Muscle Growth" },
-                { image: planCardio, name: "Cardio Blast", category: "Endurance" },
-                { image: planFlexibility, name: "Yoga & Stretch", category: "Flexibility" },
-                { image: planFunctional, name: "Functional Fitness", category: "Athletic Performance" }
+                { image: planWeightLoss, name: "Fat Burn Program", category: "Weight Loss", programId: 1, price: 49.99 },
+                { image: planMuscleGrow, name: "Strength Builder", category: "Muscle Growth", programId: 2, price: 59.99 },
+                { image: planCardio, name: "Cardio Blast", category: "Endurance", programId: 3, price: 44.99 },
+                { image: planFlexibility, name: "Yoga & Stretch", category: "Flexibility", programId: 4, price: 39.99 },
+                { image: planFunctional, name: "Functional Fitness", category: "Athletic Performance", programId: 5, price: 54.99 }
               ].map((program) => (
                 <CarouselItem key={program.name}>
                   <Card className="overflow-hidden border-border">
@@ -252,6 +252,7 @@ const Index = () => {
                           {program.category}
                         </div>
                         <h3 className="text-4xl font-bold mb-2">{program.name}</h3>
+                        <p className="text-2xl font-semibold mb-4">${program.price}</p>
                         <Button 
                           size="lg"
                           className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"
@@ -259,9 +260,11 @@ const Index = () => {
                             if (isAuthenticated) {
                               addToCart({
                                 id: program.name.toLowerCase().replace(/\s+/g, '-'),
+                                programId: program.programId,
                                 name: program.name,
                                 category: program.category,
                                 image: program.image,
+                                price: program.price,
                               });
                             } else {
                               navigate('/login');

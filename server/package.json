@@ -10,10 +10,12 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "prisma:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",
+    "@stripe/stripe-js": "^8.4.0",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -21,6 +23,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "react-router-dom": "^7.9.5",
+    "stripe": "^19.3.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -30,9 +33,13 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.10.5",
     "@types/react-router-dom": "^5.3.3",
+    "@types/stripe": "^8.0.416",
     "nodemon": "^3.0.2",
     "prisma": "^5.7.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

@@ -17,6 +17,7 @@ model Plan {
   updatedAt   DateTime @updatedAt @map("updated_at")
   members     Member[]
   userPrograms UserProgram[]
+  payments    Payment[]
 
   @@map("plans")
 }
@@ -52,9 +53,11 @@ model TrainingProgram {
   category    String   @db.VarChar(100)
   description String?  @db.Text
   imageUrl    String?  @db.Text
+  price       Decimal? @db.Decimal(10, 2)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   userPrograms UserProgram[]
+  payments    Payment[]
 
   @@map("training_programs")
 }
@@ -69,6 +72,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   programs  UserProgram[]
+  payments  Payment[]
 
   @@map("users")
 }
@@ -81,10 +85,32 @@ model UserProgram {
   status      String   @default("active") @db.VarChar(50)
   purchasedAt DateTime @default(now()) @map("purchased_at")
   expiresAt   DateTime? @map("expires_at")
+  paymentId   Int?     @map("payment_id")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan        Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
   program     TrainingProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@map("user_programs")
+}
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  stripeSessionId String   @unique @db.VarChar(255) @map("stripe_session_id")
+  stripePaymentId String?  @db.VarChar(255) @map("stripe_payment_id")
+  amount          Decimal  @db.Decimal(10, 2)
+  currency        String   @default("usd") @db.VarChar(10)
+  status          String   @default("pending") @db.VarChar(50)
+  programId       Int?     @map("program_id")
+  planId          Int?     @map("plan_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program         TrainingProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  plan            Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  userPrograms    UserProgram[]
+
+  @@map("payments")
 }
 

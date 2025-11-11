@@ -112,5 +112,57 @@ export const profileApi = {
     api.post<{ success: boolean; data: UserProgram }>('/profile/purchase', data),
 };
 
+// Training Programs API
+export interface TrainingProgram {
+  id: number;
+  name: string;
+  category: string;
+  description: string | null;
+  imageUrl: string | null;
+  price: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const trainingProgramApi = {
+  getAll: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/training-programs'),
+  getById: (id: number) => api.get<{ success: boolean; data: TrainingProgram }>(`/training-programs/${id}`),
+};
+
+// Payment API
+export interface CheckoutSessionResponse {
+  success: boolean;
+  data: {
+    sessionId: string;
+    url: string;
+    paymentId: number;
+  };
+}
+
+export interface PaymentStatus {
+  success: boolean;
+  data: {
+    id: number;
+    userId: number;
+    stripeSessionId: string;
+    stripePaymentId: string | null;
+    amount: number;
+    currency: string;
+    status: string;
+    programId: number | null;
+    planId: number | null;
+    createdAt: string;
+    updatedAt: string;
+    program: TrainingProgram | null;
+  };
+}
+
+export const paymentApi = {
+  createCheckoutSession: (data: { programIds: (string | number)[] }) =>
+    api.post<CheckoutSessionResponse>('/payment/create-checkout-session', data),
+  getPaymentStatus: (sessionId: string) =>
+    api.get<PaymentStatus>(`/payment/status/${sessionId}`),
+};
+
 export default api;
 
