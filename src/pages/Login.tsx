@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dumbbell, Mail, Lock, Loader2 } from "lucide-react";
@@ -12,6 +12,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +21,9 @@ const Login = () => {
 
     try {
       await login(email, password);
-      navigate("/");
+      // Redirect to returnUrl if provided, otherwise go to home
+      const returnUrl = searchParams.get('returnUrl');
+      navigate(returnUrl || "/");
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.message || "Login failed. Please try again.");
     } finally {

@@ -11,24 +11,36 @@ import { paymentApi } from "@/services/api";
 const Checkout = () => {
   const { cartItems, removeFromCart, clearCart, cartCount } = useCart();
   const { t } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // Check for payment success
+  // Check for payment success (Stripe redirect)
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
     const canceled = searchParams.get('canceled');
 
+    // Wait for auth to finish loading before processing payment verification
+    if (isLoading) {
+      return;
+    }
+
     if (sessionId && !canceled) {
       // Payment was successful, verify it
-      verifyPayment(sessionId);
+      // Only verify if user is authenticated
+      if (isAuthenticated) {
+        verifyPayment(sessionId);
+      } else {
+        // User not authenticated but has session_id - redirect to login with return URL
+        const returnUrl = `/checkout?session_id=${sessionId}`;
+        navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+      }
     } else if (canceled) {
       setPaymentStatus('error');
     }
-  }, [searchParams]);
+  }, [searchParams, isLoading, isAuthenticated, navigate]);
 
   const verifyPayment = async (sessionId: string) => {
     try {
@@ -38,27 +50,51 @@ const Checkout = () => {
         setPaymentStatus('success');
         clearCart();
         setTimeout(() => {
-          navigate('/profile');
+          navigate('/');
         }, 2000);
       } else {
         setPaymentStatus('error');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying payment:', error);
-      setPaymentStatus('error');
+      // If authentication failed, redirect to login with return URL
+      if (error.response?.status === 401) {
+        const returnUrl = `/checkout?session_id=${sessionId}`;
+        navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+      } else {
+        setPaymentStatus('error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (but only if not handling Stripe redirect)
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for auth to finish loading
+    if (isLoading) {
+      return;
+    }
+
+    const sessionId = searchParams.get('session_id');
+    // If we have a session_id, we're handling a Stripe redirect - don't redirect yet
+    // The payment verification effect will handle it
+    if (!isAuthenticated && !sessionId) {
       navigate('/login');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isLoading, navigate, searchParams]);
 
-  if (!isAuthenticated) {
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background pt-24 pb-12 px-4 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If not authenticated and no Stripe redirect, don't render (will redirect)
+  if (!isAuthenticated && !searchParams.get('session_id')) {
     return null;
   }
 

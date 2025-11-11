@@ -7,6 +7,11 @@ import ffmpegStatic from 'ffmpeg-static';
 
 (ffmpeg as any).setFfmpegPath(ffmpegStatic);
 
+// Extend Request type to include multer file
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
+
 const router = express.Router();
 const uploadsDir = path.join(__dirname, '../../uploads');
 const editedDir = path.join(uploadsDir, 'edited');
@@ -17,7 +22,7 @@ if (!fs.existsSync(editedDir)) fs.mkdirSync(editedDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: uploadsDir,
-  filename: (_req, file, cb) => {
+  filename: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const ext = path.extname(file.originalname) || '.mp4';
     cb(null, `upload_${Date.now()}${ext}`);
   },
@@ -28,7 +33,7 @@ const upload = multer({ storage });
 // expects multipart form:
 //  - video: file
 //  - exercises: JSON stringified array [{ name, start, duration }]
-router.post('/edit', upload.single('video'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/edit', upload.single('video'), async (req: MulterRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No video uploaded' });
 
