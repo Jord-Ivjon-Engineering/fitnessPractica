@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,9 +10,20 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +32,32 @@ const Login = () => {
 
     try {
       await login(email, password);
-      // Redirect to returnUrl if provided, otherwise go to home
+      // Get returnUrl if provided
       const returnUrl = searchParams.get('returnUrl');
-      navigate(returnUrl || "/");
+      
+      // If returnUrl is provided, use it (e.g., for checkout redirects)
+      if (returnUrl) {
+        navigate(returnUrl);
+      } else {
+        // Check if user is admin and redirect to dashboard
+        // The login function sets user in localStorage, so we can read it immediately
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const currentUser = JSON.parse(storedUser);
+            if (currentUser && currentUser.role === 'admin') {
+              navigate('/admin/dashboard');
+            } else {
+              navigate('/');
+            }
+          } catch {
+            // If parsing fails, just go to home
+            navigate('/');
+          }
+        } else {
+          navigate('/');
+        }
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.message || "Login failed. Please try again.");
     } finally {

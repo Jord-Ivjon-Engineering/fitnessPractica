@@ -10,6 +10,7 @@ import profileRoutes from './routes/profile';
 import videoRoutes from './routes/video'; // new
 import paymentRoutes from './routes/payment';
 import trainingProgramRoutes from './routes/trainingPrograms';
+import adminRoutes from './routes/admin';
 import { handleWebhook } from './controllers/paymentController';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
@@ -68,6 +69,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/video', videoRoutes); // new
 app.use('/api/training-programs', trainingProgramRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

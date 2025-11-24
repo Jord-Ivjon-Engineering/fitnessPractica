@@ -5,6 +5,13 @@
   margin: 0 auto;
 }
 
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-size: 1.2rem;
+}
+
 .video-editor-content {
   background: white;
   border-radius: 8px;

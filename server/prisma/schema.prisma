@@ -53,7 +53,10 @@ model TrainingProgram {
   category    String   @db.VarChar(100)
   description String?  @db.Text
   imageUrl    String?  @db.Text
+  videoUrl    String?  @db.Text
   price       Decimal? @db.Decimal(10, 2)
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   userPrograms UserProgram[]

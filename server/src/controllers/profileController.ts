@@ -71,6 +71,8 @@ export const getUserPrograms = async (req: Request, res: Response, next: NextFun
             category: true,
             description: true,
             imageUrl: true,
+            startDate: true,
+            endDate: true,
           },
         },
       },

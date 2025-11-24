@@ -43,18 +43,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const storedUser = localStorage.getItem('user');
 
     if (storedToken && storedUser) {
+      // Set token and user immediately from storage so isAuthenticated is true during validation
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        // Invalid stored user data, clear it
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+      
       // Verify token is still valid
       authApi.getCurrentUser()
         .then((response) => {
           if (response.success) {
             setUser(response.data);
             localStorage.setItem('user', JSON.stringify(response.data));
+          } else {
+            // Token invalid, clear storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setToken(null);
+            setUser(null);
           }
         })
-        .catch(() => {
-          // Token invalid, clear storage
+        .catch((error) => {
+          // Token invalid or expired, clear storage
+          // Don't redirect here - let the pages handle it after isLoading is false
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           setToken(null);

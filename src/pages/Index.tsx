@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { trainingProgramApi, TrainingProgram } from "@/services/api";
 import {
   Carousel,
   CarouselContent,
@@ -26,6 +27,8 @@ import heroVideo from "@/assets/viedo.mp4";
 const Index = () => {
   const [videoError, setVideoError] = useState(false);
   const [openPlan, setOpenPlan] = useState<string | null>(null);
+  const [programs, setPrograms] = useState<TrainingProgram[]>([]);
+  const [programsLoading, setProgramsLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { language, t } = useLanguage();
   const location = useLocation();
@@ -34,6 +37,25 @@ const Index = () => {
   const { addToCart } = useCart();
 
   const videoUrl = heroVideo;
+
+  // Fetch training programs from database
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        setProgramsLoading(true);
+        const response = await trainingProgramApi.getAll();
+        if (response.data.success) {
+          setPrograms(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+      } finally {
+        setProgramsLoading(false);
+      }
+    };
+
+    fetchPrograms();
+  }, []);
 
   // Handle hash navigation to scroll to specific sections
   useEffect(() => {
@@ -229,59 +251,112 @@ const Index = () => {
             <p className="text-xl text-muted-foreground">{t('section.programs.subtitle')}</p>
           </div>
           
-          <Carousel className="w-full max-w-5xl mx-auto">
-            <CarouselContent>
-              {[
-                { image: planWeightLoss, name: "Fat Burn Program", category: "Weight Loss", programId: 1, price: 49.99 },
-                { image: planMuscleGrow, name: "Strength Builder", category: "Muscle Growth", programId: 2, price: 59.99 },
-                { image: planCardio, name: "Cardio Blast", category: "Endurance", programId: 3, price: 44.99 },
-                { image: planFlexibility, name: "Yoga & Stretch", category: "Flexibility", programId: 4, price: 39.99 },
-                { image: planFunctional, name: "Functional Fitness", category: "Athletic Performance", programId: 5, price: 54.99 }
-              ].map((program) => (
-                <CarouselItem key={program.name}>
-                  <Card className="overflow-hidden border-border">
-                    <div className="relative h-96">
-                      <img 
-                        src={program.image} 
-                        alt={program.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                      <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-                        <div className="inline-block px-4 py-1 mb-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] text-sm font-semibold">
-                          {program.category}
+          {programsLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : programs.length > 0 ? (
+            <Carousel className="w-full max-w-5xl mx-auto">
+              <CarouselContent>
+                {programs.map((program) => {
+                  // Map category to fallback images (only used if database image fails)
+                  const getFallbackImage = (category: string) => {
+                    const categoryLower = category.toLowerCase();
+                    if (categoryLower.includes('weight') || categoryLower.includes('fat') || categoryLower.includes('burn')) {
+                      return planWeightLoss;
+                    } else if (categoryLower.includes('muscle') || categoryLower.includes('strength')) {
+                      return planMuscleGrow;
+                    } else if (categoryLower.includes('cardio') || categoryLower.includes('endurance')) {
+                      return planCardio;
+                    } else if (categoryLower.includes('yoga') || categoryLower.includes('stretch') || categoryLower.includes('flexibility')) {
+                      return planFlexibility;
+                    } else if (categoryLower.includes('functional') || categoryLower.includes('athletic')) {
+                      return planFunctional;
+                    }
+                    return planWeightLoss; // default fallback
+                  };
+
+                  // Use database imageUrl if available, otherwise use fallback
+                  const fallbackImage = getFallbackImage(program.category);
+                  // Ensure price is a number (handle Decimal types from database)
+                  const programPrice = program.price ? Number(program.price) : 0;
+
+                  return (
+                    <CarouselItem key={program.id}>
+                      <Card className="overflow-hidden border-border">
+                        <div className="relative h-96">
+                          <img 
+                            src={program.imageUrl || fallbackImage} 
+                            alt={program.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to default image if database imageUrl fails to load
+                              const target = e.target as HTMLImageElement;
+                              if (target.src !== fallbackImage) {
+                                target.src = fallbackImage;
+                              }
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                          <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                            <div className="inline-block px-4 py-1 mb-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] text-sm font-semibold">
+                              {program.category}
+                            </div>
+                            <h3 className="text-4xl font-bold mb-2">{program.name}</h3>
+                            {program.description && (
+                              <p className="text-sm text-white/90 mb-2 line-clamp-2">{program.description}</p>
+                            )}
+                            {(program.startDate || program.endDate) && (
+                              <div className="text-sm text-white/80 mb-2">
+                                {program.startDate && program.endDate ? (
+                                  <p>
+                                    {new Date(program.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - {new Date(program.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </p>
+                                ) : program.startDate ? (
+                                  <p>Starts: {new Date(program.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                ) : program.endDate ? (
+                                  <p>Ends: {new Date(program.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                ) : null}
+                              </div>
+                            )}
+                            <p className="text-2xl font-semibold mb-4">
+                              {programPrice > 0 ? `$${programPrice.toFixed(2)}` : 'Free'}
+                            </p>
+                            <Button 
+                              size="lg"
+                              className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"
+                              onClick={() => {
+                                if (isAuthenticated) {
+                                  addToCart({
+                                    id: program.name.toLowerCase().replace(/\s+/g, '-'),
+                                    programId: program.id,
+                                    name: program.name,
+                                    category: program.category,
+                                    image: program.imageUrl || fallbackImage, // Use database imageUrl if available
+                                    price: programPrice,
+                                  });
+                                } else {
+                                  navigate('/login');
+                                }
+                              }}
+                            >
+                              {isAuthenticated ? t('button.addToCart') : t('button.loginToPurchase')}
+                            </Button>
+                          </div>
                         </div>
-                        <h3 className="text-4xl font-bold mb-2">{program.name}</h3>
-                        <p className="text-2xl font-semibold mb-4">${program.price}</p>
-                        <Button 
-                          size="lg"
-                          className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"
-                          onClick={() => {
-                            if (isAuthenticated) {
-                              addToCart({
-                                id: program.name.toLowerCase().replace(/\s+/g, '-'),
-                                programId: program.programId,
-                                name: program.name,
-                                category: program.category,
-                                image: program.image,
-                                price: program.price,
-                              });
-                            } else {
-                              navigate('/login');
-                            }
-                          }}
-                        >
-                          {isAuthenticated ? t('button.addToCart') : t('button.loginToPurchase')}
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="left-4" />
-            <CarouselNext className="right-4" />
-          </Carousel>
+                      </Card>
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+              <CarouselPrevious className="left-4" />
+              <CarouselNext className="right-4" />
+            </Carousel>
+          ) : (
+            <div className="text-center py-24">
+              <p className="text-muted-foreground text-lg">No training programs available at the moment.</p>
+            </div>
+          )}
         </div>
       </section>
 

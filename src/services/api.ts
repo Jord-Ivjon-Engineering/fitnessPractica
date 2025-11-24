@@ -100,6 +100,8 @@ export interface UserProgram {
     category: string;
     description: string | null;
     imageUrl: string | null;
+    startDate: string | null;
+    endDate: string | null;
   } | null;
 }
 
@@ -119,7 +121,10 @@ export interface TrainingProgram {
   category: string;
   description: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   price: number | null;
+  startDate: string | null;
+  endDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -162,6 +167,80 @@ export const paymentApi = {
     api.post<CheckoutSessionResponse>('/payment/create-checkout-session', data),
   getPaymentStatus: (sessionId: string) =>
     api.get<PaymentStatus>(`/payment/status/${sessionId}`),
+};
+
+// Admin API
+export interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  phone: string | null;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  _count: {
+    payments: number;
+    programs: number;
+  };
+}
+
+export interface AdminTransaction {
+  id: number;
+  userName: string;
+  userEmail: string;
+  amount: number;
+  currency: string;
+  status: string;
+  itemName: string;
+  itemType: string;
+  createdAt: string;
+  updatedAt: string;
+  stripeSessionId: string;
+  stripePaymentId: string | null;
+}
+
+export interface DashboardStats {
+  totalUsers: number;
+  totalTransactions: number;
+  totalRevenue: number;
+  recentTransactions: number;
+}
+
+export interface CreateUserData {
+  email: string;
+  password: string;
+  name: string;
+  phone?: string;
+  role?: string;
+}
+
+export interface CreateProgramData {
+  name: string;
+  category: string;
+  description?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  price?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+export const adminApi = {
+  getAllUsers: () => api.get<{ success: boolean; data: AdminUser[] }>('/admin/users'),
+  getAllTransactions: () => api.get<{ success: boolean; data: AdminTransaction[] }>('/admin/transactions'),
+  getDashboardStats: () => api.get<{ success: boolean; data: DashboardStats }>('/admin/stats'),
+  createUser: (data: CreateUserData) => api.post<{ success: boolean; data: AdminUser }>('/admin/users', data),
+  getAllPrograms: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/admin/programs'),
+  createProgram: (data: CreateProgramData) => api.post<{ success: boolean; data: TrainingProgram }>('/admin/programs', data),
+  uploadProgramImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post<{ success: boolean; data: { imageUrl: string; filename: string } }>('/admin/programs/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 export default api;

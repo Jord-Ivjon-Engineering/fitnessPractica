@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dumbbell, User, LogOut, Languages, ShoppingCart, Video } from "lucide-react";
+import { Dumbbell, User, LogOut, Languages, ShoppingCart, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -57,11 +57,11 @@ const Header = () => {
                 <Button 
                   variant="ghost" 
                   size="lg"
-                  onClick={() => navigate('/video-editor')}
-                  title="Video Editor (Admin Only)"
+                  onClick={() => navigate('/admin/dashboard')}
+                  title="Admin Dashboard"
                 >
-                  <Video className="w-5 h-5 mr-2" />
-                  <span className="hidden md:inline">Video Editor</span>
+                  <LayoutDashboard className="w-5 h-5 mr-2" />
+                  <span className="hidden md:inline">Dashboard</span>
                 </Button>
               )}
               <Button 

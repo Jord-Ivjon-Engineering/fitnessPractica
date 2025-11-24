@@ -10,7 +10,7 @@ interface Exercise {
 }
 
 const VideoEditor = () => {
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, token, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [exerciseName, setExerciseName] = useState('');
@@ -22,6 +22,11 @@ const VideoEditor = () => {
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (isLoading) {
+      return;
+    }
+
     // Check if user is authenticated and is admin
     if (!isAuthenticated || !user) {
       navigate('/login');
@@ -34,7 +39,7 @@ const VideoEditor = () => {
         navigate('/');
       }, 2000);
     }
-  }, [user, isAuthenticated, navigate]);
+  }, [user, isAuthenticated, isLoading, navigate]);
 
   const addExercise = () => {
     const name = exerciseName.trim();
@@ -148,6 +153,15 @@ const VideoEditor = () => {
       setIsProcessing(false);
     }
   };
+
+  // Show loading while auth is initializing
+  if (isLoading) {
+    return (
+      <div className="video-editor-container">
+        <div className="loading">Loading...</div>
+      </div>
+    );
+  }
 
   // Don't render if not admin
   if (!isAuthenticated || !user || user.role !== 'admin') {

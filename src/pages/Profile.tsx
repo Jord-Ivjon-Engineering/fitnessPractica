@@ -8,7 +8,7 @@ import { profileApi, UserProfile, UserProgram } from "@/services/api";
 import { Loader2 } from "lucide-react";
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [programs, setPrograms] = useState<UserProgram[]>([]);
@@ -18,13 +18,18 @@ const Profile = () => {
   const [editPhone, setEditPhone] = useState("");
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (isLoading) {
+      return;
+    }
+
     if (!user) {
       navigate("/login");
       return;
     }
     fetchProfile();
     fetchPrograms();
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
 
   const fetchProfile = async () => {
     try {
@@ -75,7 +80,40 @@ const Profile = () => {
     });
   };
 
-  if (loading) {
+  const getProgramStatus = (startDate: string | null, endDate: string | null) => {
+    if (!startDate && !endDate) {
+      return null; // No dates, no status
+    }
+
+    const now = new Date();
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    // If start date exists and hasn't come yet
+    if (start && now < start) {
+      return { text: 'Not Available Yet', status: 'upcoming' };
+    }
+
+    // If end date exists and has passed
+    if (end && now > end) {
+      return { text: 'Finished', status: 'finished' };
+    }
+
+    // If we have dates and we're within the range, or if we only have start date and it's passed
+    if ((start && now >= start && (!end || now <= end)) || (start && now >= start && !end)) {
+      return { text: 'Active', status: 'active' };
+    }
+
+    // If we only have end date and it hasn't passed
+    if (end && now <= end && !start) {
+      return { text: 'Active', status: 'active' };
+    }
+
+    return null;
+  };
+
+  // Show loading while auth is initializing or profile is loading
+  if (isLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -241,15 +279,43 @@ const Profile = () => {
                             <h3 className="text-xl font-bold text-foreground">
                               {userProgram.plan?.name || userProgram.program?.name || "Unknown Program"}
                             </h3>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                userProgram.status === "active"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {userProgram.status}
-                            </span>
+                            {userProgram.program && (() => {
+                              const programStatus = getProgramStatus(userProgram.program.startDate, userProgram.program.endDate);
+                              return programStatus ? (
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                    programStatus.status === "active"
+                                      ? "bg-green-100 text-green-800"
+                                      : programStatus.status === "upcoming"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {programStatus.text}
+                                </span>
+                              ) : (
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                    userProgram.status === "active"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {userProgram.status}
+                                </span>
+                              );
+                            })()}
+                            {!userProgram.program && (
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                  userProgram.status === "active"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {userProgram.status}
+                              </span>
+                            )}
                           </div>
                           
                           {userProgram.plan && (
@@ -267,6 +333,19 @@ const Profile = () => {
                                 <p className="text-muted-foreground mt-2">
                                   {userProgram.program.description}
                                 </p>
+                              )}
+                              {(userProgram.program.startDate || userProgram.program.endDate) && (
+                                <div className="mt-2 text-sm text-muted-foreground">
+                                  {userProgram.program.startDate && userProgram.program.endDate ? (
+                                    <p>
+                                      Program Dates: {formatDate(userProgram.program.startDate)} - {formatDate(userProgram.program.endDate)}
+                                    </p>
+                                  ) : userProgram.program.startDate ? (
+                                    <p>Starts: {formatDate(userProgram.program.startDate)}</p>
+                                  ) : userProgram.program.endDate ? (
+                                    <p>Ends: {formatDate(userProgram.program.endDate)}</p>
+                                  ) : null}
+                                </div>
                               )}
                             </div>
                           )}
