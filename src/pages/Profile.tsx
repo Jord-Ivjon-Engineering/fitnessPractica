@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { User, Mail, Phone, Calendar, Dumbbell, Edit2, LogOut, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { profileApi, UserProfile, UserProgram } from "@/services/api";
+import { profileApi, UserProfile, UserProgram, trainingProgramApi } from "@/services/api";
 import { Loader2 } from "lucide-react";
 
 const Profile = () => {
@@ -12,6 +12,9 @@ const Profile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [programs, setPrograms] = useState<UserProgram[]>([]);
+  const [expandedProgramId, setExpandedProgramId] = useState<number | null>(null);
+  const [programVideos, setProgramVideos] = useState<Record<number, { id: number; programId: number; url: string; title: string | null; createdAt: string }[]>>({});
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -25,6 +28,40 @@ const Profile = () => {
     fetchProfile();
     fetchPrograms();
   }, [user, navigate]);
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+  const handleProgramClick = async (userProgram: UserProgram) => {
+    const progId = userProgram.program?.id;
+    if (!progId) return;
+
+    // toggle expand
+    if (expandedProgramId === progId) {
+      setExpandedProgramId(null);
+      setPlayingUrl(null);
+      return;
+    }
+
+    setExpandedProgramId(progId);
+
+    // fetch videos if not loaded
+    if (!programVideos[progId]) {
+      try {
+        const resp = await trainingProgramApi.getVideos(progId);
+        if (resp && resp.data && resp.data.data) {
+          setProgramVideos(prev => ({ ...prev, [progId]: resp.data.data }));
+          const first = resp.data.data[0];
+          if (first) setPlayingUrl(first.url.startsWith('http') ? first.url : `${API_URL}${first.url.startsWith('/') ? '' : '/'}${first.url}`);
+        }
+      } catch (err) {
+        console.error('Error fetching program videos', err);
+      }
+    } else {
+      const v = programVideos[progId];
+      const first = v && v[0];
+      if (first) setPlayingUrl(first.url.startsWith('http') ? first.url : `${API_URL}${first.url.startsWith('/') ? '' : '/'}${first.url}`);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -232,7 +269,9 @@ const Profile = () => {
                   {programs.map((userProgram) => (
                     <Card
                       key={userProgram.id}
-                      className="p-6 border-border hover:shadow-lg transition-shadow"
+                      className={`p-6 border-border hover:shadow-lg transition-shadow ${userProgram.program?.imageUrl ? 'cursor-pointer' : ''}`}
+                        onClick={() => handleProgramClick(userProgram)}
+                        title={userProgram.program?.imageUrl ? 'Open attached media' : 'View program details'}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -285,6 +324,34 @@ const Profile = () => {
                               </div>
                             )}
                           </div>
+                          {/* Video list and player when expanded */}
+                          {expandedProgramId === userProgram.program?.id && (
+                            <div className="mt-4">
+                              {playingUrl ? (
+                                <div className="mb-4">
+                                  <video src={playingUrl} controls className="w-full max-h-80" />
+                                </div>
+                              ) : null}
+
+                              <div className="space-y-2">
+                                {(programVideos[userProgram.program?.id || 0] || []).map((v) => {
+                                  const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
+                                  return (
+                                    <div key={v.id} className="flex items-center justify-between bg-muted p-2 rounded">
+                                      <div>
+                                        <div className="font-semibold">{v.title || v.url.split('/').pop()}</div>
+                                        <div className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Button onClick={() => setPlayingUrl(full)}>Play</Button>
+                                        <Button variant="outline" onClick={() => window.open(full, '_blank')}>Open</Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </Card>

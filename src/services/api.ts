@@ -127,6 +127,8 @@ export interface TrainingProgram {
 export const trainingProgramApi = {
   getAll: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/training-programs'),
   getById: (id: number) => api.get<{ success: boolean; data: TrainingProgram }>(`/training-programs/${id}`),
+  attachVideo: (id: number, fileUrl: string, title?: string) => api.post<{ success: boolean; data: any }>(`/training-programs/${id}/videos`, { fileUrl, title }),
+  getVideos: (id: number) => api.get<{ success: boolean; data: { id: number; programId: number; url: string; title: string | null; createdAt: string }[] }>(`/training-programs/${id}/videos`),
 };
 
 // Payment API
