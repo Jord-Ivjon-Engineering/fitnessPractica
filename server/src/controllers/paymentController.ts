@@ -169,31 +169,76 @@ export const handleWebhook = async (req: Request, res: Response, next: NextFunct
       const session = event.data.object as Stripe.Checkout.Session;
 
       // Find payment record
-      const payment = await prisma.payment.findUnique({
+      let payment = await prisma.payment.findUnique({
         where: { stripeSessionId: session.id },
       });
 
+      // If payment record doesn't exist, try to create it from session metadata
       if (!payment) {
-        console.error('Payment record not found for session:', session.id);
-        return res.status(404).json({ error: 'Payment not found' });
-      }
+        console.warn('Payment record not found for session:', session.id, '- Attempting to create from metadata');
+        
+        const userId = parseInt(session.metadata?.userId || '0');
+        const programIds = JSON.parse(session.metadata?.programIds || '[]');
+        
+        if (!userId || !programIds.length) {
+          console.error('Cannot create payment record: missing userId or programIds in metadata', {
+            sessionId: session.id,
+            metadata: session.metadata,
+          });
+          // Still return 200 to prevent Stripe from retrying
+          return res.json({ received: true, warning: 'Payment record not found and cannot be created' });
+        }
 
-      // Update payment status
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: 'completed',
-          stripePaymentId: session.payment_intent as string,
-        },
-      });
+        // Calculate amount from session
+        const amount = session.amount_total ? session.amount_total / 100 : 0;
+
+        // Create payment record
+        try {
+          payment = await prisma.payment.create({
+            data: {
+              userId,
+              stripeSessionId: session.id,
+              amount,
+              currency: session.currency || 'usd',
+              status: 'completed',
+              stripePaymentId: session.payment_intent as string,
+              programId: programIds.length === 1 ? parseInt(programIds[0]) : null,
+            },
+          });
+          console.log('Created missing payment record for session:', session.id);
+        } catch (createError: any) {
+          console.error('Failed to create payment record:', createError);
+          // Still return 200 to prevent Stripe from retrying
+          return res.json({ received: true, warning: 'Payment record creation failed' });
+        }
+      } else {
+        // Update existing payment status
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: 'completed',
+            stripePaymentId: session.payment_intent as string,
+          },
+        });
+      }
 
       // Parse program IDs from metadata
       const programIds = JSON.parse(session.metadata?.programIds || '[]');
       const userId = parseInt(session.metadata?.userId || '0');
 
+      if (!userId || !programIds.length) {
+        console.warn('Missing userId or programIds in session metadata:', session.id);
+        return res.json({ received: true, warning: 'Missing metadata for UserProgram creation' });
+      }
+
       // Create UserProgram records for each purchased program
       for (const programIdStr of programIds) {
         const programId = parseInt(programIdStr);
+
+        if (isNaN(programId) || programId <= 0) {
+          console.warn('Invalid programId:', programIdStr);
+          continue;
+        }
 
         // Check if user already has this program
         const existing = await prisma.userProgram.findFirst({
@@ -221,7 +266,9 @@ export const handleWebhook = async (req: Request, res: Response, next: NextFunct
     res.json({ received: true });
   } catch (error) {
     console.error('Error handling webhook:', error);
-    next(error);
+    // Return 200 to acknowledge receipt even on error to prevent Stripe retries
+    // Log the error for investigation
+    res.status(200).json({ received: true, error: 'Webhook processing error logged' });
   }
 };
 
