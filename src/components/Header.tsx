@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dumbbell, User, LogOut, Languages, ShoppingCart } from "lucide-react";
+import { Dumbbell, User, LogOut, Languages, ShoppingCart, Video } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -53,6 +53,17 @@ const Header = () => {
                 )}
                 <span className="hidden md:inline">Cart</span>
               </Button>
+              {user?.role === 'admin' && (
+                <Button 
+                  variant="ghost" 
+                  size="lg"
+                  onClick={() => navigate('/video-editor')}
+                  title="Video Editor (Admin Only)"
+                >
+                  <Video className="w-5 h-5 mr-2" />
+                  <span className="hidden md:inline">Video Editor</span>
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 size="lg"

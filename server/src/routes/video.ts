@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
+import { authenticate, requireAdmin } from '../middleware/auth';
 
 (ffmpeg as any).setFfmpegPath(ffmpegStatic);
 
@@ -33,7 +34,8 @@ const upload = multer({ storage });
 // expects multipart form:
 //  - video: file
 //  - exercises: JSON stringified array [{ name, start, duration }]
-router.post('/edit', upload.single('video'), async (req: MulterRequest, res: Response, next: NextFunction) => {
+// Requires admin authentication
+router.post('/edit', authenticate, requireAdmin, upload.single('video'), async (req: MulterRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No video uploaded' });
 

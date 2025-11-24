@@ -9,6 +9,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Profile from './pages/Profile'
 import Checkout from './pages/Checkout'
+import VideoEditor from './pages/VideoEditor'
 import './App.css'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
               <Route path="/signup" element={<Signup />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/video-editor" element={<VideoEditor />} />
             </Routes>
             <Footer />
           </Router>
