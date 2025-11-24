@@ -40,3 +40,56 @@ export const getProgramById = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const attachVideoToProgram = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { fileUrl, title } = req.body as { fileUrl?: string; title?: string };
+
+    if (!fileUrl) {
+      const error: ApiError = new Error('fileUrl is required');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const programId = parseInt(id, 10);
+    const program = await prisma.trainingProgram.findUnique({ where: { id: programId } });
+
+    if (!program) {
+      const error: ApiError = new Error('Program not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Create a ProgramVideo record linked to the program
+    // prisma client may not yet have ProgramVideo in generated types until prisma generate is run.
+    // Use a safe any-cast to avoid TypeScript errors in dev environments; the runtime client will have the model after generation.
+    const created = await (prisma as any).programVideo.create({
+      data: {
+        programId,
+        url: fileUrl,
+        title: title || null,
+      },
+    });
+
+    res.json({ success: true, data: created });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProgramVideos = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const programId = parseInt(id, 10);
+
+    const videos = await (prisma as any).programVideo.findMany({
+      where: { programId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ success: true, data: videos });
+  } catch (error) {
+    next(error);
+  }
+};
+

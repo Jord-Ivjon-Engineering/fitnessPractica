@@ -88,13 +88,29 @@ export const createCheckoutSession = async (req: Request, res: Response, next: N
       const priceInCents = Math.round(Number(program.price) * 100);
       totalAmount += priceInCents;
 
+      // Normalize image URL: Stripe requires absolute URLs for product images
+      let productImages: string[] | undefined = undefined;
+      if (program.imageUrl) {
+        const raw = program.imageUrl;
+        const isAbsolute = /^https?:\/\//i.test(raw);
+        if (isAbsolute) {
+          productImages = [raw];
+        } else {
+          // build absolute URL from request host
+          const host = req.get('host') || 'localhost:3001';
+          const protocol = req.protocol || 'http';
+          const path = raw.startsWith('/') ? raw : `/${raw}`;
+          productImages = [`${protocol}://${host}${path}`];
+        }
+      }
+
       lineItems.push({
         price_data: {
           currency: 'usd',
           product_data: {
             name: program.name,
             description: program.category,
-            images: program.imageUrl ? [program.imageUrl] : undefined,
+            images: productImages,
           },
           unit_amount: priceInCents,
         },

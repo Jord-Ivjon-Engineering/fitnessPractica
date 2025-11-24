@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/VideoEditor.css';
+import { trainingProgramApi, TrainingProgram } from '../services/api';
 
 interface Exercise {
   name: string;
@@ -20,6 +21,10 @@ const VideoEditor = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [programs, setPrograms] = useState<TrainingProgram[]>([]);
+  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  const [programsError, setProgramsError] = useState<string>('');
+  const [attachStatus, setAttachStatus] = useState<string>('');
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -40,6 +45,25 @@ const VideoEditor = () => {
       }, 2000);
     }
   }, [user, isAuthenticated, isLoading, navigate]);
+
+  useEffect(() => {
+    // fetch programs so admin can choose where to attach processed videos
+    const fetchPrograms = async () => {
+      try {
+        const resp = await trainingProgramApi.getAll();
+        if (resp && resp.data && resp.data.data) {
+          setPrograms(resp.data.data);
+          if (resp.data.data.length > 0) setSelectedProgramId(resp.data.data[0].id);
+        }
+      } catch (err: any) {
+        console.error('Error fetching programs', err);
+        const msg = err?.response?.data?.error || err?.message || 'Unknown error fetching programs';
+        setProgramsError(String(msg));
+      }
+    };
+
+    fetchPrograms();
+  }, []);
 
   const addExercise = () => {
     const name = exerciseName.trim();
@@ -117,6 +141,20 @@ const VideoEditor = () => {
           const fileUrl = `${API_URL}${data.fileUrl}`;
           setResult(`Video processed successfully!`);
           setError('');
+          // Auto-attach to selected program if one is chosen
+          const relativeUrl = data.fileUrl.replace(/^\//, '');
+          if (selectedProgramId) {
+            try {
+              setAttachStatus('Attaching to program...');
+              await trainingProgramApi.attachVideo(selectedProgramId, `/${relativeUrl}`);
+              setAttachStatus('Attached successfully!');
+            } catch (attachErr) {
+              console.error('Auto-attach error', attachErr);
+              setAttachStatus('Warning: Video processed but failed to attach to program.');
+            }
+          } else {
+            setAttachStatus('No program selected — video processed but not attached.');
+          }
           // Create download link
           setTimeout(() => {
             const link = document.createElement('a');
@@ -276,6 +314,23 @@ const VideoEditor = () => {
           >
             {isProcessing ? 'Processing...' : 'Process Video'}
           </button>
+        </div>
+
+        <div className="program-select">
+          <h2>Attach to Training Program</h2>
+          {programsError ? (
+            <div className="error-message">Failed loading programs: {programsError}</div>
+          ) : programs.length === 0 ? (
+            <p>No programs found.</p>
+          ) : (
+            <select value={selectedProgramId ?? ''} onChange={(e) => setSelectedProgramId(Number(e.target.value))} disabled={isProcessing}>
+              {programs.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.category})</option>
+              ))}
+            </select>
+          )}
+          <p className="hint">Select a training program above — processed video will be automatically attached after processing.</p>
+          {attachStatus && <p className="status">{attachStatus}</p>}
         </div>
 
         {result && (

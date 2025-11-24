@@ -61,8 +61,21 @@ model TrainingProgram {
   updatedAt   DateTime @updatedAt @map("updated_at")
   userPrograms UserProgram[]
   payments    Payment[]
+  videos      ProgramVideo[]
 
   @@map("training_programs")
+}
+
+model ProgramVideo {
+  id         Int      @id @default(autoincrement())
+  programId  Int      @map("program_id")
+  url        String   @db.Text
+  title      String?  @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  program    TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@map("program_videos")
 }
 
 model User {
