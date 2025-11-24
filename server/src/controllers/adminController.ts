@@ -266,6 +266,114 @@ export const createProgram = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+// Update training program (admin only)
+export const updateProgram = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { name, category, description, imageUrl, price, startDate, endDate } = req.body;
+
+    const programId = parseInt(id, 10);
+    if (isNaN(programId)) {
+      const error: ApiError = new Error('Invalid program ID');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // Check if program exists
+    const existingProgram = await prisma.trainingProgram.findUnique({
+      where: { id: programId },
+    });
+
+    if (!existingProgram) {
+      const error: ApiError = new Error('Program not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Validation
+    if (name !== undefined && !name) {
+      const error: ApiError = new Error('Name cannot be empty');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    if (category !== undefined && !category) {
+      const error: ApiError = new Error('Category cannot be empty');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // Validate dates if both are provided
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (start >= end) {
+        const error: ApiError = new Error('End date must be after start date');
+        error.statusCode = 400;
+        return next(error);
+      }
+    }
+
+    // Update program
+    const program = await prisma.trainingProgram.update({
+      where: { id: programId },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(category !== undefined && { category }),
+        ...(description !== undefined && { description: description || null }),
+        ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
+        ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+        ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
+        ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: program,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete training program (admin only)
+export const deleteProgram = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const programId = parseInt(id, 10);
+    if (isNaN(programId)) {
+      const error: ApiError = new Error('Invalid program ID');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // Check if program exists
+    const existingProgram = await prisma.trainingProgram.findUnique({
+      where: { id: programId },
+    });
+
+    if (!existingProgram) {
+      const error: ApiError = new Error('Program not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Delete program (videos will be cascade deleted due to onDelete: Cascade)
+    await prisma.trainingProgram.delete({
+      where: { id: programId },
+    });
+
+    res.json({
+      success: true,
+      message: 'Program deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Upload image for program (admin only)
 export const uploadProgramImage = async (req: Request, res: Response, next: NextFunction) => {
   try {

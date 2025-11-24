@@ -93,3 +93,51 @@ export const getProgramVideos = async (req: Request, res: Response, next: NextFu
   }
 };
 
+export const updateProgramVideo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { programId, videoId } = req.params;
+    const { fileUrl, title } = req.body as { fileUrl?: string; title?: string };
+
+    if (!fileUrl) {
+      const error: ApiError = new Error('fileUrl is required');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const programIdNum = parseInt(programId, 10);
+    const videoIdNum = parseInt(videoId, 10);
+
+    // Verify program exists
+    const program = await prisma.trainingProgram.findUnique({ where: { id: programIdNum } });
+    if (!program) {
+      const error: ApiError = new Error('Program not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Verify video exists and belongs to program
+    const existingVideo = await (prisma as any).programVideo.findFirst({
+      where: { id: videoIdNum, programId: programIdNum },
+    });
+
+    if (!existingVideo) {
+      const error: ApiError = new Error('Video not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Update the video
+    const updated = await (prisma as any).programVideo.update({
+      where: { id: videoIdNum },
+      data: {
+        url: fileUrl,
+        ...(title !== undefined && { title: title || null }),
+      },
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+

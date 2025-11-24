@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { adminApi, AdminUser, AdminTransaction, DashboardStats, CreateUserData, TrainingProgram, CreateProgramData } from '../services/api';
+import { adminApi, AdminUser, AdminTransaction, DashboardStats, CreateUserData, TrainingProgram, CreateProgramData, trainingProgramApi } from '../services/api';
 import '../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -13,7 +13,10 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'transactions' | 'add-user' | 'programs' | 'add-program'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'transactions' | 'add-user' | 'programs' | 'add-program' | 'edit-program'>('stats');
+  const [editingProgramId, setEditingProgramId] = useState<number | null>(null);
+  const [existingVideos, setExistingVideos] = useState<Array<{ id: number; programId: number; url: string; title: string | null; createdAt: string }>>([]);
+  const [selectedExistingVideo, setSelectedExistingVideo] = useState<{ id: number; url: string; title: string | null } | null>(null);
   
   // Add user form state
   const [newUser, setNewUser] = useState<CreateUserData>({
@@ -183,8 +186,8 @@ const AdminDashboard = () => {
   };
 
   const processVideo = async () => {
-    if (!videoFile) {
-      setVideoError('Please upload a video.');
+    if (!videoFile && !selectedExistingVideo) {
+      setVideoError('Please upload a video or select an existing video.');
       return;
     }
 
@@ -200,7 +203,14 @@ const AdminDashboard = () => {
     }
 
     const formData = new FormData();
-    formData.append('video', videoFile);
+    
+    // If we have a selected existing video, send its URL instead of uploading
+    if (selectedExistingVideo && !videoFile) {
+      formData.append('videoUrl', selectedExistingVideo.url);
+    } else if (videoFile) {
+      formData.append('video', videoFile);
+    }
+    
     formData.append('exercises', JSON.stringify(exercises));
 
     setIsProcessingVideo(true);
@@ -235,9 +245,33 @@ const AdminDashboard = () => {
       if (contentType.includes('application/json')) {
         const data = await response.json();
         if (data && data.fileUrl) {
-          const fileUrl = `${baseUrl}${data.fileUrl}`;
-          setProcessedVideoUrl(fileUrl);
+          // Store the relative URL path (like standalone editor does)
+          // data.fileUrl is already like "/uploads/edited/edited_123.mp4"
+          setProcessedVideoUrl(data.fileUrl);
           setVideoError('');
+          
+          // If we're updating an existing video, update it immediately
+          if (selectedExistingVideo && editingProgramId) {
+            try {
+              await trainingProgramApi.updateVideo(editingProgramId, selectedExistingVideo.id, data.fileUrl);
+              // Reload videos to show updated video
+              const videosResponse = await trainingProgramApi.getVideos(editingProgramId);
+              if (videosResponse.data.success) {
+                setExistingVideos(videosResponse.data.data);
+              }
+              // Clear selection and reset form
+              setSelectedExistingVideo(null);
+              setExercises([]);
+              setExerciseName('');
+              setStartTime('');
+              setDuration('');
+              setProcessedVideoUrl('');
+              alert('Video updated successfully with new exercises!');
+            } catch (updateErr: any) {
+              console.error('Error updating video:', updateErr);
+              setVideoError('Video processed but update failed. Please try updating the program.');
+            }
+          }
         } else {
           setVideoError('Processing finished but server returned unexpected JSON.');
         }
@@ -245,6 +279,7 @@ const AdminDashboard = () => {
         // Server returned the file directly
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
+        // For blob URLs, we can't attach them - this case might need different handling
         setProcessedVideoUrl(url);
         setVideoError('');
       }
@@ -311,14 +346,27 @@ const AdminDashboard = () => {
         }
       }
 
-      // Create program with the image URL and video URL
+      // Create program WITHOUT videoUrl (video will be attached separately)
       const response = await adminApi.createProgram({
         ...newProgram,
         imageUrl: imageUrl || undefined,
-        videoUrl: processedVideoUrl || newProgram.videoUrl || undefined,
       });
       
       if (response.data.success) {
+        const createdProgramId = response.data.data.id;
+        
+        // Attach video to program using program_videos table (like standalone editor)
+        if (processedVideoUrl && processedVideoUrl.startsWith('/')) {
+          // Only attach if we have a relative URL path (not blob URL)
+          try {
+            await trainingProgramApi.attachVideo(createdProgramId, processedVideoUrl);
+          } catch (attachErr: any) {
+            console.error('Error attaching video to program:', attachErr);
+            // Don't fail the whole operation, just log the error
+            setError('Program created but video attachment failed. You can attach it later.');
+          }
+        }
+        
         // Reset form
         setNewProgram({
           name: '',
@@ -371,6 +419,173 @@ const AdminDashboard = () => {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount);
+  };
+
+  const handleEditProgram = async (programId: number) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Fetch program details
+      const programResponse = await trainingProgramApi.getById(programId);
+      if (!programResponse.data.success) {
+        setError('Failed to load program details');
+        return;
+      }
+
+      const program = programResponse.data.data;
+      
+      // Fetch existing videos
+      const videosResponse = await trainingProgramApi.getVideos(programId);
+      if (videosResponse.data.success) {
+        setExistingVideos(videosResponse.data.data);
+      }
+
+      // Populate form with program data
+      setNewProgram({
+        name: program.name,
+        category: program.category,
+        description: program.description || '',
+        imageUrl: program.imageUrl || '',
+        videoUrl: '',
+        price: program.price ? Number(program.price) : undefined,
+        startDate: program.startDate ? new Date(program.startDate).toISOString().split('T')[0] : '',
+        endDate: program.endDate ? new Date(program.endDate).toISOString().split('T')[0] : '',
+      });
+
+      setEditingProgramId(programId);
+      setProgramStep('details');
+      setActiveTab('edit-program');
+    } catch (err: any) {
+      console.error('Error loading program:', err);
+      setError(err.response?.data?.error || 'Failed to load program');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProgram = async (programId: number) => {
+    if (!confirm('Are you sure you want to delete this program? This will also delete all associated videos. This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await adminApi.deleteProgram(programId);
+      
+      if (response.data.success) {
+        await loadDashboardData();
+        alert('Program deleted successfully!');
+      }
+    } catch (err: any) {
+      console.error('Error deleting program:', err);
+      setError(err.response?.data?.error || 'Failed to delete program');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateProgram = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    if (!editingProgramId) {
+      setError('No program selected for editing');
+      return;
+    }
+    
+    if (!newProgram.name || !newProgram.category) {
+      setError('Name and category are required');
+      return;
+    }
+
+    try {
+      setCreatingProgram(true);
+      setError('');
+      
+      let imageUrl = newProgram.imageUrl;
+
+      // Upload image if a file is selected
+      if (selectedImage) {
+        try {
+          setUploadingImage(true);
+          const uploadResponse = await adminApi.uploadProgramImage(selectedImage);
+          
+          if (uploadResponse.data.success) {
+            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const baseUrl = API_BASE.replace('/api', '');
+            imageUrl = `${baseUrl}${uploadResponse.data.data.imageUrl}`;
+          }
+        } catch (uploadErr: any) {
+          console.error('Error uploading image:', uploadErr);
+          setError(uploadErr.response?.data?.error || 'Failed to upload image');
+          setUploadingImage(false);
+          setCreatingProgram(false);
+          return;
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
+      // Update program
+      const response = await adminApi.updateProgram(editingProgramId, {
+        ...newProgram,
+        imageUrl: imageUrl || undefined,
+      });
+      
+      if (response.data.success) {
+        // Only attach new video if we have a processed video and it's NOT an existing video update
+        // (existing videos are updated immediately after processing in processVideo function)
+        if (processedVideoUrl && processedVideoUrl.startsWith('/') && !selectedExistingVideo) {
+          try {
+            // Attach new video
+            await trainingProgramApi.attachVideo(editingProgramId, processedVideoUrl);
+          } catch (attachErr: any) {
+            console.error('Error attaching video to program:', attachErr);
+            setError('Program updated but video attachment failed. You can attach it later.');
+          }
+        }
+
+        // Reset form
+        setNewProgram({
+          name: '',
+          category: '',
+          description: '',
+          imageUrl: '',
+          videoUrl: '',
+          price: undefined,
+          startDate: '',
+          endDate: '',
+        });
+        setSelectedImage(null);
+        setImagePreview(null);
+        setVideoFile(null);
+        setExercises([]);
+        setExerciseName('');
+        setStartTime('');
+        setDuration('');
+        setProcessedVideoUrl('');
+        setProgramStep('details');
+        setEditingProgramId(null);
+        setExistingVideos([]);
+        
+        // Reload programs list
+        await loadDashboardData();
+        
+        // Switch to programs tab
+        setActiveTab('programs');
+        
+        alert('Program updated successfully!');
+      }
+    } catch (err: any) {
+      console.error('Error updating program:', err);
+      setError(err.response?.data?.error || 'Failed to update program');
+    } finally {
+      setCreatingProgram(false);
+    }
   };
 
   // Show loading while auth is initializing
@@ -566,6 +781,7 @@ const AdminDashboard = () => {
                     <th>End Date</th>
                     <th>Image URL</th>
                     <th>Created</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -588,6 +804,24 @@ const AdminDashboard = () => {
                         )}
                       </td>
                       <td>{formatDate(program.createdAt)}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button
+                            onClick={() => handleEditProgram(program.id)}
+                            className="btn-edit"
+                            title="Edit Program"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProgram(program.id)}
+                            className="btn-delete"
+                            title="Delete Program"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -669,9 +903,9 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {activeTab === 'add-program' && (
+          {(activeTab === 'add-program' || activeTab === 'edit-program') && (
             <div className="add-user-form-container">
-              <h2>Create New Training Program</h2>
+              <h2>{editingProgramId ? 'Edit Training Program' : 'Create New Training Program'}</h2>
               
               {/* Step indicator */}
               <div className="step-indicator">
@@ -687,7 +921,7 @@ const AdminDashboard = () => {
               </div>
 
               {programStep === 'details' && (
-                <form onSubmit={(e) => { e.preventDefault(); handleNextStep(); }} className="add-user-form">
+                <form onSubmit={(e) => { e.preventDefault(); if (editingProgramId) handleUpdateProgram(e); else handleNextStep(); }} className="add-user-form">
                 <div className="form-group">
                   <label htmlFor="programName">Name *</label>
                   <input
@@ -801,38 +1035,147 @@ const AdminDashboard = () => {
                     <p className="form-error">End date must be after start date</p>
                   )}
                 </div>
-                <button
-                  type="submit"
-                  disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
-                  className="btn-submit"
-                >
-                  Next: Add Video
-                </button>
+                {editingProgramId ? (
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProgramStep('video');
+                        setError('');
+                      }}
+                      disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                      className="btn-submit"
+                    >
+                      Next: Manage Videos
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                      className="btn-secondary"
+                    >
+                      {creatingProgram ? 'Updating...' : 'Update Program'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProgramId(null);
+                        setExistingVideos([]);
+                        setActiveTab('programs');
+                        setNewProgram({
+                          name: '',
+                          category: '',
+                          description: '',
+                          imageUrl: '',
+                          videoUrl: '',
+                          price: undefined,
+                          startDate: '',
+                          endDate: '',
+                        });
+                        setSelectedImage(null);
+                        setImagePreview(null);
+                      }}
+                      className="btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                    className="btn-submit"
+                  >
+                    Next: Add Video
+                  </button>
+                )}
               </form>
               )}
 
               {programStep === 'video' && (
                 <div className="video-editor-step">
-                  <div className="form-group">
-                    <label htmlFor="videoFile">Upload Video</label>
-                    <input
-                      id="videoFile"
-                      type="file"
-                      accept="video/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setVideoFile(file);
-                          setVideoError('');
-                        }
-                      }}
-                      disabled={isProcessingVideo}
-                      className="file-input"
-                    />
-                    {videoFile && (
-                      <p className="form-hint">Selected: {videoFile.name}</p>
-                    )}
-                  </div>
+                  {editingProgramId && existingVideos.length > 0 && (
+                    <div className="existing-videos-section">
+                      <h3>Existing Videos</h3>
+                      <div className="videos-list">
+                        {existingVideos.map((video) => (
+                          <div key={video.id} className={`video-item ${selectedExistingVideo?.id === video.id ? 'selected' : ''}`}>
+                            <video 
+                              controls 
+                              src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`}
+                              className="existing-video"
+                            />
+                            <div className="video-info">
+                              <p><strong>Title:</strong> {video.title || 'Untitled'}</p>
+                              <p><strong>Added:</strong> {formatDate(video.createdAt)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedExistingVideo({ id: video.id, url: video.url, title: video.title });
+                                setVideoFile(null);
+                                setExercises([]);
+                                setExerciseName('');
+                                setStartTime('');
+                                setDuration('');
+                                setProcessedVideoUrl('');
+                                setVideoError('');
+                              }}
+                              className="btn-select-video"
+                              disabled={isProcessingVideo}
+                            >
+                              {selectedExistingVideo?.id === video.id ? 'Selected' : 'Add Exercises to This Video'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <h3>
+                    {selectedExistingVideo 
+                      ? `Add Exercises to: ${selectedExistingVideo.title || 'Selected Video'}` 
+                      : editingProgramId 
+                        ? 'Add New Video' 
+                        : 'Add Video'}
+                  </h3>
+                  {selectedExistingVideo && (
+                    <div className="selected-video-notice">
+                      <p>You are adding exercises to an existing video. The video will be reprocessed with the new exercises added.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedExistingVideo(null);
+                          setVideoFile(null);
+                          setExercises([]);
+                        }}
+                        className="btn-secondary"
+                      >
+                        Cancel - Add New Video Instead
+                      </button>
+                    </div>
+                  )}
+                  {!selectedExistingVideo && (
+                    <div className="form-group">
+                      <label htmlFor="videoFile">Upload Video</label>
+                      <input
+                        id="videoFile"
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setVideoFile(file);
+                            setVideoError('');
+                            setSelectedExistingVideo(null); // Clear selected video if uploading new one
+                          }
+                        }}
+                        disabled={isProcessingVideo}
+                        className="file-input"
+                      />
+                      {videoFile && (
+                        <p className="form-hint">Selected: {videoFile.name}</p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label>Exercise Segments</label>
@@ -903,10 +1246,31 @@ const AdminDashboard = () => {
                   {processedVideoUrl && (
                     <div className="video-result">
                       <h4>Video Processed Successfully!</h4>
-                      <video controls src={processedVideoUrl} className="processed-video" />
-                      <a href={processedVideoUrl} download className="btn-download">
-                        Download Processed Video
-                      </a>
+                      {processedVideoUrl.startsWith('/') ? (
+                        // Relative URL - construct full URL for preview
+                        <>
+                          <video 
+                            controls 
+                            src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
+                            className="processed-video" 
+                          />
+                          <a 
+                            href={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
+                            download 
+                            className="btn-download"
+                          >
+                            Download Processed Video
+                          </a>
+                        </>
+                      ) : (
+                        // Blob URL
+                        <>
+                          <video controls src={processedVideoUrl} className="processed-video" />
+                          <a href={processedVideoUrl} download className="btn-download">
+                            Download Processed Video
+                          </a>
+                        </>
+                      )}
                     </div>
                   )}
 
@@ -914,7 +1278,7 @@ const AdminDashboard = () => {
                     <button
                       type="button"
                       onClick={processVideo}
-                      disabled={!videoFile || exercises.length === 0 || isProcessingVideo}
+                      disabled={(!videoFile && !selectedExistingVideo) || exercises.length === 0 || isProcessingVideo}
                       className="btn-submit"
                     >
                       {isProcessingVideo ? 'Processing...' : 'Process Video'}
@@ -927,14 +1291,63 @@ const AdminDashboard = () => {
                     >
                       Back to Details
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleCreateProgram}
-                      disabled={isProcessingVideo || creatingProgram}
-                      className="btn-submit"
-                    >
-                      {creatingProgram ? 'Creating...' : processedVideoUrl ? 'Create Program with Video' : 'Create Program (Skip Video)'}
-                    </button>
+                    {editingProgramId ? (
+                      <>
+                        {processedVideoUrl && selectedExistingVideo && (
+                          <div className="video-replace-notice">
+                            <p><strong>Note:</strong> This will create a new version of the video with the added exercises. The original video will remain in the database.</p>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleUpdateProgram}
+                          disabled={isProcessingVideo || creatingProgram}
+                          className="btn-submit"
+                        >
+                          {creatingProgram ? 'Updating...' : 'Update Program'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingProgramId(null);
+                            setExistingVideos([]);
+                            setSelectedExistingVideo(null);
+                            setActiveTab('programs');
+                            setNewProgram({
+                              name: '',
+                              category: '',
+                              description: '',
+                              imageUrl: '',
+                              videoUrl: '',
+                              price: undefined,
+                              startDate: '',
+                              endDate: '',
+                            });
+                            setSelectedImage(null);
+                            setImagePreview(null);
+                            setVideoFile(null);
+                            setExercises([]);
+                            setExerciseName('');
+                            setStartTime('');
+                            setDuration('');
+                            setProcessedVideoUrl('');
+                            setProgramStep('details');
+                          }}
+                          className="btn-secondary"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleCreateProgram}
+                        disabled={isProcessingVideo || creatingProgram}
+                        className="btn-submit"
+                      >
+                        {creatingProgram ? 'Creating...' : processedVideoUrl ? 'Create Program with Video' : 'Create Program (Skip Video)'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

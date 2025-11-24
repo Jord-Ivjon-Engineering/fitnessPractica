@@ -4,6 +4,7 @@ import {
   getProgramById,
   attachVideoToProgram,
   getProgramVideos,
+  updateProgramVideo,
 } from '../controllers/trainingProgramController';
 import { authenticate, requireAdmin } from '../middleware/auth';
 
@@ -15,6 +16,8 @@ router.get('/:id', getProgramById);
 router.get('/:id/videos', getProgramVideos);
 // Attach a processed video URL to a training program (admin only)
 router.post('/:id/videos', authenticate, requireAdmin, attachVideoToProgram);
+// Update an existing video (admin only)
+router.put('/:programId/videos/:videoId', authenticate, requireAdmin, updateProgramVideo);
 
 export default router;
 

@@ -32,13 +32,12 @@ const upload = multer({ storage });
 
 // POST /video/edit
 // expects multipart form:
-//  - video: file
+//  - video: file (optional if videoUrl is provided)
+//  - videoUrl: string (optional if video file is uploaded)
 //  - exercises: JSON stringified array [{ name, start, duration }]
 // Requires admin authentication
 router.post('/edit', authenticate, requireAdmin, upload.single('video'), async (req: MulterRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No video uploaded' });
-
     const rawExercises = req.body.exercises;
     let exercises: Array<{ name: string; start: number; duration: number }> = [];
 
@@ -56,7 +55,27 @@ router.post('/edit', authenticate, requireAdmin, upload.single('video'), async (
 
     if (exercises.length === 0) return res.status(400).json({ error: 'No exercises provided' });
 
-    const inputPath = req.file.path;
+    let inputPath: string;
+    
+    // Check if video file was uploaded or videoUrl was provided
+    if (req.file) {
+      // Use uploaded file
+      inputPath = req.file.path;
+    } else if (req.body.videoUrl) {
+      // Use existing video from URL
+      const videoUrl = req.body.videoUrl as string;
+      // Remove leading slash and construct full path
+      const relativePath = videoUrl.startsWith('/') ? videoUrl.substring(1) : videoUrl;
+      inputPath = path.join(__dirname, '../../', relativePath);
+      
+      // Verify file exists
+      if (!fs.existsSync(inputPath)) {
+        return res.status(400).json({ error: 'Video file not found at the provided URL' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Either video file or videoUrl must be provided' });
+    }
+
     const outputName = `edited_${Date.now()}.mp4`;
     const outputPath = path.join(editedDir, outputName);
 
@@ -76,13 +95,19 @@ router.post('/edit', authenticate, requireAdmin, upload.single('video'), async (
       .outputOptions('-movflags +faststart') // improve streaming
       .output(outputPath)
       .on('end', () => {
-        try { fs.unlinkSync(inputPath); } catch {}
+        // Only delete uploaded files, not existing video files
+        if (req.file) {
+          try { fs.unlinkSync(inputPath); } catch {}
+        }
         const fileUrl = `/uploads/edited/${outputName}`;
         res.json({ message: 'Video edited successfully', fileUrl });
       })
       .on('error', (err: Error) => {
         console.error('FFmpeg error:', err);
-        try { fs.unlinkSync(inputPath); } catch {}
+        // Only delete uploaded files, not existing video files
+        if (req.file) {
+          try { fs.unlinkSync(inputPath); } catch {}
+        }
         next(err);
       })
       .run();

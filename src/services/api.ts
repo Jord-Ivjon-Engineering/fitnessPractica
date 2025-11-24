@@ -133,6 +133,7 @@ export const trainingProgramApi = {
   getAll: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/training-programs'),
   getById: (id: number) => api.get<{ success: boolean; data: TrainingProgram }>(`/training-programs/${id}`),
   attachVideo: (id: number, fileUrl: string, title?: string) => api.post<{ success: boolean; data: any }>(`/training-programs/${id}/videos`, { fileUrl, title }),
+  updateVideo: (programId: number, videoId: number, fileUrl: string, title?: string) => api.put<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}`, { fileUrl, title }),
   getVideos: (id: number) => api.get<{ success: boolean; data: { id: number; programId: number; url: string; title: string | null; createdAt: string }[] }>(`/training-programs/${id}/videos`),
 };
 
@@ -234,6 +235,8 @@ export const adminApi = {
   createUser: (data: CreateUserData) => api.post<{ success: boolean; data: AdminUser }>('/admin/users', data),
   getAllPrograms: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/admin/programs'),
   createProgram: (data: CreateProgramData) => api.post<{ success: boolean; data: TrainingProgram }>('/admin/programs', data),
+  updateProgram: (id: number, data: Partial<CreateProgramData>) => api.put<{ success: boolean; data: TrainingProgram }>(`/admin/programs/${id}`, data),
+  deleteProgram: (id: number) => api.delete<{ success: boolean; message: string }>(`/admin/programs/${id}`),
   uploadProgramImage: (file: File) => {
     const formData = new FormData();
     formData.append('image', file);

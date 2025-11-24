@@ -28,7 +28,6 @@ export const createCheckoutSession = async (req: Request, res: Response, next: N
       error.statusCode = 400;
       return next(error);
     }
-
     // Get user info
     const user = await prisma.user.findUnique({
       where: { id: userId },

@@ -9,6 +9,8 @@ import {
   getDashboardStats,
   getAllPrograms,
   createProgram,
+  updateProgram,
+  deleteProgram,
   uploadProgramImage,
 } from '../controllers/adminController';
 import { authenticate, requireAdmin } from '../middleware/auth';
@@ -57,6 +59,8 @@ router.get('/stats', getDashboardStats);
 router.post('/users', createUser);
 router.get('/programs', getAllPrograms);
 router.post('/programs', createProgram);
+router.put('/programs/:id', updateProgram);
+router.delete('/programs/:id', deleteProgram);
 router.post('/programs/upload-image', imageUpload.single('image'), uploadProgramImage);
 
 export default router;
