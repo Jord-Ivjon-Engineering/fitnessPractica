@@ -1,25 +1,36 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import '../styles/VideoEditor.css';
+import { Player } from '@remotion/player';
+import VideoUploader from '../components/VideoUploader';
+import VideoTimeline from '../components/VideoTimeline';
+import { WorkoutVideoComposition } from '../remotion/WorkoutVideo';
+import { createPreviewClips } from '../utils/ffmpegHelper';
 import { trainingProgramApi, TrainingProgram } from '../services/api';
+import '../styles/VideoEditor.css';
 
 interface Exercise {
+  id: number;
   name: string;
   start: number;
-  duration: number;
+  end: number;
+}
+
+interface VideoData {
+  file: File;
+  url: string;
+  name: string;
+  size: number;
 }
 
 const VideoEditor = () => {
   const { user, token, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [video, setVideo] = useState<VideoData | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [exerciseName, setExerciseName] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [duration, setDuration] = useState('');
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<string>('');
+  const [previews, setPreviews] = useState<Array<{ exerciseId: number; url: string; showAt: number }>>([]);
+  const [processing, setProcessing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string>('');
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
@@ -27,12 +38,10 @@ const VideoEditor = () => {
   const [attachStatus, setAttachStatus] = useState<string>('');
 
   useEffect(() => {
-    // Wait for auth to finish loading
     if (isLoading) {
       return;
     }
 
-    // Check if user is authenticated and is admin
     if (!isAuthenticated || !user) {
       navigate('/login');
       return;
@@ -47,7 +56,6 @@ const VideoEditor = () => {
   }, [user, isAuthenticated, isLoading, navigate]);
 
   useEffect(() => {
-    // fetch programs so admin can choose where to attach processed videos
     const fetchPrograms = async () => {
       try {
         const resp = await trainingProgramApi.getAll();
@@ -65,35 +73,53 @@ const VideoEditor = () => {
     fetchPrograms();
   }, []);
 
-  const addExercise = () => {
-    const name = exerciseName.trim();
-    const start = parseInt(startTime, 10);
-    const dur = parseInt(duration, 10);
-
-    if (!name || Number.isNaN(start) || Number.isNaN(dur) || start < 0 || dur <= 0) {
-      setError('Please fill all fields correctly (name, non-negative start, positive duration).');
-      return;
-    }
-
-    setExercises([...exercises, { name, start, duration: dur }]);
-    setExerciseName('');
-    setStartTime('');
-    setDuration('');
+  const handleVideoLoad = (videoData: VideoData) => {
+    setVideo(videoData);
+    setExercises([]);
+    setPreviews([]);
+    setShowPreview(false);
     setError('');
   };
 
-  const removeExercise = (index: number) => {
-    setExercises(exercises.filter((_, i) => i !== index));
+  const handleExercisesUpdate = (updatedExercises: Exercise[]) => {
+    setExercises(updatedExercises);
   };
 
-  const processVideo = async () => {
-    if (!videoFile) {
+  const generateVideo = async () => {
+    if (!video) {
+      setError('Please upload a video first!');
+      return;
+    }
+
+    if (exercises.length === 0) {
+      setError('Please mark at least one exercise first!');
+      return;
+    }
+
+    setProcessing(true);
+    setError('');
+
+    try {
+      // Generate preview clips using FFmpeg
+      const previewClips = await createPreviewClips(video.file, exercises);
+      setPreviews(previewClips);
+      setShowPreview(true);
+    } catch (error) {
+      console.error('Error processing video:', error);
+      setError('Error generating preview clips. You can still process the video with the backend.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const processVideoBackend = async () => {
+    if (!video) {
       setError('Please upload a video.');
       return;
     }
 
     if (exercises.length === 0) {
-      setError('Please add at least one exercise.');
+      setError('Please mark at least one exercise.');
       return;
     }
 
@@ -102,13 +128,19 @@ const VideoEditor = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('video', videoFile);
-    formData.append('exercises', JSON.stringify(exercises));
+    // Convert exercises format for backend (start, duration instead of start, end)
+    const backendExercises = exercises.map(ex => ({
+      name: ex.name,
+      start: ex.start,
+      duration: ex.end - ex.start
+    }));
 
-    setIsProcessing(true);
+    const formData = new FormData();
+    formData.append('video', video.file);
+    formData.append('exercises', JSON.stringify(backendExercises));
+
+    setProcessing(true);
     setError('');
-    setResult('Processing video...');
 
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -129,7 +161,6 @@ const VideoEditor = () => {
           // ignore JSON parse error
         }
         setError(errMsg);
-        setResult('');
         return;
       }
 
@@ -139,7 +170,6 @@ const VideoEditor = () => {
         const data = await response.json();
         if (data && data.fileUrl) {
           const fileUrl = `${API_URL}${data.fileUrl}`;
-          setResult(`Video processed successfully!`);
           setError('');
           // Auto-attach to selected program if one is chosen
           const relativeUrl = data.fileUrl.replace(/^\//, '');
@@ -165,7 +195,6 @@ const VideoEditor = () => {
           }, 100);
         } else {
           setError('Processing finished but server returned unexpected JSON.');
-          setResult('');
         }
       } else {
         // Server returned the file directly
@@ -180,19 +209,26 @@ const VideoEditor = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        setResult('Video processed successfully! Download started.');
         setError('');
       }
     } catch (error) {
       console.error(error);
       setError('Error connecting to server.');
-      setResult('');
     } finally {
-      setIsProcessing(false);
+      setProcessing(false);
     }
   };
 
-  // Show loading while auth is initializing
+  // Calculate video duration for Remotion player
+  const getVideoDuration = () => {
+    // Estimate duration - in a real app, you'd get this from the video metadata
+    if (exercises.length > 0) {
+      const lastExercise = exercises[exercises.length - 1];
+      return Math.ceil(lastExercise.end + 10) * 30; // Add 10 seconds buffer, convert to frames (30 fps)
+    }
+    return 300 * 30; // Default 5 minutes
+  };
+
   if (isLoading) {
     return (
       <div className="video-editor-container">
@@ -201,7 +237,6 @@ const VideoEditor = () => {
     );
   }
 
-  // Don't render if not admin
   if (!isAuthenticated || !user || user.role !== 'admin') {
     return (
       <div className="video-editor-container">
@@ -214,134 +249,94 @@ const VideoEditor = () => {
 
   return (
     <div className="video-editor-container">
-      <div className="video-editor-content">
-        <h1>Video Editor</h1>
-        <p className="subtitle">Add exercise labels to your fitness videos</p>
+      <header className="editor-header">
+        <h1>🏋️ Workout Video Editor</h1>
+        <p>Upload, mark exercises, and generate automatic timers</p>
+      </header>
 
-        {error && <div className="error-message">{error}</div>}
+      <main className="editor-main">
+        {!video ? (
+          <VideoUploader onVideoLoad={handleVideoLoad} />
+        ) : (
+          <>
+            <VideoTimeline
+              videoUrl={video.url}
+              onExercisesUpdate={handleExercisesUpdate}
+            />
 
-        <div className="upload-section">
-          <label htmlFor="videoInput" className="upload-label">
-            Upload Video
-          </label>
-          <input
-            id="videoInput"
-            type="file"
-            accept="video/*"
-            onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-            disabled={isProcessing}
-          />
-          {videoFile && (
-            <p className="file-info">Selected: {videoFile.name}</p>
-          )}
-        </div>
+            {error && <div className="error-message">{error}</div>}
 
-        <div className="exercise-form">
-          <h2>Add Exercise</h2>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="exerciseName">Exercise Name</label>
-              <input
-                id="exerciseName"
-                type="text"
-                value={exerciseName}
-                onChange={(e) => setExerciseName(e.target.value)}
-                placeholder="e.g., Push-ups"
-                disabled={isProcessing}
-              />
+            <div className="action-buttons">
+              <button 
+                onClick={generateVideo} 
+                disabled={processing || exercises.length === 0}
+                className="btn-generate"
+              >
+                {processing ? 'Generating Preview...' : 'Generate Preview with Overlays'}
+              </button>
+              <button 
+                onClick={processVideoBackend} 
+                disabled={processing || exercises.length === 0}
+                className="btn-process"
+              >
+                {processing ? 'Processing...' : 'Process & Export Video'}
+              </button>
+              <button 
+                onClick={() => {
+                  setVideo(null);
+                  setExercises([]);
+                  setPreviews([]);
+                  setShowPreview(false);
+                }}
+                className="btn-reset"
+              >
+                Upload Different Video
+              </button>
             </div>
-            <div className="form-group">
-              <label htmlFor="startTime">Start Time (seconds)</label>
-              <input
-                id="startTime"
-                type="number"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                placeholder="0"
-                min="0"
-                disabled={isProcessing}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="duration">Duration (seconds)</label>
-              <input
-                id="duration"
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                placeholder="10"
-                min="1"
-                disabled={isProcessing}
-              />
-            </div>
-          </div>
-          <button
-            onClick={addExercise}
-            disabled={isProcessing}
-            className="btn-add"
-          >
-            Add Exercise
-          </button>
-        </div>
 
-        {exercises.length > 0 && (
-          <div className="exercise-list">
-            <h2>Exercises ({exercises.length})</h2>
-            <ul>
-              {exercises.map((ex, index) => (
-                <li key={index} className="exercise-item">
-                  <span>
-                    {ex.name} ({ex.start}s - {ex.start + ex.duration}s)
-                  </span>
-                  <button
-                    onClick={() => removeExercise(index)}
-                    disabled={isProcessing}
-                    className="btn-remove"
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="process-section">
-          <button
-            onClick={processVideo}
-            disabled={isProcessing || !videoFile || exercises.length === 0}
-            className="btn-process"
-          >
-            {isProcessing ? 'Processing...' : 'Process Video'}
-          </button>
-        </div>
-
-        <div className="program-select">
-          <h2>Attach to Training Program</h2>
-          {programsError ? (
-            <div className="error-message">Failed loading programs: {programsError}</div>
-          ) : programs.length === 0 ? (
-            <p>No programs found.</p>
-          ) : (
-            <select value={selectedProgramId ?? ''} onChange={(e) => setSelectedProgramId(Number(e.target.value))} disabled={isProcessing}>
-              {programs.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} ({p.category})</option>
-              ))}
-            </select>
-          )}
-          <p className="hint">Select a training program above — processed video will be automatically attached after processing.</p>
-          {attachStatus && <p className="status">{attachStatus}</p>}
-        </div>
-
-        {result && (
-          <div className="result-message">
-            <p>{result}</p>
-            {result.includes('successfully') && (
-              <p className="download-hint">Download should start automatically. If not, check your browser's download folder.</p>
+            {showPreview && (
+              <div className="preview-section">
+                <h2>Preview with Overlays</h2>
+                <Player
+                  component={WorkoutVideoComposition}
+                  inputProps={{
+                    videoUrl: video.url,
+                    exercises: exercises,
+                    previews: previews
+                  }}
+                  durationInFrames={getVideoDuration()}
+                  fps={30}
+                  compositionWidth={1920}
+                  compositionHeight={1080}
+                  style={{ width: '100%', maxWidth: '1200px', margin: '0 auto' }}
+                  controls
+                />
+              </div>
             )}
-          </div>
+
+            <div className="program-select">
+              <h2>Attach to Training Program</h2>
+              {programsError ? (
+                <div className="error-message">Failed loading programs: {programsError}</div>
+              ) : programs.length === 0 ? (
+                <p>No programs found.</p>
+              ) : (
+                <select 
+                  value={selectedProgramId ?? ''} 
+                  onChange={(e) => setSelectedProgramId(Number(e.target.value))} 
+                  disabled={processing}
+                >
+                  {programs.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.category})</option>
+                  ))}
+                </select>
+              )}
+              <p className="hint">Select a training program above — processed video will be automatically attached after processing.</p>
+              {attachStatus && <p className="status">{attachStatus}</p>}
+            </div>
+          </>
         )}
-      </div>
+      </main>
     </div>
   );
 };

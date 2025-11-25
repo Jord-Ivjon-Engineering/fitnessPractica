@@ -1,0 +1,82 @@
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: #252525;
+  border-bottom: 1px solid #333;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  background: #333;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #fff;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-btn.play-btn {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  padding: 10px 16px;
+}
+
+.toolbar-btn.play-btn:hover {
+  background: #5568d3;
+}
+
+.zoom-indicator {
+  font-size: 13px;
+  color: #999;
+  min-width: 50px;
+  text-align: center;
+}
+
+.toolbar-actions {
+  margin-left: auto;
+}
+
+.toolbar-btn.save-btn {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.toolbar-btn.save-btn:hover {
+  background: #059669;
+}
+
+.toolbar-btn.export-btn {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+}
+
+.toolbar-btn.export-btn:hover {
+  background: #d97706;
+}
+
