@@ -1,8 +1,20 @@
 .admin-dashboard-container {
   min-height: calc(100vh - 200px);
   padding: 2rem;
+  padding-top: calc(2rem + 80px); /* Add space for fixed header (~80px) */
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.admin-dashboard-container:has(.video-editor-container) {
+  max-width: 100%;
+  width: 100%; /* Full width of parent */
+  padding: 0 1rem; /* Horizontal padding on sides */
+  padding-top: calc(0.5rem + 80px); /* Space for fixed header */
+  padding-bottom: 0.5rem; /* Small bottom padding */
+  /* Remove fixed height - let parent grow naturally */
+  min-height: calc(100vh - 80px - 100px); /* Minimum height to fill viewport */
+  overflow: visible; /* Allow content to extend */
 }
 
 .admin-dashboard-content {
@@ -10,6 +22,27 @@
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.admin-dashboard-content:has(.video-editor-container) {
+  padding: 0; /* No padding for maximum width */
+  background: transparent;
+  box-shadow: none;
+  /* Remove height: 100% - let it grow with content */
+  min-height: 100%; /* Minimum height */
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* Change from hidden to visible */
+}
+
+/* Hide h1 when video editor is active */
+.admin-dashboard-content:has(.video-editor-container) h1 {
+  display: none;
+}
+
+.admin-dashboard-content h1 {
+  margin-bottom: 1rem;
 }
 
 .admin-dashboard-content h1 {
@@ -370,8 +403,42 @@
 }
 
 /* Video editor step */
+.editor-mode-switcher {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.editor-mode-switcher button {
+  padding: 12px 24px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.editor-mode-switcher button:hover {
+  border-color: #667eea;
+  background: #f8f9fa;
+}
+
+.editor-mode-switcher button.btn-active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
 .video-editor-step {
-  padding: 1rem 0;
+  width: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 800px;
 }
 
 .exercise-inputs {

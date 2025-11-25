@@ -16,4 +16,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+    include: ['react', 'react-dom', 'react-player'],
+  },
+  worker: {
+    format: 'es',
+  },
+  server: {
+    port: 5173,
+  },
 })
