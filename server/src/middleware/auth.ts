@@ -6,6 +6,12 @@ export interface AuthRequest extends Request {
   userId?: number;
   userEmail?: string;
   userRole?: string;
+  // also provide a user object for handlers that expect req.user
+  user?: {
+    id: number;
+    email: string;
+    role: string;
+  };
 }
 
 export const authenticate = (
@@ -31,6 +37,12 @@ export const authenticate = (
     req.userId = decoded.userId;
     req.userEmail = decoded.email;
     req.userRole = decoded.role;
+    // set a user object for compatibility with handlers expecting req.user
+    req.user = {
+      id: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+    };
 
     next();
   } catch (error) {

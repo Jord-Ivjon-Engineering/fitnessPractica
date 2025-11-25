@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { User, Mail, Phone, Calendar, Dumbbell, Edit2, LogOut, Clock } from "lucide-react";
+import { User, Mail, Phone, Calendar, Dumbbell, Edit2, LogOut, Clock, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { profileApi, UserProfile, UserProgram, trainingProgramApi } from "@/services/api";
 import { Loader2 } from "lucide-react";
+import VideoModal from "@/components/VideoModal";
 
 const Profile = () => {
   const { user, logout, isLoading } = useAuth();
@@ -14,11 +15,16 @@ const Profile = () => {
   const [programs, setPrograms] = useState<UserProgram[]>([]);
   const [expandedProgramId, setExpandedProgramId] = useState<number | null>(null);
   const [programVideos, setProgramVideos] = useState<Record<number, { id: number; programId: number; url: string; title: string | null; createdAt: string }[]>>({});
-  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const [videoProgress, setVideoProgress] = useState<Record<number, Record<number, number>>>({});
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [fullscreenVideoUrl, setFullscreenVideoUrl] = useState<string | null>(null);
+  const [fullscreenVideoTitle, setFullscreenVideoTitle] = useState<string>('');
+  const [fullscreenVideoId, setFullscreenVideoId] = useState<number | undefined>(undefined);
+  const [fullscreenProgramId, setFullscreenProgramId] = useState<number | undefined>(undefined);
+  const [fullscreenVideoInitialProgress, setFullscreenVideoInitialProgress] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -43,7 +49,6 @@ const Profile = () => {
     // toggle expand
     if (expandedProgramId === progId) {
       setExpandedProgramId(null);
-      setPlayingUrl(null);
       return;
     }
 
@@ -55,16 +60,24 @@ const Profile = () => {
         const resp = await trainingProgramApi.getVideos(progId);
         if (resp && resp.data && resp.data.data) {
           setProgramVideos(prev => ({ ...prev, [progId]: resp.data.data }));
-          const first = resp.data.data[0];
-          if (first) setPlayingUrl(first.url.startsWith('http') ? first.url : `${API_URL}${first.url.startsWith('/') ? '' : '/'}${first.url}`);
         }
       } catch (err) {
         console.error('Error fetching program videos', err);
       }
-    } else {
-      const v = programVideos[progId];
-      const first = v && v[0];
-      if (first) setPlayingUrl(first.url.startsWith('http') ? first.url : `${API_URL}${first.url.startsWith('/') ? '' : '/'}${first.url}`);
+    }
+
+    // Fetch video progress for this program
+    try {
+      const progressResp = await trainingProgramApi.getVideoProgress(progId);
+      if (progressResp && progressResp.data && progressResp.data.data) {
+        const progressMap: Record<number, number> = {};
+        progressResp.data.data.forEach((p: any) => {
+          progressMap[p.videoId] = p.watchedPercentage;
+        });
+        setVideoProgress(prev => ({ ...prev, [progId]: progressMap }));
+      }
+    } catch (err) {
+      console.error('Error fetching video progress', err);
     }
   };
 
@@ -403,31 +416,126 @@ const Profile = () => {
                               </div>
                             )}
                           </div>
-                          {/* Video list and player when expanded */}
+                          {/* Program videos list with progress and conditional Continue buttons */}
                           {expandedProgramId === userProgram.program?.id && (
-                            <div className="mt-4">
-                              {playingUrl ? (
-                                <div className="mb-4">
-                                  <video src={playingUrl} controls className="w-full max-h-80" />
-                                </div>
-                              ) : null}
+                            <div className="mt-4 space-y-4">
+                              <Button
+                                className="w-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 text-white font-semibold py-2"
+                                onClick={() => {
+                                  const videos = programVideos[userProgram.program?.id || 0] || [];
+                                  const progresses = videoProgress[userProgram.program?.id || 0] || {};
+                                  if (videos.length === 0) return;
+                                  
+                                  // Find the first unlocked video that's not completed
+                                  let target = null;
+                                  let targetIndex = -1;
+                                  for (let i = 0; i < videos.length; i++) {
+                                    const currentProgress = progresses[videos[i].id] || 0;
+                                    const isCompleted = currentProgress >= 90;
+                                    
+                                    // Check if this video is unlocked (first video or previous is completed)
+                                    const isFirstVideo = i === 0;
+                                    const previousProgress = i > 0 ? (progresses[videos[i - 1].id] || 0) : 100;
+                                    const isPreviousCompleted = previousProgress >= 90;
+                                    const isUnlocked = isFirstVideo || isPreviousCompleted;
+                                    
+                                    if (isUnlocked && !isCompleted) {
+                                      target = videos[i];
+                                      targetIndex = i;
+                                      break;
+                                    }
+                                  }
+                                  
+                                  // If all unlocked videos are completed, show the first video
+                                  if (!target) {
+                                    target = videos[0];
+                                    targetIndex = 0;
+                                  }
+                                  
+                                  const full = target.url.startsWith('http') ? target.url : `${API_URL}${target.url.startsWith('/') ? '' : '/'}${target.url}`;
+                                  const prog = progresses[target.id] || 0;
+                                  const dayNumber = targetIndex + 1;
+                                  const titleText = target.title || `Exercises for Day ${dayNumber}`;
+                                  setFullscreenVideoUrl(full);
+                                  setFullscreenVideoTitle(titleText);
+                                  setFullscreenVideoId(target.id);
+                                  setFullscreenProgramId(userProgram.program?.id);
+                                  setFullscreenVideoInitialProgress(prog);
+                                }}
+                              >Start Program</Button>
 
                               <div className="space-y-2">
-                                {(programVideos[userProgram.program?.id || 0] || []).map((v) => {
-                                  const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
+                                {(programVideos[userProgram.program?.id || 0] || []).map((v, index) => {
+                                  const progress = videoProgress[userProgram.program?.id || 0]?.[v.id] || 0;
+                                  const isStarted = progress > 0 && progress < 90;
+                                  const isCompleted = progress >= 90;
+                                  
+                                  // Check if previous video is completed (for sequential unlock)
+                                  const isFirstVideo = index === 0;
+                                  const previousVideo = index > 0 ? (programVideos[userProgram.program?.id || 0] || [])[index - 1] : null;
+                                  const previousProgress = previousVideo ? (videoProgress[userProgram.program?.id || 0]?.[previousVideo.id] || 0) : 100;
+                                  const isPreviousCompleted = previousProgress >= 90;
+                                  const isUnlocked = isFirstVideo || isPreviousCompleted;
+                                  
+                                  // Format day title
+                                  const dayNumber = index + 1;
+                                  const displayTitle = v.title 
+                                    ? `Day ${dayNumber} - ${v.title}` 
+                                    : `Day ${dayNumber}`;
+                                  
                                   return (
-                                    <div key={v.id} className="flex items-center justify-between bg-muted p-2 rounded">
-                                      <div>
-                                        <div className="font-semibold">{v.title || v.url.split('/').pop()}</div>
-                                        <div className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</div>
+                                    <div 
+                                      key={v.id} 
+                                      className={`p-3 bg-muted rounded flex items-center justify-between ${isUnlocked ? 'cursor-pointer hover:bg-muted/80' : 'opacity-60 cursor-not-allowed'} transition-colors`}
+                                      onClick={() => {
+                                        if (!isUnlocked) return;
+                                        const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
+                                        setFullscreenVideoUrl(full);
+                                        setFullscreenVideoTitle(v.title || `Exercises for Day ${dayNumber}`);
+                                        setFullscreenVideoId(v.id);
+                                        setFullscreenProgramId(userProgram.program?.id);
+                                        setFullscreenVideoInitialProgress(progress);
+                                      }}
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
+                                            {!isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
+                                            <span className="font-semibold truncate text-sm">{displayTitle}</span>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground ml-2">{Math.round(progress)}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-300 dark:bg-gray-700 h-2 rounded mt-2 overflow-hidden">
+                                          <div
+                                            className={`${isCompleted ? 'bg-green-500' : 'bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)]'} h-full transition-all`}
+                                            style={{ width: `${Math.min(100, Math.round(progress))}%` }}
+                                          ></div>
+                                        </div>
+                                        <div className="text-[10px] mt-1 text-muted-foreground">
+                                          {!isUnlocked ? 'Locked - Complete previous video' : isCompleted ? 'Completed' : isStarted ? 'In Progress' : 'Not Started'}
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <Button onClick={() => setPlayingUrl(full)}>Play</Button>
-                                        <Button variant="outline" onClick={() => window.open(full, '_blank')}>Open</Button>
+                                      <div className="ml-3" onClick={(e) => e.stopPropagation()}>
+                                        {isStarted && isUnlocked && (
+                                          <Button
+                                            size="sm"
+                                            onClick={() => {
+                                              const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
+                                              setFullscreenVideoUrl(full);
+                                              setFullscreenVideoTitle(v.title || `Exercises for Day ${dayNumber}`);
+                                              setFullscreenVideoId(v.id);
+                                              setFullscreenProgramId(userProgram.program?.id);
+                                              setFullscreenVideoInitialProgress(progress);
+                                            }}
+                                          >Continue</Button>
+                                        )}
                                       </div>
                                     </div>
                                   );
                                 })}
+                                {((programVideos[userProgram.program?.id || 0] || []).length === 0) && (
+                                  <p className="text-xs text-muted-foreground">No videos attached to this program yet.</p>
+                                )}
                               </div>
                             </div>
                           )}
@@ -441,6 +549,43 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Fullscreen video modal */}
+      <VideoModal
+        isOpen={fullscreenVideoUrl !== null}
+        videoUrl={fullscreenVideoUrl || ''}
+        videoTitle={fullscreenVideoTitle}
+        videoId={fullscreenVideoId}
+        programId={fullscreenProgramId}
+        initialProgressPercent={fullscreenVideoInitialProgress}
+        allVideos={fullscreenProgramId ? programVideos[fullscreenProgramId] : undefined}
+        videoProgress={fullscreenProgramId ? videoProgress[fullscreenProgramId] : undefined}
+        onVideoSelect={(newVideoId, newUrl, newTitle, progress) => {
+          setFullscreenVideoUrl(newUrl);
+          setFullscreenVideoTitle(newTitle);
+          setFullscreenVideoId(newVideoId);
+          setFullscreenVideoInitialProgress(progress);
+        }}
+        onProgressUpdate={(videoId, progress) => {
+          // Update the video progress state in real-time
+          if (fullscreenProgramId) {
+            setVideoProgress(prev => ({
+              ...prev,
+              [fullscreenProgramId]: {
+                ...(prev[fullscreenProgramId] || {}),
+                [videoId]: progress
+              }
+            }));
+          }
+        }}
+        onClose={() => {
+          setFullscreenVideoUrl(null);
+          setFullscreenVideoTitle('');
+          setFullscreenVideoId(undefined);
+          setFullscreenProgramId(undefined);
+          setFullscreenVideoInitialProgress(undefined);
+        }}
+      />
     </div>
   );
 };

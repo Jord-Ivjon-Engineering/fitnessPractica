@@ -62,6 +62,7 @@ model TrainingProgram {
   userPrograms UserProgram[]
   payments    Payment[]
   videos      ProgramVideo[]
+  videoProgress VideoProgress[]
 
   @@map("training_programs")
 }
@@ -74,8 +75,26 @@ model ProgramVideo {
   createdAt  DateTime @default(now()) @map("created_at")
 
   program    TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  userProgress VideoProgress[]
 
   @@map("program_videos")
+}
+
+model VideoProgress {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  videoId      Int      @map("video_id")
+  programId    Int      @map("program_id")
+  watchedPercentage Float @default(0) @map("watched_percentage")
+  lastWatchedAt DateTime @default(now()) @updatedAt @map("last_watched_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video        ProgramVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  program      TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@map("video_progress")
 }
 
 model User {
@@ -89,6 +108,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
   programs  UserProgram[]
   payments  Payment[]
+  videoProgress VideoProgress[]
 
   @@map("users")
 }

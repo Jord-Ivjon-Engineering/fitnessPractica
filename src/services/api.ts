@@ -129,12 +129,27 @@ export interface TrainingProgram {
   updatedAt: string;
 }
 
+export interface VideoExercise {
+  id: number;
+  videoId: number;
+  name: string;
+  description: string | null;
+  startTime: number; // in seconds
+  endTime: number | null; // in seconds
+  sets: number | null;
+  reps: string | null;
+  createdAt: string;
+}
+
 export const trainingProgramApi = {
   getAll: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/training-programs'),
   getById: (id: number) => api.get<{ success: boolean; data: TrainingProgram }>(`/training-programs/${id}`),
   attachVideo: (id: number, fileUrl: string, title?: string) => api.post<{ success: boolean; data: any }>(`/training-programs/${id}/videos`, { fileUrl, title }),
   updateVideo: (programId: number, videoId: number, fileUrl: string, title?: string) => api.put<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}`, { fileUrl, title }),
   getVideos: (id: number) => api.get<{ success: boolean; data: { id: number; programId: number; url: string; title: string | null; createdAt: string }[] }>(`/training-programs/${id}/videos`),
+  updateVideoProgress: (programId: number, videoId: number, watchedPercentage: number) => api.post<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}/progress`, { watchedPercentage }),
+  getVideoProgress: (programId: number) => api.get<{ success: boolean; data: any[] }>(`/training-programs/${programId}/progress`),
+  getVideoExercises: (videoId: number) => api.get<{ success: boolean; data: VideoExercise[] }>(`/training-programs/videos/${videoId}/exercises`),
 };
 
 // Payment API
