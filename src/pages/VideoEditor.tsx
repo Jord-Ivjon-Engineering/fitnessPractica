@@ -1,41 +1,23 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Player } from '@remotion/player';
-import VideoUploader from '../components/VideoUploader';
-import VideoTimeline from '../components/VideoTimeline';
-import { WorkoutVideoComposition } from '../remotion/WorkoutVideo';
-import { createPreviewClips } from '../utils/ffmpegHelper';
-import { trainingProgramApi, TrainingProgram } from '../services/api';
+import SimpleVideoEditor from '../components/SimpleVideoEditor';
+import { adminApi, TrainingProgram, trainingProgramApi } from '../services/api';
 import '../styles/VideoEditor.css';
 
-interface Exercise {
-  id: number;
-  name: string;
-  start: number;
-  end: number;
-}
-
-interface VideoData {
-  file: File;
-  url: string;
-  name: string;
-  size: number;
-}
-
 const VideoEditor = () => {
-  const { user, token, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [video, setVideo] = useState<VideoData | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [previews, setPreviews] = useState<Array<{ exerciseId: number; url: string; showAt: number }>>([]);
-  const [processing, setProcessing] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string>('');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [exercises, setExercises] = useState<Array<{ id: number; name: string; start: number; end: number }>>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('');
+  const [processingError, setProcessingError] = useState<string>('');
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
-  const [programsError, setProgramsError] = useState<string>('');
-  const [attachStatus, setAttachStatus] = useState<string>('');
+  const [videoTitle, setVideoTitle] = useState<string>('');
+  const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     if (isLoading) {
@@ -52,79 +34,43 @@ const VideoEditor = () => {
       setTimeout(() => {
         navigate('/');
       }, 2000);
+      return;
     }
+
+    // Load programs
+    loadPrograms();
   }, [user, isAuthenticated, isLoading, navigate]);
 
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        const resp = await trainingProgramApi.getAll();
-        if (resp && resp.data && resp.data.data) {
-          setPrograms(resp.data.data);
-          if (resp.data.data.length > 0) setSelectedProgramId(resp.data.data[0].id);
-        }
-      } catch (err: any) {
-        console.error('Error fetching programs', err);
-        const msg = err?.response?.data?.error || err?.message || 'Unknown error fetching programs';
-        setProgramsError(String(msg));
-      }
-    };
-
-    fetchPrograms();
-  }, []);
-
-  const handleVideoLoad = (videoData: VideoData) => {
-    setVideo(videoData);
-    setExercises([]);
-    setPreviews([]);
-    setShowPreview(false);
-    setError('');
-  };
-
-  const handleExercisesUpdate = (updatedExercises: Exercise[]) => {
-    setExercises(updatedExercises);
-  };
-
-  const generateVideo = async () => {
-    if (!video) {
-      setError('Please upload a video first!');
-      return;
-    }
-
-    if (exercises.length === 0) {
-      setError('Please mark at least one exercise first!');
-      return;
-    }
-
-    setProcessing(true);
-    setError('');
-
+  const loadPrograms = async () => {
     try {
-      // Generate preview clips using FFmpeg
-      const previewClips = await createPreviewClips(video.file, exercises);
-      setPreviews(previewClips);
-      setShowPreview(true);
-    } catch (error) {
-      console.error('Error processing video:', error);
-      setError('Error generating preview clips. You can still process the video with the backend.');
-    } finally {
-      setProcessing(false);
+      const response = await adminApi.getAllPrograms();
+      if (response.data.success) {
+        setPrograms(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error loading programs:', err);
     }
   };
 
-  const processVideoBackend = async () => {
-    if (!video) {
-      setError('Please upload a video.');
+  const handleExport = async (exercises: Array<{ id: number; name: string; start: number; end: number }>) => {
+    if (!videoFile) {
+      setProcessingError('Please upload a video first.');
       return;
     }
 
     if (exercises.length === 0) {
-      setError('Please mark at least one exercise.');
+      setProcessingError('Please add at least one exercise.');
       return;
     }
 
+    if (!selectedProgramId) {
+      setProcessingError('Please select a program to upload the video to.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
     if (!token) {
-      setError('Authentication token not found. Please log in again.');
+      setProcessingError('Authentication token not found. Please log in again.');
       return;
     }
 
@@ -136,15 +82,18 @@ const VideoEditor = () => {
     }));
 
     const formData = new FormData();
-    formData.append('video', video.file);
+    formData.append('video', videoFile);
     formData.append('exercises', JSON.stringify(backendExercises));
 
-    setProcessing(true);
-    setError('');
+    setIsProcessing(true);
+    setProcessingError('');
+    setProcessedVideoUrl('');
+    setUploadSuccess(false);
 
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${API_URL}/video/edit`, {
+      const baseUrl = API_URL.replace('/api', '');
+      const response = await fetch(`${baseUrl}/video/edit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -160,186 +109,136 @@ const VideoEditor = () => {
         } catch (e) {
           // ignore JSON parse error
         }
-        setError(errMsg);
+        setProcessingError(errMsg);
         return;
       }
 
-      const contentType = response.headers.get('content-type') || '';
-
-      if (contentType.includes('application/json')) {
-        const data = await response.json();
-        if (data && data.fileUrl) {
-          const fileUrl = `${API_URL}${data.fileUrl}`;
-          setError('');
-          // Auto-attach to selected program if one is chosen
-          const relativeUrl = data.fileUrl.replace(/^\//, '');
-          if (selectedProgramId) {
-            try {
-              setAttachStatus('Attaching to program...');
-              await trainingProgramApi.attachVideo(selectedProgramId, `/${relativeUrl}`);
-              setAttachStatus('Attached successfully!');
-            } catch (attachErr) {
-              console.error('Auto-attach error', attachErr);
-              setAttachStatus('Warning: Video processed but failed to attach to program.');
-            }
-          } else {
-            setAttachStatus('No program selected — video processed but not attached.');
-          }
-          // Create download link
-          setTimeout(() => {
-            const link = document.createElement('a');
-            link.href = fileUrl;
-            link.download = fileUrl.split('/').pop() || 'edited_video.mp4';
-            link.target = '_blank';
-            link.click();
-          }, 100);
-        } else {
-          setError('Processing finished but server returned unexpected JSON.');
+      const data = await response.json();
+      if (data && data.fileUrl) {
+        setProcessedVideoUrl(data.fileUrl);
+        setProcessingError('');
+        
+        // Attach the processed video to the selected program
+        try {
+          await trainingProgramApi.attachVideo(
+            selectedProgramId, 
+            data.fileUrl, 
+            videoTitle || `Video - ${new Date().toLocaleDateString()}`
+          );
+          setUploadSuccess(true);
+          setProcessingError('');
+        } catch (err) {
+          console.error('Error attaching video to program:', err);
+          setProcessingError('Video processed but failed to attach to program. Please try again.');
         }
-      } else {
-        // Server returned the file directly
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const cd = response.headers.get('content-disposition') || '';
-        const match = cd.match(/filename="?([^"]+)"?/);
-        a.download = match ? match[1] : 'edited_video.mp4';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setError('');
       }
-    } catch (error) {
-      console.error(error);
-      setError('Error connecting to server.');
+    } catch (err) {
+      console.error('Error processing video:', err);
+      setProcessingError(err instanceof Error ? err.message : 'Failed to process video');
     } finally {
-      setProcessing(false);
+      setIsProcessing(false);
     }
   };
 
-  // Calculate video duration for Remotion player
-  const getVideoDuration = () => {
-    // Estimate duration - in a real app, you'd get this from the video metadata
-    if (exercises.length > 0) {
-      const lastExercise = exercises[exercises.length - 1];
-      return Math.ceil(lastExercise.end + 10) * 30; // Add 10 seconds buffer, convert to frames (30 fps)
-    }
-    return 300 * 30; // Default 5 minutes
-  };
-
-  if (isLoading) {
+  if (error) {
     return (
-      <div className="video-editor-container">
-        <div className="loading">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user || user.role !== 'admin') {
-    return (
-      <div className="video-editor-container">
-        <div className="error-message">
-          {error || 'Access denied. Admin privileges required.'}
-        </div>
+      <div className="video-editor-page">
+        <div className="error-message">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="video-editor-container">
-      <header className="editor-header">
-        <h1>🏋️ Workout Video Editor</h1>
-        <p>Upload, mark exercises, and generate automatic timers</p>
-      </header>
+    <div className="video-editor-page">
+      <div className="container">
+        <h1>Video Editor</h1>
+        
+        {/* Program Selection */}
+        <div className="program-selection" style={{ marginBottom: '20px', padding: '20px', background: '#ffffff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+          <h3 style={{ marginTop: 0 }}>Select Program</h3>
+          <select 
+            value={selectedProgramId || ''} 
+            onChange={(e) => setSelectedProgramId(Number(e.target.value))}
+            style={{ 
+              width: '100%', 
+              padding: '12px', 
+              fontSize: '16px', 
+              borderRadius: '8px', 
+              border: '2px solid #e5e7eb',
+              marginBottom: '15px'
+            }}
+          >
+            <option value="">-- Select a program to upload video to --</option>
+            {programs.map(program => (
+              <option key={program.id} value={program.id}>
+                {program.name} - {program.category}
+              </option>
+            ))}
+          </select>
+          
+          <input
+            type="text"
+            placeholder="Video Title (optional)"
+            value={videoTitle}
+            onChange={(e) => setVideoTitle(e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '12px', 
+              fontSize: '16px', 
+              borderRadius: '8px', 
+              border: '2px solid #e5e7eb'
+            }}
+          />
+        </div>
+        
+        <SimpleVideoEditor 
+          onExport={handleExport}
+          onExercisesChange={(exs) => setExercises(exs)}
+          onVideoUpload={(file) => setVideoFile(file)}
+        />
 
-      <main className="editor-main">
-        {!video ? (
-          <VideoUploader onVideoLoad={handleVideoLoad} />
-        ) : (
-          <>
-            <VideoTimeline
-              videoUrl={video.url}
-              onExercisesUpdate={handleExercisesUpdate}
-            />
-
-            {error && <div className="error-message">{error}</div>}
-
-            <div className="action-buttons">
-              <button 
-                onClick={generateVideo} 
-                disabled={processing || exercises.length === 0}
-                className="btn-generate"
-              >
-                {processing ? 'Generating Preview...' : 'Generate Preview with Overlays'}
-              </button>
-              <button 
-                onClick={processVideoBackend} 
-                disabled={processing || exercises.length === 0}
-                className="btn-process"
-              >
-                {processing ? 'Processing...' : 'Process & Export Video'}
-              </button>
-              <button 
-                onClick={() => {
-                  setVideo(null);
-                  setExercises([]);
-                  setPreviews([]);
-                  setShowPreview(false);
-                }}
-                className="btn-reset"
-              >
-                Upload Different Video
-              </button>
-            </div>
-
-            {showPreview && (
-              <div className="preview-section">
-                <h2>Preview with Overlays</h2>
-                <Player
-                  component={WorkoutVideoComposition}
-                  inputProps={{
-                    videoUrl: video.url,
-                    exercises: exercises,
-                    previews: previews
-                  }}
-                  durationInFrames={getVideoDuration()}
-                  fps={30}
-                  compositionWidth={1920}
-                  compositionHeight={1080}
-                  style={{ width: '100%', maxWidth: '1200px', margin: '0 auto' }}
-                  controls
-                />
-              </div>
-            )}
-
-            <div className="program-select">
-              <h2>Attach to Training Program</h2>
-              {programsError ? (
-                <div className="error-message">Failed loading programs: {programsError}</div>
-              ) : programs.length === 0 ? (
-                <p>No programs found.</p>
-              ) : (
-                <select 
-                  value={selectedProgramId ?? ''} 
-                  onChange={(e) => setSelectedProgramId(Number(e.target.value))} 
-                  disabled={processing}
-                >
-                  {programs.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.category})</option>
-                  ))}
-                </select>
-              )}
-              <p className="hint">Select a training program above — processed video will be automatically attached after processing.</p>
-              {attachStatus && <p className="status">{attachStatus}</p>}
-            </div>
-          </>
+        {processingError && (
+          <div className="error-message" style={{ marginTop: '20px' }}>
+            {processingError}
+          </div>
         )}
-      </main>
+
+        {isProcessing && (
+          <div className="processing-message" style={{ marginTop: '20px', padding: '20px', background: '#fef3c7', borderRadius: '8px' }}>
+            <p>Processing video with exercises... This may take a few minutes.</p>
+          </div>
+        )}
+
+        {uploadSuccess && processedVideoUrl && (
+          <div className="video-result" style={{ marginTop: '20px', padding: '20px', background: '#f0fdf4', borderRadius: '8px' }}>
+            <h4>✅ Video Successfully Uploaded to Program!</h4>
+            <p>The video has been processed and added to the selected program. Users who purchase this program will now see this video.</p>
+            <video 
+              controls 
+              src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
+              style={{ width: '100%', maxWidth: '800px', marginTop: '10px', borderRadius: '8px' }}
+            />
+            <a 
+              href={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
+              download 
+              style={{ 
+                display: 'inline-block', 
+                marginTop: '15px', 
+                padding: '12px 24px', 
+                background: 'linear-gradient(135deg, hsl(14, 90%, 55%), hsl(25, 95%, 53%))',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '8px',
+                fontWeight: '600'
+              }}
+            >
+              Download Processed Video
+            </a>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 export default VideoEditor;
-

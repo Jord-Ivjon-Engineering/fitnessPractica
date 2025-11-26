@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import VideoUploader from '../components/VideoUploader';
-import AdvancedVideoEditor from '../components/AdvancedVideoEditor';
-import { createPreviewClips } from '../utils/ffmpegHelper';
+import SimpleVideoEditor from '../components/SimpleVideoEditor';
 import { adminApi, AdminUser, AdminTransaction, DashboardStats, CreateUserData, TrainingProgram, CreateProgramData, trainingProgramApi } from '../services/api';
-import '../styles/AdvancedVideoEditor.css';
+import '../styles/SimpleVideoEditor.css';
 import '../styles/AdminDashboard.css';
-import '../styles/VideoEditorContainer.css';
 
 const AdminDashboard = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -54,13 +51,11 @@ const AdminDashboard = () => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoData, setVideoData] = useState<{ file: File; url: string; name: string; size: number } | null>(null);
   const [exercises, setExercises] = useState<Array<{ id: number; name: string; start: number; end: number }>>([]);
-  const [previews, setPreviews] = useState<Array<{ exerciseId: number; url: string; showAt: number }>>([]);
-  const [showPreview, setShowPreview] = useState(false);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [videoError, setVideoError] = useState<string>('');
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('');
-  const [videoDuration, setVideoDuration] = useState(0);
-  const [overlays, setOverlays] = useState<Overlay[]>([]);
+  // Video title editing
+  // (Removed video title editing logic)
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -171,70 +166,20 @@ const AdminDashboard = () => {
   };
 
   // Video editor functions
-  const handleVideoLoad = (videoData: { file: File; url: string; name: string; size: number }) => {
-    setVideoData(videoData);
-    setVideoFile(videoData.file);
-    setExercises([]);
-    setPreviews([]);
-    setShowPreview(false);
-    setVideoError('');
-    setSelectedExistingVideo(null);
-  };
-
   const handleExercisesUpdate = (updatedExercises: Array<{ id: number; name: string; start: number; end: number }>) => {
     setExercises(updatedExercises);
   };
 
-  const generatePreview = async () => {
-    if (!videoData && !selectedExistingVideo) {
-      setVideoError('Please upload a video or select an existing video first!');
-      return;
-    }
-
-    if (exercises.length === 0) {
-      setVideoError('Please mark at least one exercise first!');
-      return;
-    }
-
-    setVideoError('');
-
-    // Show preview immediately with overlays (preview clips are optional)
-    setShowPreview(true);
-    setPreviews([]); // Clear old previews
-
-    // Try to generate preview clips if we have a video file
-    if (videoData && videoData.file) {
-      setIsProcessingVideo(true);
-      try {
-        const previewClips = await createPreviewClips(videoData.file, exercises);
-        setPreviews(previewClips);
-        console.log('Preview clips generated:', previewClips);
-        setVideoError(''); // Clear any previous errors
-      } catch (error: any) {
-        console.error('Error generating preview clips:', error);
-        // Show a non-blocking warning - preview will work without clips
-        const errorMessage = error?.message || 'Preview clips could not be generated';
-        setVideoError(`Note: ${errorMessage}. Timer overlays will still work, but preview clips during breaks may not be available.`);
-        // Continue anyway - overlays will work
-        setPreviews([]);
-      } finally {
-        setIsProcessingVideo(false);
-      }
-    } else if (selectedExistingVideo) {
-      // For existing videos, we can't generate preview clips, but we can still show overlays
-      setShowPreview(true);
-    }
-  };
-
+  // Process video to generate a preview (does NOT attach/update program yet)
   const processVideo = async () => {
     if (!videoFile && !selectedExistingVideo) {
       setVideoError('Please upload a video or select an existing video.');
       return;
     }
 
-    // Allow processing with either exercises or overlays
-    if (exercises.length === 0 && overlays.length === 0) {
-      setVideoError('Please add at least one exercise or overlay.');
+    // Allow processing with exercises
+    if (exercises.length === 0) {
+      setVideoError('Please add at least one exercise.');
       return;
     }
 
@@ -260,15 +205,12 @@ const AdminDashboard = () => {
       formData.append('video', videoFile);
     }
     
-    // Add exercises if any
+    // Add exercises
     if (backendExercises.length > 0) {
       formData.append('exercises', JSON.stringify(backendExercises));
     }
-    
-    // Add overlays if any
-    if (overlays.length > 0) {
-      formData.append('overlays', JSON.stringify(overlays));
-    }
+
+  // (Removed title construction)
 
     setIsProcessingVideo(true);
     setVideoError('');
@@ -304,32 +246,8 @@ const AdminDashboard = () => {
         if (data && data.fileUrl) {
           // Store the relative URL path (like standalone editor does)
           // data.fileUrl is already like "/uploads/edited/edited_123.mp4"
-          setProcessedVideoUrl(data.fileUrl);
+          setProcessedVideoUrl(data.fileUrl); // preview URL (relative path)
           setVideoError('');
-          
-          // If we're updating an existing video, update it immediately
-          if (selectedExistingVideo && editingProgramId) {
-            try {
-              await trainingProgramApi.updateVideo(editingProgramId, selectedExistingVideo.id, data.fileUrl);
-              // Reload videos to show updated video
-              const videosResponse = await trainingProgramApi.getVideos(editingProgramId);
-              if (videosResponse.data.success) {
-                setExistingVideos(videosResponse.data.data);
-              }
-              // Clear selection and reset form
-              setSelectedExistingVideo(null);
-              setExercises([]);
-              setPreviews([]);
-              setShowPreview(false);
-              setVideoData(null);
-              setVideoFile(null);
-              setProcessedVideoUrl('');
-              alert('Video updated successfully with new exercises!');
-            } catch (updateErr: any) {
-              console.error('Error updating video:', updateErr);
-              setVideoError('Video processed but update failed. Please try updating the program.');
-            }
-          }
         } else {
           setVideoError('Processing finished but server returned unexpected JSON.');
         }
@@ -344,6 +262,52 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error(error);
       setVideoError('Error connecting to server.');
+    } finally {
+      setIsProcessingVideo(false);
+    }
+  };
+
+  // Save the already processed preview video to the program (attach or update)
+  const saveProcessedVideo = async () => {
+    if (!processedVideoUrl) {
+      setVideoError('No processed preview available. Please process the video first.');
+      return;
+    }
+    if (!editingProgramId) {
+      setVideoError('No program is currently being edited.');
+      return;
+    }
+
+    setVideoError('');
+    setIsProcessingVideo(true);
+    try {
+      if (selectedExistingVideo) {
+        // Update existing video
+        await trainingProgramApi.updateVideo(editingProgramId, selectedExistingVideo.id, processedVideoUrl);
+      } else if (videoFile) {
+        // Attach new video
+        await trainingProgramApi.attachVideo(editingProgramId, processedVideoUrl);
+      } else {
+        setVideoError('No source video selected to save.');
+        return;
+      }
+
+      // Reload videos
+      const videosResponse = await trainingProgramApi.getVideos(editingProgramId);
+      if (videosResponse.data.success) {
+        setExistingVideos(videosResponse.data.data);
+      }
+
+      // Reset only after a successful save
+      setSelectedExistingVideo(null);
+      setExercises([]);
+      setVideoData(null);
+      setVideoFile(null);
+      setProcessedVideoUrl('');
+      alert('Processed video saved to program successfully!');
+    } catch (err: any) {
+      console.error('Error saving processed video:', err);
+      setVideoError('Failed to save processed video to program.');
     } finally {
       setIsProcessingVideo(false);
     }
@@ -444,9 +408,6 @@ const AdminDashboard = () => {
         setImagePreview(null);
         setVideoFile(null);
         setExercises([]);
-        setExerciseName('');
-        setStartTime('');
-        setDuration('');
         setProcessedVideoUrl('');
         setProgramStep('details');
         
@@ -626,9 +587,6 @@ const AdminDashboard = () => {
         setImagePreview(null);
         setVideoFile(null);
         setExercises([]);
-        setExerciseName('');
-        setStartTime('');
-        setDuration('');
         setProcessedVideoUrl('');
         setProgramStep('details');
         setEditingProgramId(null);
@@ -978,7 +936,7 @@ const AdminDashboard = () => {
                   <span className="step-label">Program Details</span>
                 </div>
                 <div className="step-connector"></div>
-                <div className={`step ${programStep === 'video' ? 'active' : ''}`}>
+                <div className={`step ${(programStep as string) === 'video' ? 'active' : ''}`}>
                   <span className="step-number">2</span>
                   <span className="step-label">Video Editor</span>
                 </div>
@@ -1107,14 +1065,14 @@ const AdminDashboard = () => {
                         setProgramStep('video');
                         setError('');
                       }}
-                      disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                      disabled={creatingProgram || uploadingImage || !!(newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
                       className="btn-submit"
                     >
                       Next: Manage Videos
                     </button>
                     <button
                       type="submit"
-                      disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                      disabled={creatingProgram || uploadingImage || !!(newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
                       className="btn-secondary"
                     >
                       {creatingProgram ? 'Updating...' : 'Update Program'}
@@ -1146,7 +1104,7 @@ const AdminDashboard = () => {
                 ) : (
                   <button
                     type="submit"
-                    disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                    disabled={creatingProgram || uploadingImage || !!(newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
                     className="btn-submit"
                   >
                     Next: Add Video
@@ -1162,6 +1120,84 @@ const AdminDashboard = () => {
 
         {programStep === 'video' && (
           <div className="video-editor-container">
+            {/* Upload New Video Section */}
+            <div className="upload-new-video-section" style={{ marginBottom: '30px', padding: '20px', background: '#ffffff', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Upload New Video</h3>
+              <p style={{ color: '#6b7280', marginBottom: '15px' }}>Upload a new video file to add to this program</p>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.type.startsWith('video/')) {
+                    const url = URL.createObjectURL(file);
+                    setVideoFile(file);
+                    setVideoData({
+                      file,
+                      url,
+                      name: file.name,
+                      size: file.size
+                    });
+                    setSelectedExistingVideo(null);
+                    setExercises([]);
+                    setProcessedVideoUrl('');
+                    setVideoError('');
+                    // Reset suffix for new video, keep user-entered value
+                  }
+                }}
+                style={{ display: 'none' }}
+                id="video-upload-input"
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById('video-upload-input')?.click()}
+                className="btn-upload-video"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(14, 90%, 55%), hsl(25, 95%, 53%))',
+                  color: 'white',
+                  border: 'none',
+                  padding: '14px 32px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(234, 88, 12, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(234, 88, 12, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(234, 88, 12, 0.3)';
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                Choose Video File
+              </button>
+              {videoFile && (
+                <p style={{ marginTop: '10px', color: '#059669', fontWeight: '500' }}>
+                  ✓ Selected: {videoFile.name}
+                </p>
+              )}
+            </div>
+
+            {/* Divider */}
+            {editingProgramId && existingVideos.length > 0 && (
+              <div style={{ margin: '30px 0', textAlign: 'center', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: '#e5e7eb' }}></div>
+                <span style={{ position: 'relative', background: '#f9fafb', padding: '0 20px', color: '#6b7280', fontWeight: '500' }}>OR</span>
+              </div>
+            )}
+
             {editingProgramId && existingVideos.length > 0 && (
               <div className="existing-videos-section">
                       <h3>Existing Videos</h3>
@@ -1192,10 +1228,9 @@ const AdminDashboard = () => {
                                 });
                                 setVideoFile(null);
                                 setExercises([]);
-                                setPreviews([]);
-                                setShowPreview(false);
                                 setProcessedVideoUrl('');
                                 setVideoError('');
+                                // Parse existing title to extract suffix
                               }}
                               className="btn-select-video"
                               disabled={isProcessingVideo}
@@ -1206,12 +1241,6 @@ const AdminDashboard = () => {
                         ))}
                       </div>
                     </div>
-            )}
-
-            {!videoData && !selectedExistingVideo && (
-              <div className="video-upload-section">
-                <VideoUploader onVideoLoad={handleVideoLoad} />
-              </div>
             )}
 
             {(videoData || selectedExistingVideo) && (
@@ -1226,8 +1255,6 @@ const AdminDashboard = () => {
                         setVideoData(null);
                         setVideoFile(null);
                         setExercises([]);
-                        setPreviews([]);
-                        setShowPreview(false);
                       }}
                       className="btn-secondary"
                     >
@@ -1236,16 +1263,14 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* Advanced Video Editor */}
-                <AdvancedVideoEditor
+                {/* Simple Video Editor */}
+                <SimpleVideoEditor
                   videoUrl={videoData?.url || `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${selectedExistingVideo?.url}`}
                   onExercisesChange={(exs) => {
                     setExercises(exs);
                     handleExercisesUpdate(exs);
                   }}
-                  onOverlaysChange={setOverlays}
-                  onDurationChange={setVideoDuration}
-                  onExport={({ exercises, overlays }) => {
+                  onExport={() => {
                     // Trigger video processing
                     processVideo();
                   }}
@@ -1259,16 +1284,28 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={processVideo}
-                    disabled={(!videoFile && !selectedExistingVideo) || (exercises.length === 0 && overlays.length === 0) || isProcessingVideo}
+                    disabled={(!videoFile && !selectedExistingVideo) || exercises.length === 0 || isProcessingVideo}
                     className="btn-process"
                   >
-                    {isProcessingVideo ? 'Processing...' : 'Process & Export Video'}
+                    {isProcessingVideo ? 'Processing Preview...' : 'Process Preview'}
                   </button>
+                  {processedVideoUrl && (
+                    <button
+                      type="button"
+                      onClick={saveProcessedVideo}
+                      disabled={isProcessingVideo}
+                      className="btn-primary"
+                      style={{ marginLeft: '12px' }}
+                    >
+                      Save Processed Video to Program
+                    </button>
+                  )}
                 </div>
 
                 {processedVideoUrl && (
                   <div className="video-result">
-                    <h4>Video Processed Successfully!</h4>
+                    <h4>Preview Ready</h4>
+                    <p style={{ color: '#6b7280', marginTop: '-4px', marginBottom: '12px' }}>Review the processed video. If satisfied, click "Save Processed Video to Program".</p>
                     {processedVideoUrl.startsWith('/') ? (
                       <>
                         <video 
@@ -1343,8 +1380,6 @@ const AdminDashboard = () => {
                       setVideoFile(null);
                       setVideoData(null);
                       setExercises([]);
-                      setPreviews([]);
-                      setShowPreview(false);
                       setProcessedVideoUrl('');
                       setProgramStep('details');
                     }}
