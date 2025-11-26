@@ -31,6 +31,7 @@ function AppContent() {
         <Route path="/video-editor" element={<VideoEditor />} />
         <Route path="/admin/program-video-editor" element={<ProgramVideoEditor />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
       </Routes>
       {!hideFooter && <Footer />}
     </>
@@ -44,19 +45,6 @@ function App() {
         <CartProvider>
           <Router>
             <AppContent />
-            <Header />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/video-editor" element={<VideoEditor />} />
-              <Route path="/admin/program-video-editor" element={<ProgramVideoEditor />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
-            </Routes>
-            <Footer />
           </Router>
         </CartProvider>
       </AuthProvider>
