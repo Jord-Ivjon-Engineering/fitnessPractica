@@ -28,7 +28,18 @@ const storage = multer.diskStorage({
     cb(null, `upload_${Date.now()}${ext}`);
   },
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 1024 * 1024 * 1024, // 1GB limit; adjust as needed
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('video/')) {
+      return cb(new Error('Only video files are allowed'));
+    }
+    cb(null, true);
+  },
+});
 
 // POST /video/edit
 // expects multipart form:
@@ -36,7 +47,22 @@ const upload = multer({ storage });
 //  - videoUrl: string (optional if video file is uploaded)
 //  - exercises: JSON stringified array [{ name, start, duration }]
 // Requires admin authentication
-router.post('/edit', authenticate, requireAdmin, upload.single('video'), async (req: MulterRequest, res: Response, next: NextFunction) => {
+router.post(
+  '/edit',
+  authenticate,
+  requireAdmin,
+  (req, res, next) => {
+    upload.single('video')(req, res, (err: any) => {
+      if (err) {
+        if (err?.message?.includes('File too large')) {
+          return res.status(413).json({ error: 'Video exceeds maximum size (1GB).' });
+        }
+        return res.status(400).json({ error: err.message || 'Upload failed' });
+      }
+      next();
+    });
+  },
+  async (req: MulterRequest, res: Response, next: NextFunction) => {
   try {
     const rawExercises = req.body.exercises;
     let exercises: Array<{ name: string; start: number; duration: number }> = [];
@@ -187,7 +213,7 @@ router.post('/edit', authenticate, requireAdmin, upload.single('video'), async (
 
     ffmpeg(inputPath)
       .videoFilters(filterString)
-      .outputOptions('-movflags +faststart') // improve streaming
+      .outputOptions(['-movflags +faststart', '-preset veryfast']) // speed up encoding
       .output(outputPath)
       .on('end', () => {
         // Only delete uploaded files, not existing video files
@@ -212,3 +238,30 @@ router.post('/edit', authenticate, requireAdmin, upload.single('video'), async (
 });
 
 export default router;
+
+// New endpoint: simple upload without processing
+// Returns { fileUrl } to be used later in the editor
+router.post(
+  '/upload',
+  authenticate,
+  requireAdmin,
+  (req, res, next) => {
+    upload.single('video')(req, res, (err: any) => {
+      if (err) {
+        if (err?.message?.includes('File too large')) {
+          return res.status(413).json({ error: 'Video exceeds maximum size (1GB).' });
+        }
+        return res.status(400).json({ error: err.message || 'Upload failed' });
+      }
+      next();
+    });
+  },
+  async (req: MulterRequest, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file uploaded' });
+    }
+    const relative = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+    const fileUrl = `/${relative}`;
+    return res.json({ fileUrl });
+  }
+);

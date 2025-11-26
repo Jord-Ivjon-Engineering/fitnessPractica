@@ -34,6 +34,7 @@ const ProgramVideoEditor = () => {
   const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [videoError, setVideoError] = useState<string>('');
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('');
   const [videoTitle, setVideoTitle] = useState<string>(videoDataFromState?.name || 'Untitled Video');
@@ -137,20 +138,45 @@ const ProgramVideoEditor = () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const baseUrl = API_URL.replace('/api', '');
-      const response = await fetch(`${baseUrl}/video/edit`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
+
+      // Use XMLHttpRequest to report upload progress
+      const xhr = new XMLHttpRequest();
+
+      xhr.open('POST', `${baseUrl}/video/edit`, true);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percent);
+        }
+      };
+
+      const resultPromise: Promise<any> = new Promise((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const json = JSON.parse(xhr.responseText);
+              resolve(json);
+            } catch (e) {
+              reject(new Error('Invalid server response'));
+            }
+          } else {
+            let message = 'Server error';
+            try {
+              const json = JSON.parse(xhr.responseText);
+              message = json.error || message;
+            } catch {}
+            reject(new Error(`${message}: ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.onabort = () => reject(new Error('Upload aborted'));
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
+      xhr.send(formData);
 
-      const result = await response.json();
+      const result = await resultPromise;
       if (result.success && result.data?.url) {
         setProcessedVideoUrl(result.data.url);
         setVideoError('');
@@ -165,6 +191,7 @@ const ProgramVideoEditor = () => {
       console.error('Error processing video:', err);
       setVideoError(err.message || 'Failed to process video');
     } finally {
+      setUploadProgress(0);
       setIsProcessingVideo(false);
     }
   };
@@ -258,6 +285,18 @@ const ProgramVideoEditor = () => {
           >
             {isProcessingVideo ? 'Processing...' : 'Process & Export Video'}
           </button>
+          {isProcessingVideo && (
+            <div className="upload-progress">
+              <div className="progress-label">Uploading: {uploadProgress}%</div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={uploadProgress}
+                readOnly
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

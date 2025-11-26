@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Player } from '@remotion/player';
-import { OverlayVideoComposition } from '../remotion/OverlayVideo';
-import { WorkoutVideoComposition } from '../remotion/WorkoutVideo';
-import { Plus, Trash2, Type, Clock, Image as ImageIcon, Play, Pause, Maximize2 } from 'lucide-react';
+import RemotionPreview from './RemotionPreview';
+import { Plus, Trash2, Type, Clock, Image as ImageIcon, Play, Pause } from 'lucide-react';
 import '../styles/UnifiedVideoEditor.css';
 
 export interface Exercise {
@@ -188,7 +187,7 @@ const UnifiedVideoEditor: React.FC<UnifiedVideoEditorProps> = ({
     }
   };
 
-  const useOverlayComposition = overlays.length > 0;
+  // Derived flag no longer needed after RemotionPreview adapter
   const durationInFrames = Math.ceil(duration * 30);
 
   return (
@@ -219,7 +218,8 @@ const UnifiedVideoEditor: React.FC<UnifiedVideoEditorProps> = ({
           <video
             ref={videoRef}
             src={videoUrl}
-            controls={false}
+            controls={true}
+            preload="auto"
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
             onTimeUpdate={() => {
@@ -227,9 +227,59 @@ const UnifiedVideoEditor: React.FC<UnifiedVideoEditorProps> = ({
                 setCurrentTime(videoRef.current.currentTime);
               }
             }}
+            onStalled={() => {
+              // Attempt recovery if playback stalls (often manifests around a specific timestamp)
+              const v = videoRef.current;
+              if (!v) return;
+              // Log buffered ranges for diagnostics
+              try {
+                const ranges: Array<[number, number]> = [];
+                for (let i = 0; i < v.buffered.length; i++) {
+                  ranges.push([v.buffered.start(i), v.buffered.end(i)]);
+                }
+                // eslint-disable-next-line no-console
+                console.warn('Video stalled. Buffered ranges:', ranges, 'currentTime:', v.currentTime, 'readyState:', v.readyState);
+              } catch {}
+              // Nudge playback forward or reload if necessary
+              const nearEndOfBuffer = (() => {
+                try {
+                  const i = v.buffered.length - 1;
+                  if (i >= 0) {
+                    const end = v.buffered.end(i);
+                    return v.currentTime >= end - 0.25;
+                  }
+                  return false;
+                } catch {
+                  return false;
+                }
+              })();
+              if (nearEndOfBuffer) {
+                // Try slight seek forward to prompt additional buffering
+                v.currentTime = Math.min(v.currentTime + 0.1, v.duration || v.currentTime + 0.1);
+              }
+              // Try resuming playback
+              v.play().catch(() => {
+                // If play fails, reload and resume
+                v.load();
+                setTimeout(() => {
+                  v.play().catch(() => {/* ignore */});
+                }, 200);
+              });
+            }}
+            onWaiting={() => {
+              const v = videoRef.current;
+              if (!v) return;
+              // eslint-disable-next-line no-console
+              console.info('Video waiting at', v.currentTime, 'readyState:', v.readyState);
+              v.play().catch(() => {
+                v.load();
+                setTimeout(() => v.play().catch(() => {/* ignore */}), 200);
+              });
+            }}
           />
-          <div className="video-overlay-controls">
-            <button onClick={handlePlayPause} className="play-pause-btn">
+          {/* Keep the overlay play/pause as an optional helper but ensure it doesn't block native controls */}
+          <div className="video-overlay-controls" style={{ pointerEvents: 'none' }}>
+            <button onClick={handlePlayPause} className="play-pause-btn" style={{ pointerEvents: 'auto' }}>
               {playing ? <Pause size={24} /> : <Play size={24} />}
             </button>
           </div>
@@ -548,11 +598,11 @@ const UnifiedVideoEditor: React.FC<UnifiedVideoEditorProps> = ({
             <h3>Remotion Preview</h3>
             {(exercises.length > 0 || overlays.length > 0) ? (
               <Player
-                component={useOverlayComposition ? OverlayVideoComposition : WorkoutVideoComposition}
+                component={RemotionPreview}
                 inputProps={{
                   videoUrl,
-                  exercises: exercises.length > 0 ? exercises : undefined,
-                  overlays: overlays.length > 0 ? overlays : undefined,
+                  exercises: Array.isArray(exercises) ? exercises : [],
+                  overlays: Array.isArray(overlays) ? overlays : [],
                 }}
                 durationInFrames={durationInFrames}
                 fps={30}
