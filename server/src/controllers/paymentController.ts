@@ -105,7 +105,7 @@ export const createCheckoutSession = async (req: Request, res: Response, next: N
 
       lineItems.push({
         price_data: {
-          currency: 'usd',
+          currency: 'all',
           product_data: {
             name: program.name,
             description: program.category,
@@ -137,7 +137,7 @@ export const createCheckoutSession = async (req: Request, res: Response, next: N
         userId,
         stripeSessionId: session.id,
         amount: totalAmount / 100,
-        currency: 'usd',
+        currency: 'all',
         status: 'pending',
         programId: programs.length === 1 ? programs[0].id : null,
       },
@@ -214,7 +214,7 @@ export const handleWebhook = async (req: Request, res: Response, next: NextFunct
               userId,
               stripeSessionId: session.id,
               amount,
-              currency: session.currency || 'usd',
+              currency: session.currency || 'all',
               status: 'completed',
               stripePaymentId: session.payment_intent as string,
               programId: programIds.length === 1 ? parseInt(programIds[0]) : null,

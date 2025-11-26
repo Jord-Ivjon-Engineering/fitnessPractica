@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dumbbell, Mail, Lock, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -11,13 +12,16 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login, user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      if (user.role === 'admin') {
+      if (user.role === 'super_admin') {
+        navigate('/super-admin/dashboard');
+      } else if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/');
@@ -39,13 +43,15 @@ const Login = () => {
       if (returnUrl) {
         navigate(returnUrl);
       } else {
-        // Check if user is admin and redirect to dashboard
+        // Check if user is admin or super_admin and redirect to appropriate dashboard
         // The login function sets user in localStorage, so we can read it immediately
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
             const currentUser = JSON.parse(storedUser);
-            if (currentUser && currentUser.role === 'admin') {
+            if (currentUser && currentUser.role === 'super_admin') {
+              navigate('/super-admin/dashboard');
+            } else if (currentUser && currentUser.role === 'admin') {
               navigate('/admin/dashboard');
             } else {
               navigate('/');
@@ -59,7 +65,7 @@ const Login = () => {
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.message || "Login failed. Please try again.");
+      setError(err.response?.data?.error?.message || err.message || t('login.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -73,8 +79,8 @@ const Login = () => {
             <Dumbbell className="w-8 h-8 text-primary" />
             <span className="text-2xl font-bold text-foreground">Fitness Practica</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to your account</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('login.title')}</h1>
+          <p className="text-muted-foreground">{t('login.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -86,7 +92,7 @@ const Login = () => {
 
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-foreground">
-              Email
+              {t('login.email')}
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -96,7 +102,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter your email"
+                placeholder={t('login.emailPlaceholder')}
                 required
               />
             </div>
@@ -104,7 +110,7 @@ const Login = () => {
 
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
+              {t('login.password')}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -114,7 +120,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter your password"
+                placeholder={t('login.passwordPlaceholder')}
                 required
               />
             </div>
@@ -128,18 +134,18 @@ const Login = () => {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Signing in...
+                {t('login.signingIn')}
               </>
             ) : (
-              "Sign In"
+              t('login.signIn')
             )}
           </Button>
         </form>
 
         <div className="text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
+          {t('login.noAccount')}{" "}
           <Link to="/signup" className="text-primary hover:underline font-medium">
-            Sign up
+            {t('login.signUp')}
           </Link>
         </div>
       </Card>
