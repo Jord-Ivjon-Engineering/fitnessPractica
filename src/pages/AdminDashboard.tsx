@@ -198,27 +198,85 @@ const AdminDashboard = () => {
   };
 
   // Video editor functions
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const handleVideoLoad = (videoData: { file: File; url: string; name: string; size: number }) => {
-    // Store video data locally first
-    setVideoData(videoData);
-    setVideoFile(videoData.file);
+    // Reset state
+    setVideoData(null);
+    setVideoFile(null);
     setExercises([]);
     setPreviews([]);
     setShowPreview(false);
     setVideoError('');
     setSelectedExistingVideo(null);
-    
-    // Navigate to editor page with blob URL (blob URLs work fine for video display)
-    navigate('/admin/program-video-editor', {
-      state: {
-        url: videoData.url, // Blob URL from URL.createObjectURL
-        name: videoData.name,
-        isExisting: false,
-        programId: editingProgramId,
-        fileSize: videoData.size,
-        fileName: videoData.name
+
+    // Perform server upload first and only open editor after upload completes
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setVideoError('Authentication token not found. Please log in again.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('video', videoData.file);
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const baseUrl = API_URL.replace('/api', '');
+    const xhr = new XMLHttpRequest();
+    setIsUploadingVideo(true);
+    setUploadProgress(0);
+
+    xhr.open('POST', `${baseUrl}/video/upload`, true);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percent);
       }
-    });
+    };
+
+    xhr.onload = () => {
+      setIsUploadingVideo(false);
+      setUploadProgress(0);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          const serverUrl = result.fileUrl as string;
+          // Now open editor with server URL (not blob)
+          navigate('/admin/program-video-editor', {
+            state: {
+              url: serverUrl,
+              name: videoData.name,
+              isExisting: false,
+              programId: editingProgramId,
+              fileSize: videoData.size,
+              fileName: videoData.name
+            }
+          });
+        } catch (e) {
+          setVideoError('Invalid server response after upload');
+        }
+      } else {
+        let message = 'Upload failed';
+        try {
+          const json = JSON.parse(xhr.responseText);
+          message = json.error || message;
+        } catch {}
+        setVideoError(message);
+      }
+    };
+    xhr.onerror = () => {
+      setIsUploadingVideo(false);
+      setVideoError('Network error during upload');
+    };
+    xhr.onabort = () => {
+      setIsUploadingVideo(false);
+      setVideoError('Upload aborted');
+    };
+
+    xhr.send(formData);
   };
 
   const handleExercisesUpdate = (updatedExercises: Array<{ id: number; name: string; start: number; end: number }>) => {
@@ -1203,51 +1261,59 @@ const AdminDashboard = () => {
         {/* Upload Screen - Separate from editor */}
         {programStep === 'upload' && (
           <div className="video-editor-container">
-            {editingProgramId && existingVideos.length > 0 && (
-              <div className="existing-videos-section">
-                <h3>Existing Videos</h3>
-                <div className="videos-list">
-                  {existingVideos.map((video) => (
-                    <div key={video.id} className={`video-item ${selectedExistingVideo?.id === video.id ? 'selected' : ''}`}>
-                      <video 
-                        controls 
-                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`}
-                        className="existing-video"
-                      />
-                      <div className="video-info">
-                        <p><strong>Title:</strong> {video.title || 'Untitled'}</p>
-                        <p><strong>Added:</strong> {formatDate(video.createdAt)}</p>
+            <div className="videos-and-upload-container">
+              {editingProgramId && existingVideos.length > 0 && (
+                <div className="existing-videos-section">
+                  <h3>Existing Videos</h3>
+                  <div className="videos-list">
+                    {existingVideos.map((video) => (
+                      <div key={video.id} className={`video-item ${selectedExistingVideo?.id === video.id ? 'selected' : ''}`}>
+                        <video 
+                          controls 
+                          src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`}
+                          className="existing-video"
+                        />
+                        <div className="video-info">
+                          <p><strong>Title:</strong> {video.title || 'Untitled'}</p>
+                          <p><strong>Added:</strong> {formatDate(video.createdAt)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Navigate to editor page
+                            navigate('/admin/program-video-editor', {
+                              state: {
+                                url: video.url,
+                                name: video.title || 'Existing Video',
+                                isExisting: true,
+                                existingVideoId: video.id,
+                                programId: editingProgramId
+                              }
+                            });
+                          }}
+                          className="btn-select-video"
+                          disabled={isProcessingVideo}
+                        >
+                          Edit This Video
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Navigate to editor page
-                          navigate('/admin/program-video-editor', {
-                            state: {
-                              url: video.url,
-                              name: video.title || 'Existing Video',
-                              isExisting: true,
-                              existingVideoId: video.id,
-                              programId: editingProgramId
-                            }
-                          });
-                        }}
-                        className="btn-select-video"
-                        disabled={isProcessingVideo}
-                      >
-                        Edit This Video
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {!videoData && !selectedExistingVideo && (
-              <div className="video-upload-section">
-                <VideoUploader onVideoLoad={handleVideoLoad} />
-              </div>
-            )}
+              {!videoData && !selectedExistingVideo && (
+                <div className="video-upload-section">
+                  <VideoUploader onVideoLoad={handleVideoLoad} />
+                  {isUploadingVideo && (
+                    <div className="upload-progress">
+                      <div className="progress-label">Uploading: {uploadProgress}%</div>
+                      <input type="range" min={0} max={100} value={uploadProgress} readOnly />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="form-actions">
               <button

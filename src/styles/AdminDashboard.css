@@ -671,50 +671,109 @@ body.video-editor-active .admin-dashboard-content:has(.video-editor-container:ha
   background: #c82333;
 }
 
+/* Videos and Upload Container */
+.videos-and-upload-container {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-height: 700px;
+  overflow-y: auto;
+}
+
+/* Video Upload Section - Compact */
+.video-upload-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e5e7eb;
+}
+
+.video-upload-section .upload-zone {
+  padding: 30px 40px;
+  border-width: 2px;
+}
+
+.video-upload-section .upload-zone h3 {
+  font-size: 18px;
+  margin: 12px 0 6px;
+}
+
+.video-upload-section .upload-zone p {
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.video-upload-section .upload-zone svg {
+  width: 36px;
+  height: 36px;
+}
+
+.video-upload-section .upload-zone button {
+  padding: 8px 20px;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
 /* Existing videos section */
 .existing-videos-section {
-  margin-bottom: 2rem;
-  padding: 1.5rem;
-  background: #f8f9fa;
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
   border-radius: 4px;
+  max-height: none;
+  overflow-y: visible;
 }
 
 .existing-videos-section h3 {
-  margin-bottom: 1rem;
-  color: #333;
+  margin-bottom: 1.5rem;
+  color: #000000;
+  background: #ffffff;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
 }
 
 .videos-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 2rem;
 }
 
 .video-item {
   background: white;
-  border-radius: 4px;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.video-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .existing-video {
   width: 100%;
-  max-height: 200px;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
+  max-height: 300px;
+  min-height: 250px;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  object-fit: cover;
 }
 
 .video-info {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #666;
+  margin-bottom: 1rem;
 }
 
 .video-info p {
-  margin: 0.25rem 0;
+  margin: 0.5rem 0;
 }
 
 .video-item.selected {
-  border: 2px solid #007bff;
+  border: 3px solid #007bff;
   background: #e7f3ff;
 }
 
