@@ -114,7 +114,7 @@ const Checkout = () => {
         .map(item => item.programId!);
 
       if (programIds.length === 0) {
-        alert('No valid programs in cart');
+        alert(t('checkout.noValidPrograms'));
         setLoading(false);
         return;
       }
@@ -126,12 +126,12 @@ const Checkout = () => {
         // Redirect to Stripe Checkout
         window.location.href = response.data.data.url;
       } else {
-        alert('Failed to create checkout session');
+        alert(t('checkout.failedToCreateSession'));
         setLoading(false);
       }
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
-      alert(error.response?.data?.error || 'Failed to process payment');
+      alert(error.response?.data?.error || t('checkout.failedToProcess'));
       setLoading(false);
     }
   };
@@ -180,7 +180,7 @@ const Checkout = () => {
                       </p>
                       {item.price !== undefined && (
                         <p className="text-lg font-semibold text-foreground">
-                          ${item.price.toFixed(2)}
+                          {item.price.toFixed(2)} ALL
                         </p>
                       )}
                     </div>
@@ -206,11 +206,11 @@ const Checkout = () => {
                     {t('checkout.total')}:
                   </span>
                   <span className="text-2xl font-bold text-foreground">
-                    ${calculateTotal().toFixed(2)}
+                    {calculateTotal().toFixed(2)} ALL
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {cartCount} {cartCount === 1 ? 'program' : 'programs'}
+                  {cartCount} {cartCount === 1 ? t('checkout.program') : t('checkout.programs')}
                 </div>
               </div>
 
@@ -218,7 +218,7 @@ const Checkout = () => {
                 <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                   <span className="text-green-800 dark:text-green-200">
-                    Payment successful! Redirecting to profile...
+                    {t('checkout.paymentSuccess')}
                   </span>
                 </div>
               )}
@@ -227,7 +227,7 @@ const Checkout = () => {
                 <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center gap-2">
                   <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                   <span className="text-red-800 dark:text-red-200">
-                    Payment failed or was canceled. Please try again.
+                    {t('checkout.paymentFailed')}
                   </span>
                 </div>
               )}
@@ -250,10 +250,10 @@ const Checkout = () => {
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
+                      {t('checkout.processing')}
                     </>
                   ) : (
-                    'Proceed to Payment'
+                    t('checkout.proceedToPayment')
                   )}
                 </Button>
               </div>

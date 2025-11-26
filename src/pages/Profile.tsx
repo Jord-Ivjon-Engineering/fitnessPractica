@@ -7,9 +7,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { profileApi, UserProfile, UserProgram, trainingProgramApi } from "@/services/api";
 import { Loader2 } from "lucide-react";
 import VideoModal from "@/components/VideoModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Profile = () => {
   const { user, logout, isLoading } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [programs, setPrograms] = useState<UserProgram[]>([]);
@@ -141,22 +143,22 @@ const Profile = () => {
 
     // If start date exists and hasn't come yet
     if (start && now < start) {
-      return { text: 'Not Available Yet', status: 'upcoming' };
+      return { text: t('profile.programStatusUpcoming'), status: 'upcoming' };
     }
 
     // If end date exists and has passed
     if (end && now > end) {
-      return { text: 'Finished', status: 'finished' };
+      return { text: t('profile.programStatusFinished'), status: 'finished' };
     }
 
     // If we have dates and we're within the range, or if we only have start date and it's passed
     if ((start && now >= start && (!end || now <= end)) || (start && now >= start && !end)) {
-      return { text: 'Active', status: 'active' };
+      return { text: t('profile.programStatusActive'), status: 'active' };
     }
 
     // If we only have end date and it hasn't passed
     if (end && now <= end && !start) {
-      return { text: 'Active', status: 'active' };
+      return { text: t('profile.programStatusActive'), status: 'active' };
     }
 
     return null;
@@ -178,9 +180,9 @@ const Profile = () => {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <User className="w-8 h-8 text-primary" />
-            <h1 className="text-4xl font-bold text-foreground">My Profile</h1>
+            <h1 className="text-4xl font-bold text-foreground">{t('profile.title')}</h1>
           </div>
-          <p className="text-muted-foreground">Manage your account and view your purchased programs</p>
+          <p className="text-muted-foreground">{t('profile.subtitle')}</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -188,7 +190,7 @@ const Profile = () => {
           <div className="md:col-span-1">
             <Card className="p-6 space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-foreground">Profile Information</h2>
+                <h2 className="text-2xl font-bold text-foreground">{t('profile.information')}</h2>
                 {!isEditing && (
                   <Button
                     variant="ghost"
@@ -204,7 +206,7 @@ const Profile = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">
-                      Name
+                      {t('profile.name')}
                     </label>
                     <input
                       type="text"
@@ -215,7 +217,7 @@ const Profile = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">
-                      Phone
+                      {t('profile.phone')}
                     </label>
                     <input
                       type="tel"
@@ -229,7 +231,7 @@ const Profile = () => {
                       onClick={handleUpdateProfile}
                       className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
                     >
-                      Save
+                      {t('profile.save')}
                     </Button>
                     <Button
                       variant="outline"
@@ -239,7 +241,7 @@ const Profile = () => {
                         setEditPhone(profile?.phone || "");
                       }}
                     >
-                      Cancel
+                      {t('profile.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -248,14 +250,14 @@ const Profile = () => {
                   <div className="flex items-center gap-3">
                     <User className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Name</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.name')}</p>
                       <p className="text-foreground font-semibold">{profile?.name}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Mail className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.email')}</p>
                       <p className="text-foreground font-semibold">{profile?.email}</p>
                     </div>
                   </div>
@@ -263,7 +265,7 @@ const Profile = () => {
                     <div className="flex items-center gap-3">
                       <Phone className="w-5 h-5 text-muted-foreground" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Phone</p>
+                        <p className="text-sm text-muted-foreground">{t('profile.phone')}</p>
                         <p className="text-foreground font-semibold">{profile.phone}</p>
                       </div>
                     </div>
@@ -271,9 +273,9 @@ const Profile = () => {
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Member Since</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.memberSince')}</p>
                       <p className="text-foreground font-semibold">
-                        {profile?.createdAt ? formatDate(profile.createdAt) : "N/A"}
+                        {profile?.createdAt ? formatDate(profile.createdAt) : t('admin.na')}
                       </p>
                     </div>
                   </div>
@@ -289,7 +291,7 @@ const Profile = () => {
                 }}
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Logout
+                {t('header.logout')}
               </Button>
             </Card>
           </div>
@@ -297,14 +299,14 @@ const Profile = () => {
           {/* Purchased Programs */}
           <div className="md:col-span-2">
             <Card className="p-6">
-              <h2 className="text-2xl font-bold text-foreground mb-6">My Programs</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-6">{t('profile.myPrograms')}</h2>
               
               {programs.length === 0 ? (
                 <div className="text-center py-12">
                   <Dumbbell className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground text-lg mb-2">No programs purchased yet</p>
+                  <p className="text-muted-foreground text-lg mb-2">{t('profile.noPrograms')}</p>
                   <p className="text-muted-foreground text-sm mb-4">
-                    Browse our plans and training programs to get started!
+                    {t('section.programs.subtitle')}
                   </p>
                   <Button
                     onClick={() => {
@@ -312,7 +314,7 @@ const Profile = () => {
                     }}
                     className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
                   >
-                    Browse Programs
+                    {t('button.browsePrograms')}
                   </Button>
                 </div>
               ) : (
@@ -372,7 +374,7 @@ const Profile = () => {
                           
                           {userProgram.plan && (
                             <p className="text-muted-foreground mb-2">
-                              {userProgram.plan.description || "No description available"}
+                              {userProgram.plan.description || t('profile.programNoDescription')}
                             </p>
                           )}
                           
@@ -462,7 +464,7 @@ const Profile = () => {
                                   setFullscreenProgramId(userProgram.program?.id);
                                   setFullscreenVideoInitialProgress(prog);
                                 }}
-                              >Start Program</Button>
+                              >{t('profile.startProgram')}</Button>
 
                               <div className="space-y-2">
                                 {(programVideos[userProgram.program?.id || 0] || []).map((v, index) => {
@@ -512,7 +514,7 @@ const Profile = () => {
                                           ></div>
                                         </div>
                                         <div className="text-[10px] mt-1 text-muted-foreground">
-                                          {!isUnlocked ? 'Locked - Complete previous video' : isCompleted ? 'Completed' : isStarted ? 'In Progress' : 'Not Started'}
+                                          {!isUnlocked ? t('profile.videoLocked') : isCompleted ? t('profile.videoCompleted') : isStarted ? t('profile.videoInProgress') : t('profile.videoNotStarted')}
                                         </div>
                                       </div>
                                       <div className="ml-3" onClick={(e) => e.stopPropagation()}>

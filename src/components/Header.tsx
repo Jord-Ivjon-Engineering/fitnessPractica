@@ -32,7 +32,7 @@ const Header = () => {
             variant="ghost"
             size="lg"
             onClick={() => setLanguage(language === 'en' ? 'al' : 'en')}
-            title={language === 'en' ? 'Switch to Albanian' : 'Kalo në Anglisht'}
+            title={language === 'en' ? t('admin.switchLanguage') : t('admin.switchToEnglish')}
           >
             <Languages className="w-5 h-5 mr-2" />
             <span className="hidden md:inline">{language === 'en' ? 'EN' : 'AL'}</span>
@@ -51,17 +51,17 @@ const Header = () => {
                     {cartCount}
                   </span>
                 )}
-                <span className="hidden md:inline">Cart</span>
+                <span className="hidden md:inline">{t('admin.cart')}</span>
               </Button>
               {user?.role === 'admin' && (
                 <Button 
                   variant="ghost" 
                   size="lg"
                   onClick={() => navigate('/admin/dashboard')}
-                  title="Admin Dashboard"
+                  title={t('admin.dashboard')}
                 >
                   <LayoutDashboard className="w-5 h-5 mr-2" />
-                  <span className="hidden md:inline">Dashboard</span>
+                  <span className="hidden md:inline">{t('admin.dashboard')}</span>
                 </Button>
               )}
               <Button 

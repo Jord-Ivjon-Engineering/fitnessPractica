@@ -320,7 +320,7 @@ const Index = () => {
                               </div>
                             )}
                             <p className="text-2xl font-semibold mb-4">
-                              {programPrice > 0 ? `$${programPrice.toFixed(2)}` : 'Free'}
+                              {programPrice > 0 ? `${programPrice.toFixed(2)} ALL` : 'Free'}
                             </p>
                             <Button 
                               size="lg"

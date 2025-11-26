@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dumbbell, Mail, Lock, User, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Signup = () => {
   const [name, setName] = useState("");
@@ -13,6 +14,7 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signup } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,12 +22,12 @@ const Signup = () => {
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t('signup.passwordsNotMatch'));
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t('signup.passwordTooShort'));
       return;
     }
 
@@ -35,7 +37,7 @@ const Signup = () => {
       await signup(email, password, name);
       navigate("/");
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.message || "Signup failed. Please try again.");
+      setError(err.response?.data?.error?.message || err.message || t('signup.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -49,8 +51,8 @@ const Signup = () => {
             <Dumbbell className="w-8 h-8 text-primary" />
             <span className="text-2xl font-bold text-foreground">Fitness Practica</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Create Account</h1>
-          <p className="text-muted-foreground">Join us and start your fitness journey</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('signup.title')}</h1>
+          <p className="text-muted-foreground">{t('signup.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -62,7 +64,7 @@ const Signup = () => {
 
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium text-foreground">
-              Full Name
+              {t('signup.name')}
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -72,7 +74,7 @@ const Signup = () => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter your full name"
+                placeholder={t('signup.namePlaceholder')}
                 required
               />
             </div>
@@ -80,7 +82,7 @@ const Signup = () => {
 
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-foreground">
-              Email
+              {t('signup.email')}
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -90,7 +92,7 @@ const Signup = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter your email"
+                placeholder={t('signup.emailPlaceholder')}
                 required
               />
             </div>
@@ -98,7 +100,7 @@ const Signup = () => {
 
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
+              {t('signup.password')}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -108,7 +110,7 @@ const Signup = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Create a password"
+                placeholder={t('signup.passwordPlaceholder')}
                 required
               />
             </div>
@@ -116,7 +118,7 @@ const Signup = () => {
 
           <div className="space-y-2">
             <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-              Confirm Password
+              {t('signup.confirmPassword')}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -126,7 +128,7 @@ const Signup = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Confirm your password"
+                placeholder={t('signup.confirmPasswordPlaceholder')}
                 required
               />
             </div>
@@ -140,18 +142,18 @@ const Signup = () => {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating account...
+                {t('signup.creating')}
               </>
             ) : (
-              "Sign Up"
+              t('signup.createAccount')
             )}
           </Button>
         </form>
 
         <div className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t('signup.hasAccount')}{" "}
           <Link to="/login" className="text-primary hover:underline font-medium">
-            Sign in
+            {t('signup.signIn')}
           </Link>
         </div>
       </Card>
