@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Type, Clock, Image as ImageIcon, Film } from 'lucide-react';
+import { Plus, Clock } from 'lucide-react';
 import { Exercise, Overlay } from '../AdvancedVideoEditor';
 import '../../styles/MediaLibrary.css';
 
@@ -30,21 +30,6 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
     }
   };
 
-  const handleAddTextOverlay = () => {
-    const overlay: Overlay = {
-      id: `text-${Date.now()}`,
-      type: 'text',
-      startTime: currentTime,
-      endTime: currentTime + 5,
-      x: 50,
-      y: 50,
-      text: 'Enter text',
-      fontSize: 48,
-      fontColor: '#FFFFFF',
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    };
-    onAddOverlay(overlay);
-  };
 
   const handleAddTimerOverlay = () => {
     const overlay: Overlay = {
@@ -63,23 +48,6 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
     onAddOverlay(overlay);
   };
 
-  const handleAddImageOverlay = () => {
-    const imageUrl = prompt('Enter image URL:');
-    if (imageUrl) {
-      const overlay: Overlay = {
-        id: `image-${Date.now()}`,
-        type: 'image',
-        startTime: currentTime,
-        endTime: currentTime + 5,
-        x: 50,
-        y: 50,
-        imageUrl,
-        width: 200,
-        height: 200,
-      };
-      onAddOverlay(overlay);
-    }
-  };
 
   return (
     <div className="media-library">
@@ -138,27 +106,10 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
       <div className="media-section">
         <h3>Overlays</h3>
         <div className="overlay-buttons">
-          <button onClick={handleAddTextOverlay} className="overlay-btn">
-            <Type size={20} />
-            <span>Text</span>
-          </button>
           <button onClick={handleAddTimerOverlay} className="overlay-btn">
             <Clock size={20} />
             <span>Timer</span>
           </button>
-          <button onClick={handleAddImageOverlay} className="overlay-btn">
-            <ImageIcon size={20} />
-            <span>Image</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="media-section">
-        <h3>Media</h3>
-        <div className="media-placeholder">
-          <Film size={48} />
-          <p>Upload media files</p>
-          <button className="btn-secondary">Browse</button>
         </div>
       </div>
     </div>

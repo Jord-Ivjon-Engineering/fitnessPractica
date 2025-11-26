@@ -10,6 +10,7 @@ import Signup from './pages/Signup'
 import Profile from './pages/Profile'
 import Checkout from './pages/Checkout'
 import VideoEditor from './pages/VideoEditor'
+import ProgramVideoEditor from './pages/ProgramVideoEditor'
 import AdminDashboard from './pages/AdminDashboard'
 import './App.css'
 
@@ -27,6 +28,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/video-editor" element={<VideoEditor />} />
+              <Route path="/admin/program-video-editor" element={<ProgramVideoEditor />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
             </Routes>
             <Footer />

@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 20px;
+  padding: 8px 16px; /* Reduced from 12px 20px */
   background: #252525;
   border-bottom: 1px solid #333;
 }
@@ -10,20 +10,20 @@
 .toolbar-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px; /* Reduced from 8px */
 }
 
 .toolbar-btn {
   background: #333;
   border: 1px solid #444;
   color: #ccc;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 6px 10px; /* Reduced from 8px 12px */
+  border-radius: 4px; /* Reduced from 6px */
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: 4px; /* Reduced from 6px */
+  font-size: 12px; /* Reduced from 14px */
   transition: all 0.2s;
 }
 
@@ -42,41 +42,51 @@
   background: #667eea;
   border-color: #667eea;
   color: white;
-  padding: 10px 16px;
+  padding: 6px 12px; /* Reduced from 10px 16px */
 }
 
 .toolbar-btn.play-btn:hover {
   background: #5568d3;
 }
 
-.zoom-indicator {
-  font-size: 13px;
-  color: #999;
-  min-width: 50px;
-  text-align: center;
+.toolbar-title-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
 }
 
-.toolbar-actions {
-  margin-left: auto;
+.video-title {
+  margin: 0;
+  font-size: 16px; /* Reduced from default h2 size */
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  user-select: none;
 }
 
-.toolbar-btn.save-btn {
-  background: #10b981;
-  border-color: #10b981;
-  color: white;
+.video-title:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
-.toolbar-btn.save-btn:hover {
-  background: #059669;
+.video-title-input {
+  flex: 1;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-.toolbar-btn.export-btn {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: white;
-}
-
-.toolbar-btn.export-btn:hover {
-  background: #d97706;
+.video-title-input:focus {
+  border-color: #667eea;
 }
 

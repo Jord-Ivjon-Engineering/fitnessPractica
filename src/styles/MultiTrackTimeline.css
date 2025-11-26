@@ -6,23 +6,23 @@
   flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
-  min-height: 250px;
+  min-height: 200px; /* Reduced from 250px */
 }
 
 .timeline-header {
   display: flex;
   background: #252525;
   border-bottom: 1px solid #333;
-  height: 60px;
+  height: 48px; /* Reduced from 60px */
 }
 
 .track-label-header {
-  width: 200px;
-  padding: 12px;
+  width: 160px; /* Reduced from 200px */
+  padding: 8px; /* Reduced from 12px */
   border-right: 1px solid #333;
   font-weight: 600;
   color: #999;
-  font-size: 12px;
+  font-size: 11px; /* Reduced from 12px */
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -31,7 +31,7 @@
 .timeline-ruler {
   flex: 1;
   position: relative;
-  height: 60px;
+  height: 48px; /* Reduced from 60px */
   cursor: pointer;
   background: #1f1f1f;
 }
@@ -88,17 +88,17 @@
 
 .timeline-track {
   display: flex;
-  min-height: 80px;
+  min-height: 64px; /* Reduced from 80px */
   border-bottom: 1px solid #2a2a2a;
 }
 
 .track-controls {
-  width: 200px;
-  padding: 12px;
+  width: 160px; /* Reduced from 200px */
+  padding: 8px; /* Reduced from 12px */
   border-right: 1px solid #333;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px; /* Reduced from 8px */
   background: #252525;
 }
 
@@ -119,7 +119,7 @@
 }
 
 .track-name {
-  font-size: 13px;
+  font-size: 11px; /* Reduced from 13px */
   color: #ccc;
   font-weight: 500;
 }
@@ -127,7 +127,7 @@
 .track-clips-container {
   flex: 1;
   position: relative;
-  min-height: 80px;
+  min-height: 64px; /* Reduced from 80px */
   background: #1f1f1f;
   cursor: pointer;
 }

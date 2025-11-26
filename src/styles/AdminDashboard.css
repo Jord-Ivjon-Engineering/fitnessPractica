@@ -9,12 +9,28 @@
 .admin-dashboard-container:has(.video-editor-container) {
   max-width: 100%;
   width: 100%; /* Full width of parent */
-  padding: 0 1rem; /* Horizontal padding on sides */
+  padding: 0 1rem; /* Horizontal padding on sides for upload screen */
   padding-top: calc(0.5rem + 80px); /* Space for fixed header */
   padding-bottom: 0.5rem; /* Small bottom padding */
   /* Remove fixed height - let parent grow naturally */
   min-height: calc(100vh - 80px - 100px); /* Minimum height to fill viewport */
   overflow: visible; /* Allow content to extend */
+}
+
+/* When video editor is in full-page mode (has editor wrapper), remove ALL padding */
+.admin-dashboard-container:has(.video-editor-container:has(.video-editor-wrapper)) {
+  padding: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* When video editor is active (header/footer hidden), use full viewport */
+body.video-editor-active .admin-dashboard-container:has(.video-editor-container:has(.video-editor-wrapper)) {
+  padding: 0 !important;
+  min-height: 100vh;
+  height: 100vh;
 }
 
 .admin-dashboard-content {
@@ -25,15 +41,38 @@
   width: 100%;
 }
 
+/* Base styles for video editor container (applies to both upload and editor) */
 .admin-dashboard-content:has(.video-editor-container) {
-  padding: 0; /* No padding for maximum width */
   background: transparent;
   box-shadow: none;
-  /* Remove height: 100% - let it grow with content */
-  min-height: 100%; /* Minimum height */
+  min-height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: visible; /* Change from hidden to visible */
+  overflow: visible;
+}
+
+/* Upload step: Keep some padding for better appearance */
+.admin-dashboard-content:has(.video-editor-container:not(:has(.video-editor-wrapper))) {
+  padding: 1rem;
+}
+
+/* Editor step: Remove all padding */
+.admin-dashboard-content:has(.video-editor-container:has(.video-editor-wrapper)) {
+  padding: 0 !important;
+}
+
+/* When video editor is in full-page mode, ensure content takes full height and remove padding */
+.admin-dashboard-content:has(.video-editor-container:has(.video-editor-wrapper)) {
+  height: calc(100vh - 80px);
+  min-height: calc(100vh - 80px);
+  padding: 0 !important;
+}
+
+/* When video editor is active (header/footer hidden), use full viewport */
+body.video-editor-active .admin-dashboard-content:has(.video-editor-container:has(.video-editor-wrapper)) {
+  height: 100vh;
+  min-height: 100vh;
+  padding: 0 !important;
 }
 
 /* Hide h1 when video editor is active */

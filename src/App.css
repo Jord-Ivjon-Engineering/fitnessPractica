@@ -38,3 +38,12 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Hide header and footer when video editor is active */
+body.video-editor-active header {
+  display: none !important;
+}
+
+body.video-editor-active footer {
+  display: none !important;
+}

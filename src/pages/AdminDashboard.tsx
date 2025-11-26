@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import VideoUploader from '../components/VideoUploader';
 import AdvancedVideoEditor from '../components/AdvancedVideoEditor';
@@ -12,6 +12,7 @@ import '../styles/VideoEditorContainer.css';
 const AdminDashboard = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
@@ -50,7 +51,7 @@ const AdminDashboard = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   
   // Video editor state for program creation
-  const [programStep, setProgramStep] = useState<'details' | 'video'>('details');
+  const [programStep, setProgramStep] = useState<'details' | 'upload'>('details');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoData, setVideoData] = useState<{ file: File; url: string; name: string; size: number } | null>(null);
   const [exercises, setExercises] = useState<Array<{ id: number; name: string; start: number; end: number }>>([]);
@@ -84,6 +85,32 @@ const AdminDashboard = () => {
 
     loadDashboardData();
   }, [user, isAuthenticated, isLoading, navigate]);
+
+  // Handle return from video editor - go to upload step
+  useEffect(() => {
+    if (location.state?.returnToUpload && location.state?.programId) {
+      const programId = location.state.programId;
+      setEditingProgramId(programId);
+      setActiveTab('edit-program');
+      setProgramStep('upload');
+      
+      // Fetch existing videos for this program
+      const fetchVideos = async () => {
+        try {
+          const videosResponse = await trainingProgramApi.getVideos(programId);
+          if (videosResponse.data.success) {
+            setExistingVideos(videosResponse.data.data || []);
+          }
+        } catch (err) {
+          console.error('Error fetching videos:', err);
+        }
+      };
+      fetchVideos();
+      
+      // Clear location state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const loadDashboardData = async () => {
     try {
@@ -172,6 +199,7 @@ const AdminDashboard = () => {
 
   // Video editor functions
   const handleVideoLoad = (videoData: { file: File; url: string; name: string; size: number }) => {
+    // Store video data locally first
     setVideoData(videoData);
     setVideoFile(videoData.file);
     setExercises([]);
@@ -179,6 +207,18 @@ const AdminDashboard = () => {
     setShowPreview(false);
     setVideoError('');
     setSelectedExistingVideo(null);
+    
+    // Navigate to editor page with blob URL (blob URLs work fine for video display)
+    navigate('/admin/program-video-editor', {
+      state: {
+        url: videoData.url, // Blob URL from URL.createObjectURL
+        name: videoData.name,
+        isExisting: false,
+        programId: editingProgramId,
+        fileSize: videoData.size,
+        fileName: videoData.name
+      }
+    });
   };
 
   const handleExercisesUpdate = (updatedExercises: Array<{ id: number; name: string; start: number; end: number }>) => {
@@ -354,7 +394,7 @@ const AdminDashboard = () => {
       setError('Name and category are required');
       return;
     }
-    setProgramStep('video');
+    setProgramStep('upload');
     setError('');
   };
 
@@ -685,7 +725,7 @@ const AdminDashboard = () => {
         
         {error && <div className="error-message">{error}</div>}
 
-        {programStep !== 'video' && (
+        {programStep !== 'upload' && (
           <>
             <div className="dashboard-tabs">
           <button
@@ -973,14 +1013,14 @@ const AdminDashboard = () => {
               
               {/* Step indicator */}
               <div className="step-indicator">
-                <div className={`step ${programStep === 'details' ? 'active' : programStep === 'video' ? 'completed' : ''}`}>
+                <div className={`step ${programStep === 'details' ? 'active' : programStep === 'upload' ? 'completed' : ''}`}>
                   <span className="step-number">1</span>
                   <span className="step-label">Program Details</span>
                 </div>
                 <div className="step-connector"></div>
-                <div className={`step ${programStep === 'video' ? 'active' : ''}`}>
+                <div className={`step ${programStep === 'upload' ? 'active' : ''}`}>
                   <span className="step-number">2</span>
-                  <span className="step-label">Video Editor</span>
+                  <span className="step-label">Upload Video</span>
                 </div>
               </div>
 
@@ -1104,7 +1144,7 @@ const AdminDashboard = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setProgramStep('video');
+                        setProgramStep('upload');
                         setError('');
                       }}
                       disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
@@ -1160,52 +1200,47 @@ const AdminDashboard = () => {
         </>
         )}
 
-        {programStep === 'video' && (
+        {/* Upload Screen - Separate from editor */}
+        {programStep === 'upload' && (
           <div className="video-editor-container">
             {editingProgramId && existingVideos.length > 0 && (
               <div className="existing-videos-section">
-                      <h3>Existing Videos</h3>
-                      <div className="videos-list">
-                        {existingVideos.map((video) => (
-                          <div key={video.id} className={`video-item ${selectedExistingVideo?.id === video.id ? 'selected' : ''}`}>
-                            <video 
-                              controls 
-                              src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`}
-                              className="existing-video"
-                            />
-                            <div className="video-info">
-                              <p><strong>Title:</strong> {video.title || 'Untitled'}</p>
-                              <p><strong>Added:</strong> {formatDate(video.createdAt)}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const videoUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`;
-                                setSelectedExistingVideo({ id: video.id, url: video.url, title: video.title });
-                                // Create a video data object for the timeline (using a dummy file for compatibility)
-                                const dummyFile = new File([], video.title || 'existing-video.mp4', { type: 'video/mp4' });
-                                setVideoData({
-                                  file: dummyFile,
-                                  url: videoUrl,
-                                  name: video.title || 'Existing Video',
-                                  size: 0
-                                });
-                                setVideoFile(null);
-                                setExercises([]);
-                                setPreviews([]);
-                                setShowPreview(false);
-                                setProcessedVideoUrl('');
-                                setVideoError('');
-                              }}
-                              className="btn-select-video"
-                              disabled={isProcessingVideo}
-                            >
-                              {selectedExistingVideo?.id === video.id ? 'Selected' : 'Edit This Video'}
-                            </button>
-                          </div>
-                        ))}
+                <h3>Existing Videos</h3>
+                <div className="videos-list">
+                  {existingVideos.map((video) => (
+                    <div key={video.id} className={`video-item ${selectedExistingVideo?.id === video.id ? 'selected' : ''}`}>
+                      <video 
+                        controls 
+                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`}
+                        className="existing-video"
+                      />
+                      <div className="video-info">
+                        <p><strong>Title:</strong> {video.title || 'Untitled'}</p>
+                        <p><strong>Added:</strong> {formatDate(video.createdAt)}</p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Navigate to editor page
+                          navigate('/admin/program-video-editor', {
+                            state: {
+                              url: video.url,
+                              name: video.title || 'Existing Video',
+                              isExisting: true,
+                              existingVideoId: video.id,
+                              programId: editingProgramId
+                            }
+                          });
+                        }}
+                        className="btn-select-video"
+                        disabled={isProcessingVideo}
+                      >
+                        Edit This Video
+                      </button>
                     </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {!videoData && !selectedExistingVideo && (
@@ -1214,158 +1249,18 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {(videoData || selectedExistingVideo) && (
-              <div className="video-editor-wrapper">
-                {selectedExistingVideo && (
-                  <div className="selected-video-notice">
-                    <p>You are editing an existing video. Mark exercises to add them to this video.</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedExistingVideo(null);
-                        setVideoData(null);
-                        setVideoFile(null);
-                        setExercises([]);
-                        setPreviews([]);
-                        setShowPreview(false);
-                      }}
-                      className="btn-secondary"
-                    >
-                      Cancel - Upload New Video Instead
-                    </button>
-                  </div>
-                )}
-
-                {/* Advanced Video Editor */}
-                <AdvancedVideoEditor
-                  videoUrl={videoData?.url || `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${selectedExistingVideo?.url}`}
-                  onExercisesChange={(exs) => {
-                    setExercises(exs);
-                    handleExercisesUpdate(exs);
-                  }}
-                  onOverlaysChange={setOverlays}
-                  onDurationChange={setVideoDuration}
-                  onExport={({ exercises, overlays }) => {
-                    // Trigger video processing
-                    processVideo();
-                  }}
-                />
-
-                {videoError && (
-                  <div className="error-message">{videoError}</div>
-                )}
-
-                <div className="action-buttons">
-                  <button
-                    type="button"
-                    onClick={processVideo}
-                    disabled={(!videoFile && !selectedExistingVideo) || (exercises.length === 0 && overlays.length === 0) || isProcessingVideo}
-                    className="btn-process"
-                  >
-                    {isProcessingVideo ? 'Processing...' : 'Process & Export Video'}
-                  </button>
-                </div>
-
-                {processedVideoUrl && (
-                  <div className="video-result">
-                    <h4>Video Processed Successfully!</h4>
-                    {processedVideoUrl.startsWith('/') ? (
-                      <>
-                        <video 
-                          controls 
-                          src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
-                          className="processed-video" 
-                        />
-                        <a 
-                          href={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
-                          download 
-                          className="btn-download"
-                        >
-                          Download Processed Video
-                        </a>
-                      </>
-                    ) : (
-                      <>
-                        <video controls src={processedVideoUrl} className="processed-video" />
-                        <a href={processedVideoUrl} download className="btn-download">
-                          Download Processed Video
-                        </a>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
             <div className="form-actions">
               <button
                 type="button"
-                onClick={handleBackToDetails}
-                disabled={isProcessingVideo || creatingProgram}
+                onClick={() => setProgramStep('details')}
                 className="btn-secondary"
               >
                 Back to Details
               </button>
-              {editingProgramId ? (
-                <>
-                  {processedVideoUrl && selectedExistingVideo && (
-                    <div className="video-replace-notice">
-                      <p><strong>Note:</strong> This will create a new version of the video with the added exercises. The original video will remain in the database.</p>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleUpdateProgram}
-                    disabled={isProcessingVideo || creatingProgram}
-                    className="btn-submit"
-                  >
-                    {creatingProgram ? 'Updating...' : 'Update Program'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingProgramId(null);
-                      setExistingVideos([]);
-                      setSelectedExistingVideo(null);
-                      setActiveTab('programs');
-                      setNewProgram({
-                        name: '',
-                        category: '',
-                        description: '',
-                        imageUrl: '',
-                        videoUrl: '',
-                        price: undefined,
-                        startDate: '',
-                        endDate: '',
-                      });
-                      setSelectedImage(null);
-                      setImagePreview(null);
-                      setVideoFile(null);
-                      setVideoData(null);
-                      setExercises([]);
-                      setPreviews([]);
-                      setShowPreview(false);
-                      setProcessedVideoUrl('');
-                      setProgramStep('details');
-                    }}
-                    className="btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCreateProgram}
-                  disabled={isProcessingVideo || creatingProgram}
-                  className="btn-submit"
-                >
-                  {creatingProgram ? 'Creating...' : processedVideoUrl ? 'Create Program with Video' : 'Create Program (Skip Video)'}
-                </button>
-              )}
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

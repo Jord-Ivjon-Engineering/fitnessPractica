@@ -3,12 +3,11 @@ import { Player } from '@remotion/player';
 import { OverlayVideoComposition } from '../remotion/OverlayVideo';
 import { WorkoutVideoComposition } from '../remotion/WorkoutVideo';
 import { 
-  Play, Pause, ZoomIn, ZoomOut, Scissors, Layers, 
-  Film, Image as ImageIcon, Type, Clock, Settings,
+  Play, Pause, ZoomIn, ZoomOut, Scissors, 
+  Film, Image as ImageIcon, Type, Clock,
   Download, Save, Undo, Redo, Maximize2, X
 } from 'lucide-react';
 import MultiTrackTimeline from './timeline/MultiTrackTimeline';
-import EffectsPanel from './editor/EffectsPanel';
 import MediaLibrary from './editor/MediaLibrary';
 import Toolbar from './editor/Toolbar';
 import '../styles/AdvancedVideoEditor.css';
@@ -67,6 +66,8 @@ export interface Overlay {
 
 interface AdvancedVideoEditorProps {
   videoUrl: string;
+  videoTitle?: string;
+  onTitleChange?: (title: string) => void;
   onExercisesChange?: (exercises: Exercise[]) => void;
   onOverlaysChange?: (overlays: Overlay[]) => void;
   onDurationChange?: (duration: number) => void;
@@ -75,6 +76,8 @@ interface AdvancedVideoEditorProps {
 
 const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   videoUrl,
+  videoTitle = 'Untitled Video',
+  onTitleChange,
   onExercisesChange,
   onOverlaysChange,
   onDurationChange,
@@ -102,7 +105,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   const [playing, setPlaying] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [selectedClip, setSelectedClip] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<'media' | 'effects' | 'properties'>('media');
+  const [activePanel, setActivePanel] = useState<'media'>('media');
   const [history, setHistory] = useState<any[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showRemotionPreview, setShowRemotionPreview] = useState(true);
@@ -332,15 +335,8 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
       <Toolbar
         onPlayPause={handlePlayPause}
         playing={playing}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        canUndo={historyIndex > 0}
-        canRedo={historyIndex < history.length - 1}
-        onZoomIn={() => setZoom(prev => Math.min(prev + 0.1, 3))}
-        onZoomOut={() => setZoom(prev => Math.max(prev - 0.1, 0.5))}
-        zoom={zoom}
-        onExport={handleExportClick}
-        onSave={() => saveHistory()}
+        videoTitle={videoTitle}
+        onTitleChange={onTitleChange || (() => {})}
       />
 
       <div className="editor-layout">
@@ -351,19 +347,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
               className={activePanel === 'media' ? 'active' : ''}
               onClick={() => setActivePanel('media')}
             >
-              <Film size={20} /> Media
-            </button>
-            <button
-              className={activePanel === 'effects' ? 'active' : ''}
-              onClick={() => setActivePanel('effects')}
-            >
-              <Layers size={20} /> Effects
-            </button>
-            <button
-              className={activePanel === 'properties' ? 'active' : ''}
-              onClick={() => setActivePanel('properties')}
-            >
-              <Settings size={20} /> Properties
+              <Film size={16} /> Media
             </button>
           </div>
 
@@ -375,29 +359,6 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                 onAddOverlay={handleAddOverlay}
                 currentTime={currentTime}
               />
-            )}
-            {activePanel === 'effects' && (
-              <EffectsPanel
-                selectedClip={selectedClip}
-                clips={tracks.flatMap(t => t.clips)}
-                onEffectAdd={(clipId, effect) => {
-                  setTracks(prev => prev.map(track => ({
-                    ...track,
-                    clips: track.clips.map(clip =>
-                      clip.id === clipId
-                        ? { ...clip, effects: [...(clip.effects || []), effect] }
-                        : clip
-                    ),
-                  })));
-                  saveHistory();
-                }}
-              />
-            )}
-            {activePanel === 'properties' && selectedClip && (
-              <div className="properties-panel">
-                <h3>Clip Properties</h3>
-                {/* Properties editing UI */}
-              </div>
             )}
           </div>
         </div>

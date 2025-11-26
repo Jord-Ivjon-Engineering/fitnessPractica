@@ -1,18 +1,18 @@
 .media-library {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px; /* Reduced from 24px */
 }
 
 .media-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px; /* Reduced from 12px */
 }
 
 .media-section h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 12px; /* Reduced from 14px */
   font-weight: 600;
   color: #ccc;
   text-transform: uppercase;
@@ -23,14 +23,14 @@
   background: #333;
   border: 1px dashed #555;
   color: #ccc;
-  padding: 12px;
-  border-radius: 6px;
+  padding: 8px; /* Reduced from 12px */
+  border-radius: 4px; /* Reduced from 6px */
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px; /* Reduced from 8px */
+  font-size: 12px; /* Reduced from 14px */
   transition: all 0.2s;
 }
 
@@ -43,19 +43,19 @@
 .add-exercise-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px; /* Reduced from 12px */
+  padding: 8px; /* Reduced from 12px */
   background: #2a2a2a;
-  border-radius: 6px;
+  border-radius: 4px; /* Reduced from 6px */
 }
 
 .form-input {
   background: #333;
   border: 1px solid #444;
   color: #fff;
-  padding: 8px 12px;
+  padding: 6px 10px; /* Reduced from 8px 12px */
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 12px; /* Reduced from 14px */
   width: 100%;
 }
 
@@ -90,10 +90,10 @@
   background: #667eea;
   border: none;
   color: white;
-  padding: 8px 16px;
+  padding: 6px 12px; /* Reduced from 8px 16px */
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px; /* Reduced from 14px */
   font-weight: 500;
   transition: background 0.2s;
 }
@@ -106,10 +106,10 @@
   background: #333;
   border: 1px solid #444;
   color: #ccc;
-  padding: 8px 16px;
+  padding: 6px 12px; /* Reduced from 8px 16px */
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px; /* Reduced from 14px */
   transition: all 0.2s;
 }
 
@@ -129,13 +129,13 @@
   background: #333;
   border: 1px solid #444;
   color: #ccc;
-  padding: 16px 8px;
-  border-radius: 6px;
+  padding: 10px 6px; /* Reduced from 16px 8px */
+  border-radius: 4px; /* Reduced from 6px */
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px; /* Reduced from 8px */
   transition: all 0.2s;
 }
 

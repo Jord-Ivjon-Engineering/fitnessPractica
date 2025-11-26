@@ -1,7 +1,7 @@
 .effects-panel {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px; /* Reduced from 24px */
 }
 
 .effects-panel-empty {
@@ -9,7 +9,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
+  padding: 32px 16px; /* Reduced from 48px 24px */
   color: #666;
   text-align: center;
 }
@@ -52,10 +52,10 @@
   background: #333;
   border: 1px solid #444;
   color: #ccc;
-  padding: 12px;
-  border-radius: 6px;
+  padding: 8px; /* Reduced from 12px */
+  border-radius: 4px; /* Reduced from 6px */
   cursor: pointer;
-  font-size: 13px;
+  font-size: 11px; /* Reduced from 13px */
   text-align: center;
   transition: all 0.2s;
 }
@@ -76,9 +76,9 @@
 .applied-effect {
   background: #2a2a2a;
   border: 1px solid #444;
-  padding: 10px 12px;
+  padding: 6px 8px; /* Reduced from 10px 12px */
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 11px; /* Reduced from 13px */
   color: #ccc;
   display: flex;
   align-items: center;
