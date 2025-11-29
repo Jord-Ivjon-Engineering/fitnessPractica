@@ -42,6 +42,7 @@ const AdminDashboard = () => {
     imageUrl: '',
     videoUrl: '',
     price: undefined,
+    currency: 'all',
     startDate: '',
     endDate: '',
   });
@@ -535,6 +536,7 @@ const AdminDashboard = () => {
           imageUrl: '',
           videoUrl: '',
           price: undefined,
+          currency: 'all',
           startDate: '',
           endDate: '',
         });
@@ -574,7 +576,7 @@ const AdminDashboard = () => {
     });
   };
 
-  const formatCurrency = (amount: number, currency: string = 'usd') => {
+  const formatCurrency = (amount: number, currency: string = 'all') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency.toUpperCase(),
@@ -609,6 +611,7 @@ const AdminDashboard = () => {
         imageUrl: program.imageUrl || '',
         videoUrl: '',
         price: program.price ? Number(program.price) : undefined,
+        currency: 'all',
         startDate: program.startDate ? new Date(program.startDate).toISOString().split('T')[0] : '',
         endDate: program.endDate ? new Date(program.endDate).toISOString().split('T')[0] : '',
       });
@@ -717,6 +720,7 @@ const AdminDashboard = () => {
           imageUrl: '',
           videoUrl: '',
           price: undefined,
+          currency: 'all',
           startDate: '',
           endDate: '',
         });
@@ -1162,16 +1166,35 @@ const AdminDashboard = () => {
                 </div>
                 <div className="form-group">
                   <label htmlFor="price">Price</label>
-                  <input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={newProgram.price || ''}
-                    onChange={(e) => setNewProgram({ ...newProgram, price: e.target.value ? parseFloat(e.target.value) : undefined })}
-                    disabled={creatingProgram || uploadingImage}
-                    placeholder="49.99"
-                  />
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newProgram.price || ''}
+                        onChange={(e) => setNewProgram({ ...newProgram, price: e.target.value ? parseFloat(e.target.value) : undefined })}
+                        disabled={creatingProgram || uploadingImage}
+                        placeholder="49.99"
+                      />
+                    </div>
+                    <div style={{ width: '120px' }}>
+                      <label htmlFor="currency" style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>Currency</label>
+                      <select
+                        id="currency"
+                        value={newProgram.currency || 'all'}
+                        onChange={(e) => setNewProgram({ ...newProgram, currency: e.target.value })}
+                        disabled={creatingProgram || uploadingImage}
+                        style={{ width: '100%', padding: '8px' }}
+                      >
+                        <option value="all">ALL</option>
+                        <option value="usd">USD</option>
+                        <option value="eur">EUR</option>
+                        <option value="gbp">GBP</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label htmlFor="startDate">Start Date</label>
@@ -1230,6 +1253,7 @@ const AdminDashboard = () => {
                           imageUrl: '',
                           videoUrl: '',
                           price: undefined,
+                          currency: 'all',
                           startDate: '',
                           endDate: '',
                         });

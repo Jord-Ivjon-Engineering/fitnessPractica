@@ -239,6 +239,7 @@ export interface CreateProgramData {
   imageUrl?: string;
   videoUrl?: string;
   price?: number;
+  currency?: string;
   startDate?: string;
   endDate?: string;
 }
