@@ -76,7 +76,8 @@ router.post(
     } else if (Array.isArray(rawExercises)) {
       exercises = rawExercises;
     } else {
-      return res.status(400).json({ error: 'No exercises provided' });
+      // If no exercises field at all, treat as empty list (allow overlay-only or plain processing)
+      exercises = [];
     }
 
     // Parse overlays if provided
@@ -111,9 +112,8 @@ router.post(
       }
     }
 
-    if (exercises.length === 0 && overlays.length === 0) {
-      return res.status(400).json({ error: 'No exercises or overlays provided' });
-    }
+    // Allow processing even if both empty (pass-through) so user can still re-encode for compatibility
+    const doPassThrough = exercises.length === 0 && overlays.length === 0;
 
     let inputPath: string;
     
@@ -172,7 +172,10 @@ router.post(
       const end = Number(overlay.endTime) ?? start + 5;
       const x = Number(overlay.x) ?? 50;
       const y = Number(overlay.y) ?? 50;
-      const fontSize = Number(overlay.fontSize) ?? 48;
+      let fontSize = Number(overlay.fontSize);
+      if (isNaN(fontSize) || fontSize <= 0) {
+        fontSize = 48;
+      }
       const fontColor = overlay.fontColor || '#FFFFFF';
       const bgColor = overlay.backgroundColor || 'black@0.6';
       
@@ -180,27 +183,62 @@ router.post(
         const text = String(overlay.text).replace(/'/g, "\\'").replace(/:/g, "\\:");
         filterParts.push(`drawtext=text='${text}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10`);
       } else if (overlay.type === 'timer') {
-        const timerType = overlay.timerType || 'countdown';
+        const timerType = overlay.timerType || 'elapsed';
         const format = overlay.timerFormat || 'MM:SS';
+        const label = (overlay as any).text || '';
+        // Compute base position from percentage
+        // Circular badge dimensions
+        const badgeSize = 120;
+        const radius = badgeSize / 2;
+        // Place circle so its right edge is near the (x,y) percentage point
+        const centerXExpr = `(w*${x}/100 - ${radius})`;
+        const centerYExpr = `(h*${y}/100 + 10 + ${radius})`;
+
+        // Draw green circle background using drawbox with rounded corners (simulate circle)
+        // ffmpeg doesn't have a native circle primitive, so we'll use an ellipse filter or overlay approach
+        // For simplicity, we'll draw a filled circle using the "drawbox" with a very high border radius approximation
+        // Actually, ffmpeg doesn't support border-radius on drawbox, so we'll draw it as an overlay using geq or use a PNG mask
+        // Simpler approach: draw a square box and rely on border-radius in client preview only; for backend, use a circular mask
+        // For now, we'll use drawbox with positioned text in a circular region (text will be centered)
         
+        // We'll use drawtext with circular background simulation (box=1 with circle=1 doesn't exist in drawtext)
+        // Alternative: Use multiple drawtext with box and position them to form a circle-like appearance
+        // Easiest: Use a filled circle via drawing primitives or accept a rounded square
+        
+        // Let's use a rounded square as close approximation (drawbox doesn't support border-radius)
+        // We'll center the text in a square region for now
+        const boxX = `(w*${x}/100 - ${badgeSize})`;
+        const boxY = `(h*${y}/100 + 10)`;
+        
+        // Draw rounded green square (ffmpeg limitation: no true circle, we approximate)
+        filterParts.push(`drawbox=x=${boxX}:y=${boxY}:w=${badgeSize}:h=${badgeSize}:color=#22c55e@0.9:t=fill:enable='between(t,${start},${end})'`);
+
+        // Draw exercise name (centered, top portion)
+        const safeLabel = String(label).replace(/'/g, "\\'").replace(/:/g, "\\:");
+        const nameSize = Math.max(12, Math.floor((fontSize || 18) * 0.7));
+        const nameCenterX = `${boxX}+${badgeSize/2}`;
+        const nameCenterY = `${boxY}+${badgeSize*0.35}`;
+        filterParts.push(`drawtext=text='${safeLabel}':fontcolor=white:fontsize=${nameSize}:x=${nameCenterX}-text_w/2:y=${nameCenterY}-text_h/2:enable='between(t,${start},${end})'`);
+
+        // Draw timer (centered, bottom portion)
+        let timerExpr = '';
         if (timerType === 'countdown') {
-          // Countdown timer - remaining time
           if (format === 'MM:SS') {
-            // Format: MM:SS
-            const totalSeconds = Math.floor(end - start);
-            filterParts.push(`drawtext=text='%{eif\\:floor((${end}-t)/60)\\:d\\:2}:%{eif\\:mod(floor(${end}-t)\\,60)\\:d\\:2}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10`);
+            timerExpr = `'%{eif\\:floor((${end}-t)/60)\\:d\\:2}:%{eif\\:mod(floor(${end}-t)\\,60)\\:d\\:2}'`;
           } else {
-            // Format: SS (seconds only)
-            filterParts.push(`drawtext=text='%{eif\\:floor(${end}-t)\\:d}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10`);
+            timerExpr = `'%{eif\\:floor(${end}-t)\\:d}'`;
           }
         } else {
-          // Elapsed timer
           if (format === 'MM:SS') {
-            filterParts.push(`drawtext=text='%{eif\\:floor((t-${start})/60)\\:d\\:2}:%{eif\\:mod(floor(t-${start})\\,60)\\:d\\:2}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10`);
+            timerExpr = `'%{eif\\:floor((t-${start})/60)\\:d\\:2}:%{eif\\:mod(floor(t-${start})\\,60)\\:d\\:2}'`;
           } else {
-            filterParts.push(`drawtext=text='%{eif\\:floor(t-${start})\\:d}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10`);
+            timerExpr = `'%{eif\\:floor(t-${start})\\:d}'`;
           }
         }
+        const timerSize = Math.max(14, Math.floor((fontSize || 18) * 0.85));
+        const timerCenterX = `${boxX}+${badgeSize/2}`;
+        const timerCenterY = `${boxY}+${badgeSize*0.65}`;
+        filterParts.push(`drawtext=text=${timerExpr}:fontcolor=white:fontsize=${timerSize}:x=${timerCenterX}-text_w/2:y=${timerCenterY}-text_h/2:enable='between(t,${start},${end})'`);
       } else if (overlay.type === 'image' && overlay.imageUrl) {
         // Note: Image overlays require the image to be downloaded first
         // For now, we'll skip image overlays in backend processing
@@ -211,9 +249,20 @@ router.post(
     
     const filterString = filterParts.join(',');
 
-    ffmpeg(inputPath)
-      .videoFilters(filterString)
-      .outputOptions(['-movflags +faststart', '-preset veryfast']) // speed up encoding
+    const command = ffmpeg(inputPath);
+    if (filterString.length > 0) {
+      command.videoFilters(filterString);
+    }
+    // Force widely compatible encoding (yuv420p + AAC audio)
+    command
+      .outputOptions([
+        '-c:v libx264',
+        '-preset veryfast',
+        '-pix_fmt yuv420p',
+        '-c:a aac',
+        '-b:a 128k',
+        '-movflags +faststart'
+      ])
       .output(outputPath)
       .on('end', () => {
         // Only delete uploaded files, not existing video files
@@ -221,7 +270,7 @@ router.post(
           try { fs.unlinkSync(inputPath); } catch {}
         }
         const fileUrl = `/uploads/edited/${outputName}`;
-        res.json({ message: 'Video edited successfully', fileUrl });
+        res.json({ success: true, message: doPassThrough ? 'Video re-encoded (pass-through)' : 'Video edited successfully', data: { url: fileUrl } });
       })
       .on('error', (err: Error) => {
         console.error('FFmpeg error:', err);
@@ -230,6 +279,12 @@ router.post(
           try { fs.unlinkSync(inputPath); } catch {}
         }
         next(err);
+      })
+      .on('progress', (p: { percent?: number }) => {
+        // Basic progress logging; can be upgraded to SSE/WebSocket later
+        if (p.percent) {
+          console.log(`FFmpeg processing: ${p.percent.toFixed(2)}%`);
+        }
       })
       .run();
   } catch (err) {

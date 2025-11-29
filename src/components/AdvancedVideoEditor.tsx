@@ -1,7 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Player } from '@remotion/player';
-import RemotionPreview from './RemotionPreview';
-import { Film, X } from 'lucide-react';
+import { OverlayVideoComposition } from '../remotion/OverlayVideo';
+import { WorkoutVideoComposition } from '../remotion/WorkoutVideo';
+import { 
+  Play, Pause, ZoomIn, ZoomOut, Scissors, 
+  Film, Image as ImageIcon, Type, Clock,
+  Download, Save, Undo, Redo, Maximize2, X
+} from 'lucide-react';
 import MultiTrackTimeline from './timeline/MultiTrackTimeline';
 import MediaLibrary from './editor/MediaLibrary';
 import Toolbar from './editor/Toolbar';
@@ -105,19 +110,13 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   const [activePanel, setActivePanel] = useState<'media'>('media');
   const [history, setHistory] = useState<any[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [showRemotionPreview, setShowRemotionPreview] = useState(true);
+  const [showRemotionPreview, setShowRemotionPreview] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const nextExerciseId = useRef(1);
   const nextClipId = useRef(1);
-  const handleDeleteClipRef = useRef<((clipId: string) => void) | null>(null);
-
-  // Touch variables to satisfy strict "read" rules when features are not active
-  void onExport;
-  void setZoom;
-  void history;
-  void nextClipId;
+  const handleDeleteClipRef = useRef<(clipId: string) => void>();
 
   useEffect(() => {
     if (videoRef.current) {
@@ -225,6 +224,22 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
       end,
     };
     setExercises([...exercises, newExercise].sort((a, b) => a.start - b.start));
+    // Add a single timer overlay that carries the exercise name so backend can render a green box
+    const timerOverlay: Overlay = {
+      id: `exercise-timer-${newExercise.id}`,
+      type: 'timer',
+      startTime: start,
+      endTime: end,
+      x: 95, // top-right area (percentage) - closer to right edge
+      y: 5,  // closer to top
+      text: name, // use text to render name above timer in the same box
+      fontSize: 18, // smaller font
+      fontColor: '#FFFFFF',
+      backgroundColor: '#22c55e', // hint color; backend will draw box
+      timerType: 'elapsed',
+      timerFormat: 'MM:SS'
+    };
+    setOverlays(prev => [...prev, timerOverlay]);
     saveHistory();
   };
 
@@ -314,7 +329,29 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
     };
   }, [selectedClip]);
 
-  // (Undo/Redo/Export handlers removed if unused to satisfy strict lint rules)
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setExercises(prevState.exercises);
+      setOverlays(prevState.overlays);
+      setTracks(prevState.tracks);
+      setHistoryIndex(prev => prev - 1);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setExercises(nextState.exercises);
+      setOverlays(nextState.overlays);
+      setTracks(nextState.tracks);
+      setHistoryIndex(prev => prev + 1);
+    }
+  };
+
+  const handleExportClick = () => {
+    onExport?.({ exercises, overlays });
+  };
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -350,6 +387,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
     return `${ratioWidth}:${ratioHeight}`;
   };
 
+  const useOverlayComposition = overlays.length > 0;
   const durationInFrames = Math.ceil(duration * 30);
 
   return (
@@ -445,6 +483,55 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                   });
                 }}
               />
+              {/* Live overlay preview: show timer overlays with exercise name in green box during active interval */}
+              <div className="overlay-preview-layer" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                {overlays
+                  .filter(ov => ov.type === 'timer' && currentTime >= ov.startTime && currentTime <= ov.endTime)
+                  .map(ov => {
+                    // Circular badge size for top-right
+                    const badgeSize = 120;
+                    const left = `${Math.max(0, Math.min(100, ov.x))}%`;
+                    const topPxOffset = 10;
+                    const top = `calc(${Math.max(0, Math.min(100, ov.y))}% + ${topPxOffset}px)`;
+                    // Position badge with its right edge near the percentage x
+                    return (
+                      <div
+                        key={`live-${ov.id}`}
+                        style={{
+                          position: 'absolute',
+                          left,
+                          top,
+                          transform: `translateX(-${badgeSize}px)`,
+                          width: badgeSize,
+                          height: badgeSize,
+                          backgroundColor: 'rgba(34, 197, 94, 0.9)', // #22c55e @ 0.9
+                          borderRadius: '50%', // circular
+                          padding: '8px',
+                          color: '#fff',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          textAlign: 'center',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        }}
+                      >
+                        <div style={{ fontSize: Math.min(14, (ov.fontSize || 18) * 0.7), lineHeight: 1.1, fontWeight: 700, marginBottom: 4 }}>
+                          {ov.text || ''}
+                        </div>
+                        <div style={{ fontSize: Math.min(16, (ov.fontSize || 18) * 0.85), fontWeight: 600 }}>
+                          {/* Render elapsed MM:SS in preview */}
+                          {(() => {
+                            const elapsed = Math.max(0, currentTime - ov.startTime);
+                            const mm = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                            const ss = Math.floor(elapsed % 60).toString().padStart(2, '0');
+                            return `${mm}:${ss}`;
+                          })()}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
             <div className="preview-info">
               <div className="preview-time">
@@ -487,11 +574,11 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
             </button>
           </div>
           <Player
-            component={RemotionPreview}
+            component={useOverlayComposition ? OverlayVideoComposition : WorkoutVideoComposition}
             inputProps={{
               videoUrl,
-              exercises: Array.isArray(exercises) ? exercises : [],
-              overlays: Array.isArray(overlays) ? overlays : [],
+              exercises: exercises.length > 0 ? exercises : undefined,
+              overlays: overlays.length > 0 ? overlays : undefined,
             }}
             durationInFrames={durationInFrames}
             fps={30}

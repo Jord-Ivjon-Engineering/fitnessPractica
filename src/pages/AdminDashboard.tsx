@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
 import VideoUploader from '../components/VideoUploader';
 import AdvancedVideoEditor from '../components/AdvancedVideoEditor';
 import { createPreviewClips } from '../utils/ffmpegHelper';
@@ -12,7 +11,6 @@ import '../styles/VideoEditorContainer.css';
 
 const AdminDashboard = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -78,7 +76,7 @@ const AdminDashboard = () => {
     }
 
     if (user.role !== 'admin') {
-      setError(t('admin.accessDenied'));
+      setError('Access denied. Admin privileges required.');
       setTimeout(() => {
         navigate('/');
       }, 2000);
@@ -150,7 +148,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     
     if (!newUser.email || !newUser.password || !newUser.name) {
-      setError(t('admin.emailPasswordNameRequired'));
+      setError('Email, password, and name are required');
       return;
     }
 
@@ -176,11 +174,11 @@ const AdminDashboard = () => {
         // Switch to users tab
         setActiveTab('users');
         
-        alert(t('admin.userCreated'));
+        alert('User created successfully!');
       }
     } catch (err: any) {
       console.error('Error creating user:', err);
-      setError(err.response?.data?.error || t('admin.failedToCreateUser'));
+      setError(err.response?.data?.error || 'Failed to create user');
     } finally {
       setCreatingUser(false);
     }
@@ -287,12 +285,12 @@ const AdminDashboard = () => {
 
   const generatePreview = async () => {
     if (!videoData && !selectedExistingVideo) {
-      setVideoError(t('admin.uploadVideoOrSelect'));
+      setVideoError('Please upload a video or select an existing video first!');
       return;
     }
 
     if (exercises.length === 0) {
-      setVideoError(t('admin.markExercise'));
+      setVideoError('Please mark at least one exercise first!');
       return;
     }
 
@@ -328,19 +326,19 @@ const AdminDashboard = () => {
 
   const processVideo = async () => {
     if (!videoFile && !selectedExistingVideo) {
-      setVideoError(t('admin.uploadVideoOrSelect'));
+      setVideoError('Please upload a video or select an existing video.');
       return;
     }
 
     // Allow processing with either exercises or overlays
     if (exercises.length === 0 && overlays.length === 0) {
-      setVideoError(t('admin.addExerciseOrOverlay'));
+      setVideoError('Please add at least one exercise or overlay.');
       return;
     }
 
     const token = localStorage.getItem('token');
     if (!token) {
-      setVideoError(t('admin.authTokenNotFound'));
+      setVideoError('Authentication token not found. Please log in again.');
       return;
     }
 
@@ -424,14 +422,14 @@ const AdminDashboard = () => {
               setVideoData(null);
               setVideoFile(null);
               setProcessedVideoUrl('');
-              alert(t('admin.videoUpdated'));
+              alert('Video updated successfully with new exercises!');
             } catch (updateErr: any) {
               console.error('Error updating video:', updateErr);
-              setVideoError(t('admin.videoProcessedUpdateFailed'));
+              setVideoError('Video processed but update failed. Please try updating the program.');
             }
           }
         } else {
-          setVideoError(t('admin.processingFinishedUnexpected'));
+          setVideoError('Processing finished but server returned unexpected JSON.');
         }
       } else {
         // Server returned the file directly
@@ -443,7 +441,7 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error(error);
-      setVideoError(t('admin.errorConnecting'));
+      setVideoError('Error connecting to server.');
     } finally {
       setIsProcessingVideo(false);
     }
@@ -451,7 +449,7 @@ const AdminDashboard = () => {
 
   const handleNextStep = () => {
     if (!newProgram.name || !newProgram.category) {
-      setError(t('admin.nameCategoryRequired'));
+      setError('Name and category are required');
       return;
     }
     setProgramStep('upload');
@@ -473,7 +471,7 @@ const AdminDashboard = () => {
     }
     
     if (!newProgram.name || !newProgram.category) {
-      setError(t('admin.nameCategoryRequired'));
+      setError('Name and category are required');
       return;
     }
 
@@ -499,7 +497,7 @@ const AdminDashboard = () => {
           }
         } catch (uploadErr: any) {
           console.error('Error uploading image:', uploadErr);
-          setError(uploadErr.response?.data?.error || t('admin.failedToUploadImage'));
+          setError(uploadErr.response?.data?.error || 'Failed to upload image');
           setUploadingImage(false);
           setCreatingProgram(false);
           return;
@@ -525,7 +523,7 @@ const AdminDashboard = () => {
           } catch (attachErr: any) {
             console.error('Error attaching video to program:', attachErr);
             // Don't fail the whole operation, just log the error
-            setError(t('admin.programCreatedVideoFailed'));
+            setError('Program created but video attachment failed. You can attach it later.');
           }
         }
         
@@ -556,11 +554,11 @@ const AdminDashboard = () => {
         // Switch to programs tab
         setActiveTab('programs');
         
-        alert(t('admin.programCreated'));
+        alert('Program created successfully!');
       }
     } catch (err: any) {
       console.error('Error creating program:', err);
-      setError(err.response?.data?.error || t('admin.failedToCreateProgram'));
+      setError(err.response?.data?.error || 'Failed to create program');
     } finally {
       setCreatingProgram(false);
     }
@@ -576,7 +574,7 @@ const AdminDashboard = () => {
     });
   };
 
-  const formatCurrency = (amount: number, currency: string = 'all') => {
+  const formatCurrency = (amount: number, currency: string = 'usd') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency.toUpperCase(),
@@ -591,7 +589,7 @@ const AdminDashboard = () => {
       // Fetch program details
       const programResponse = await trainingProgramApi.getById(programId);
       if (!programResponse.data.success) {
-        setError(t('admin.failedToLoadDetails'));
+        setError('Failed to load program details');
         return;
       }
 
@@ -620,14 +618,14 @@ const AdminDashboard = () => {
       setActiveTab('edit-program');
     } catch (err: any) {
       console.error('Error loading program:', err);
-      setError(err.response?.data?.error || t('admin.failedToLoadProgram'));
+      setError(err.response?.data?.error || 'Failed to load program');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteProgram = async (programId: number) => {
-    if (!confirm(t('admin.deleteConfirm'))) {
+    if (!confirm('Are you sure you want to delete this program? This will also delete all associated videos. This action cannot be undone.')) {
       return;
     }
 
@@ -639,11 +637,11 @@ const AdminDashboard = () => {
       
       if (response.data.success) {
         await loadDashboardData();
-        alert(t('admin.programDeleted'));
+        alert('Program deleted successfully!');
       }
     } catch (err: any) {
       console.error('Error deleting program:', err);
-      setError(err.response?.data?.error || t('admin.failedToDeleteProgram'));
+      setError(err.response?.data?.error || 'Failed to delete program');
     } finally {
       setLoading(false);
     }
@@ -655,12 +653,12 @@ const AdminDashboard = () => {
     }
 
     if (!editingProgramId) {
-      setError(t('admin.noProgramSelected'));
+      setError('No program selected for editing');
       return;
     }
     
     if (!newProgram.name || !newProgram.category) {
-      setError(t('admin.nameCategoryRequired'));
+      setError('Name and category are required');
       return;
     }
 
@@ -683,7 +681,7 @@ const AdminDashboard = () => {
           }
         } catch (uploadErr: any) {
           console.error('Error uploading image:', uploadErr);
-          setError(uploadErr.response?.data?.error || t('admin.failedToUploadImage'));
+          setError(uploadErr.response?.data?.error || 'Failed to upload image');
           setUploadingImage(false);
           setCreatingProgram(false);
           return;
@@ -740,11 +738,11 @@ const AdminDashboard = () => {
         // Switch to programs tab
         setActiveTab('programs');
         
-        alert(t('admin.programUpdated'));
+        alert('Program updated successfully!');
       }
     } catch (err: any) {
       console.error('Error updating program:', err);
-      setError(err.response?.data?.error || t('admin.failedToUpdateProgram'));
+      setError(err.response?.data?.error || 'Failed to update program');
     } finally {
       setCreatingProgram(false);
     }
@@ -764,7 +762,7 @@ const AdminDashboard = () => {
     return (
       <div className="admin-dashboard-container">
         <div className="error-message">
-          {error || t('admin.accessDenied')}
+          {error || 'Access denied. Admin privileges required.'}
         </div>
       </div>
     );
@@ -773,7 +771,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <div className="admin-dashboard-container">
-        <div className="loading">{t('admin.loading')}</div>
+        <div className="loading">Loading dashboard...</div>
       </div>
     );
   }
@@ -781,7 +779,7 @@ const AdminDashboard = () => {
   return (
     <div className="admin-dashboard-container">
       <div className="admin-dashboard-content">
-        <h1>{t('admin.dashboard')}</h1>
+        <h1>Admin Dashboard</h1>
         
         {error && <div className="error-message">{error}</div>}
 
@@ -792,31 +790,31 @@ const AdminDashboard = () => {
             className={activeTab === 'stats' ? 'active' : ''}
             onClick={() => setActiveTab('stats')}
           >
-            {t('admin.stats')}
+            Statistics
           </button>
           <button
             className={activeTab === 'users' ? 'active' : ''}
             onClick={() => setActiveTab('users')}
           >
-            {t('admin.users')} ({users.length})
+            Users ({users.length})
           </button>
           <button
             className={activeTab === 'transactions' ? 'active' : ''}
             onClick={() => setActiveTab('transactions')}
           >
-            {t('admin.transactions')} ({transactions.length})
+            Transactions ({transactions.length})
           </button>
           <button
             className={activeTab === 'programs' ? 'active' : ''}
             onClick={() => setActiveTab('programs')}
           >
-            {t('admin.programs')} ({programs.length})
+            Programs ({programs.length})
           </button>
           <button
             className={activeTab === 'add-user' ? 'active' : ''}
             onClick={() => setActiveTab('add-user')}
           >
-            {t('admin.addUser')}
+            Add User
           </button>
           <button
             className={activeTab === 'add-program' ? 'active' : ''}
@@ -825,7 +823,7 @@ const AdminDashboard = () => {
               setProgramStep('details');
             }}
           >
-            {t('admin.addProgram')}
+            Add Program
           </button>
         </div>
 
@@ -833,19 +831,19 @@ const AdminDashboard = () => {
           {activeTab === 'stats' && stats && (
             <div className="stats-grid">
               <div className="stat-card">
-                <h3>{t('admin.totalUsers')}</h3>
+                <h3>Total Users</h3>
                 <p className="stat-value">{stats.totalUsers}</p>
               </div>
               <div className="stat-card">
-                <h3>{t('admin.totalTransactions')}</h3>
+                <h3>Total Transactions</h3>
                 <p className="stat-value">{stats.totalTransactions}</p>
               </div>
               <div className="stat-card">
-                <h3>{t('admin.totalRevenue')}</h3>
+                <h3>Total Revenue</h3>
                 <p className="stat-value">{formatCurrency(stats.totalRevenue)}</p>
               </div>
               <div className="stat-card">
-                <h3>{t('admin.recentTransactions')}</h3>
+                <h3>Recent Transactions (30 days)</h3>
                 <p className="stat-value">{stats.recentTransactions}</p>
               </div>
             </div>
@@ -856,14 +854,14 @@ const AdminDashboard = () => {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>{t('admin.id')}</th>
-                    <th>{t('admin.name')}</th>
-                    <th>{t('admin.email')}</th>
-                    <th>{t('admin.phone')}</th>
-                    <th>{t('admin.role')}</th>
-                    <th>{t('admin.payments')}</th>
-                    <th>{t('admin.programs')}</th>
-                    <th>{t('admin.created')}</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Payments</th>
+                    <th>Programs</th>
+                    <th>Created</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -872,7 +870,7 @@ const AdminDashboard = () => {
                       <td>{user.id}</td>
                       <td>{user.name}</td>
                       <td>{user.email}</td>
-                      <td>{user.phone || t('admin.na')}</td>
+                      <td>{user.phone || 'N/A'}</td>
                       <td>
                         <span className={`role-badge ${user.role}`}>
                           {user.role}
@@ -886,7 +884,7 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
               {users.length === 0 && (
-                <p className="empty-message">{t('admin.noUsers')}</p>
+                <p className="empty-message">No users found</p>
               )}
             </div>
           )}
@@ -896,14 +894,14 @@ const AdminDashboard = () => {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>{t('admin.id')}</th>
-                    <th>{t('admin.userName')}</th>
-                    <th>{t('admin.userEmail')}</th>
-                    <th>{t('admin.itemName')}</th>
-                    <th>{t('admin.itemType')}</th>
-                    <th>{t('admin.amount')}</th>
-                    <th>{t('admin.status')}</th>
-                    <th>{t('admin.date')}</th>
+                    <th>ID</th>
+                    <th>User Name</th>
+                    <th>User Email</th>
+                    <th>Item Name</th>
+                    <th>Item Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -926,7 +924,7 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
               {transactions.length === 0 && (
-                <p className="empty-message">{t('admin.noTransactions')}</p>
+                <p className="empty-message">No transactions found</p>
               )}
             </div>
           )}
@@ -936,16 +934,16 @@ const AdminDashboard = () => {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>{t('admin.id')}</th>
-                    <th>{t('admin.name')}</th>
-                    <th>{t('admin.category')}</th>
-                    <th>{t('admin.description')}</th>
-                    <th>{t('admin.price')}</th>
-                    <th>{t('admin.startDate')}</th>
-                    <th>{t('admin.endDate')}</th>
-                    <th>{t('admin.imageUrl')}</th>
-                    <th>{t('admin.created')}</th>
-                    <th>{t('admin.actions')}</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Price</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Image URL</th>
+                    <th>Created</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -954,17 +952,17 @@ const AdminDashboard = () => {
                       <td>{program.id}</td>
                       <td>{program.name}</td>
                       <td>{program.category}</td>
-                      <td>{program.description || t('admin.na')}</td>
-                      <td>{program.price ? formatCurrency(program.price) : t('admin.free')}</td>
-                      <td>{program.startDate ? formatDate(program.startDate) : t('admin.na')}</td>
-                      <td>{program.endDate ? formatDate(program.endDate) : t('admin.na')}</td>
+                      <td>{program.description || 'N/A'}</td>
+                      <td>{program.price ? formatCurrency(program.price) : 'Free'}</td>
+                      <td>{program.startDate ? formatDate(program.startDate) : 'N/A'}</td>
+                      <td>{program.endDate ? formatDate(program.endDate) : 'N/A'}</td>
                       <td>
                         {program.imageUrl ? (
                           <a href={program.imageUrl} target="_blank" rel="noopener noreferrer" className="link">
-                            {t('admin.viewImage')}
+                            View Image
                           </a>
                         ) : (
-                          t('admin.na')
+                          'N/A'
                         )}
                       </td>
                       <td>{formatDate(program.createdAt)}</td>
@@ -973,16 +971,16 @@ const AdminDashboard = () => {
                           <button
                             onClick={() => handleEditProgram(program.id)}
                             className="btn-edit"
-                            title={t('admin.editProgram')}
+                            title="Edit Program"
                           >
-                            {t('admin.edit')}
+                            Edit
                           </button>
                           <button
                             onClick={() => handleDeleteProgram(program.id)}
                             className="btn-delete"
-                            title={t('admin.deleteProgram')}
+                            title="Delete Program"
                           >
-                            {t('admin.delete')}
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -991,17 +989,17 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
               {programs.length === 0 && (
-                <p className="empty-message">{t('admin.noPrograms')}</p>
+                <p className="empty-message">No programs found</p>
               )}
             </div>
           )}
 
           {activeTab === 'add-user' && (
             <div className="add-user-form-container">
-              <h2>{t('admin.createUserTitle')}</h2>
+              <h2>Create New User</h2>
               <form onSubmit={handleCreateUser} className="add-user-form">
                 <div className="form-group">
-                  <label htmlFor="name">{t('admin.nameRequired')}</label>
+                  <label htmlFor="name">Name *</label>
                   <input
                     id="name"
                     type="text"
@@ -1012,7 +1010,7 @@ const AdminDashboard = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="email">{t('admin.emailRequired')}</label>
+                  <label htmlFor="email">Email *</label>
                   <input
                     id="email"
                     type="email"
@@ -1023,7 +1021,7 @@ const AdminDashboard = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="password">{t('admin.passwordRequired')}</label>
+                  <label htmlFor="password">Password *</label>
                   <input
                     id="password"
                     type="password"
@@ -1035,7 +1033,7 @@ const AdminDashboard = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="phone">{t('admin.phone')}</label>
+                  <label htmlFor="phone">Phone</label>
                   <input
                     id="phone"
                     type="tel"
@@ -1045,15 +1043,15 @@ const AdminDashboard = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="role">{t('admin.role')}</label>
-                    <select
+                  <label htmlFor="role">Role</label>
+                  <select
                     id="role"
                     value={newUser.role}
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                     disabled={creatingUser}
                   >
-                    <option value="member">{t('admin.member')}</option>
-                    <option value="admin">{t('admin.admin')}</option>
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
                 <button
@@ -1061,7 +1059,7 @@ const AdminDashboard = () => {
                   disabled={creatingUser}
                   className="btn-submit"
                 >
-                  {creatingUser ? t('admin.creating') : t('admin.createUser')}
+                  {creatingUser ? 'Creating...' : 'Create User'}
                 </button>
               </form>
             </div>
@@ -1069,7 +1067,7 @@ const AdminDashboard = () => {
 
           {(activeTab === 'add-program' || activeTab === 'edit-program') && (
             <div className="add-user-form-container">
-              <h2>{editingProgramId ? t('admin.editProgramTitle') : t('admin.createProgramTitle')}</h2>
+              <h2>{editingProgramId ? 'Edit Training Program' : 'Create New Training Program'}</h2>
               
               {/* Step indicator */}
               <div className="step-indicator">
@@ -1080,14 +1078,14 @@ const AdminDashboard = () => {
                 <div className="step-connector"></div>
                 <div className={`step ${programStep === 'upload' ? 'active' : ''}`}>
                   <span className="step-number">2</span>
-                  <span className="step-label">{t('admin.uploadVideo')}</span>
+                  <span className="step-label">Upload Video</span>
                 </div>
               </div>
 
               {programStep === 'details' && (
                 <form onSubmit={(e) => { e.preventDefault(); if (editingProgramId) handleUpdateProgram(e); else handleNextStep(); }} className="add-user-form">
                 <div className="form-group">
-                  <label htmlFor="programName">{t('admin.programName')} *</label>
+                  <label htmlFor="programName">Name *</label>
                   <input
                     id="programName"
                     type="text"
@@ -1095,11 +1093,11 @@ const AdminDashboard = () => {
                     onChange={(e) => setNewProgram({ ...newProgram, name: e.target.value })}
                     required
                     disabled={creatingProgram}
-                    placeholder={t('admin.programNamePlaceholder')}
+                    placeholder="e.g., Fat Burn Program"
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="category">{t('admin.programCategory')} *</label>
+                  <label htmlFor="category">Category *</label>
                   <input
                     id="category"
                     type="text"
@@ -1107,23 +1105,23 @@ const AdminDashboard = () => {
                     onChange={(e) => setNewProgram({ ...newProgram, category: e.target.value })}
                     required
                     disabled={creatingProgram}
-                    placeholder={t('admin.programCategoryPlaceholder')}
+                    placeholder="e.g., Weight Loss, Muscle Growth"
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="description">{t('admin.programDescription')}</label>
+                  <label htmlFor="description">Description</label>
                   <textarea
                     id="description"
                     value={newProgram.description}
                     onChange={(e) => setNewProgram({ ...newProgram, description: e.target.value })}
                     disabled={creatingProgram}
                     rows={4}
-                    placeholder={t('admin.programDescriptionPlaceholder')}
+                    placeholder="Program description..."
                     className="form-textarea"
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="imageFile">{t('admin.programImage')}</label>
+                  <label htmlFor="imageFile">Program Image</label>
                   <input
                     id="imageFile"
                     type="file"
@@ -1144,30 +1142,39 @@ const AdminDashboard = () => {
                         className="remove-image-btn"
                         disabled={creatingProgram || uploadingImage}
                       >
-                        {t('common.remove')}
+                        Remove
                       </button>
                     </div>
                   )}
+                  <p className="form-hint">Upload an image from your computer, or enter a URL below</p>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="price">{t('admin.programPrice')}</label>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <span style={{ position: 'absolute', left: '12px', color: '#999', pointerEvents: 'none' }}>ALL</span>
-                    <input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={newProgram.price || ''}
-                      onChange={(e) => setNewProgram({ ...newProgram, price: e.target.value ? parseFloat(e.target.value) : undefined })}
-                      disabled={creatingProgram || uploadingImage}
-                      placeholder={t('admin.programPricePlaceholder')}
-                      style={{ paddingLeft: '50px' }}
-                    />
-                  </div>
+                  <label htmlFor="imageUrl">Image URL (Alternative)</label>
+                  <input
+                    id="imageUrl"
+                    type="url"
+                    value={newProgram.imageUrl}
+                    onChange={(e) => setNewProgram({ ...newProgram, imageUrl: e.target.value })}
+                    disabled={creatingProgram || uploadingImage || !!selectedImage}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  <p className="form-hint">Only used if no image is uploaded above</p>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="startDate">{t('admin.programStartDate')}</label>
+                  <label htmlFor="price">Price</label>
+                  <input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={newProgram.price || ''}
+                    onChange={(e) => setNewProgram({ ...newProgram, price: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    disabled={creatingProgram || uploadingImage}
+                    placeholder="49.99"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="startDate">Start Date</label>
                   <input
                     id="startDate"
                     type="date"
@@ -1177,7 +1184,7 @@ const AdminDashboard = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="endDate">{t('admin.programEndDate')}</label>
+                  <label htmlFor="endDate">End Date</label>
                   <input
                     id="endDate"
                     type="date"
@@ -1201,14 +1208,14 @@ const AdminDashboard = () => {
                       disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
                       className="btn-submit"
                     >
-                      {t('admin.next')}: {t('admin.uploadVideo')}
+                      Next: Manage Videos
                     </button>
                     <button
                       type="submit"
                       disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
                       className="btn-secondary"
                     >
-                      {creatingProgram ? t('admin.updating') : t('admin.updateProgram')}
+                      {creatingProgram ? 'Updating...' : 'Update Program'}
                     </button>
                     <button
                       type="button"
@@ -1240,7 +1247,7 @@ const AdminDashboard = () => {
                     disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
                     className="btn-submit"
                   >
-                    {t('admin.next')}: {t('admin.uploadVideo')}
+                    Next: Add Video
                   </button>
                 )}
               </form>
@@ -1314,7 +1321,7 @@ const AdminDashboard = () => {
                 onClick={() => setProgramStep('details')}
                 className="btn-secondary"
               >
-                {t('admin.back')} {t('common.details')}
+                Back to Details
               </button>
             </div>
           </div>

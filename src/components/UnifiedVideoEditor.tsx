@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Player } from '@remotion/player';
-import RemotionPreview from './RemotionPreview';
-import { Plus, Trash2, Type, Clock, Image as ImageIcon, Play, Pause } from 'lucide-react';
+import { OverlayVideoComposition } from '../remotion/OverlayVideo';
+import { WorkoutVideoComposition } from '../remotion/WorkoutVideo';
+import { Plus, Trash2, Type, Clock, Image as ImageIcon, Play, Pause, Maximize2 } from 'lucide-react';
 import '../styles/UnifiedVideoEditor.css';
 
 export interface Exercise {
@@ -187,7 +188,7 @@ const UnifiedVideoEditor: React.FC<UnifiedVideoEditorProps> = ({
     }
   };
 
-  // Derived flag no longer needed after RemotionPreview adapter
+  const useOverlayComposition = overlays.length > 0;
   const durationInFrames = Math.ceil(duration * 30);
 
   return (
@@ -598,11 +599,11 @@ const UnifiedVideoEditor: React.FC<UnifiedVideoEditorProps> = ({
             <h3>Remotion Preview</h3>
             {(exercises.length > 0 || overlays.length > 0) ? (
               <Player
-                component={RemotionPreview}
+                component={useOverlayComposition ? OverlayVideoComposition : WorkoutVideoComposition}
                 inputProps={{
                   videoUrl,
-                  exercises: Array.isArray(exercises) ? exercises : [],
-                  overlays: Array.isArray(overlays) ? overlays : [],
+                  exercises: exercises.length > 0 ? exercises : undefined,
+                  overlays: overlays.length > 0 ? overlays : undefined,
                 }}
                 durationInFrames={durationInFrames}
                 fps={30}
