@@ -1082,7 +1082,7 @@ const AdminDashboard = () => {
                 <div className="step-connector"></div>
                 <div className={`step ${programStep === 'upload' ? 'active' : ''}`}>
                   <span className="step-number">2</span>
-                  <span className="step-label">Upload Video</span>
+                  <span className="step-label">Upload Video (Optional)</span>
                 </div>
               </div>
 
@@ -1266,13 +1266,23 @@ const AdminDashboard = () => {
                     </button>
                   </div>
                 ) : (
-                  <button
-                    type="submit"
-                    disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
-                    className="btn-submit"
-                  >
-                    Next: Add Video
-                  </button>
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleCreateProgram()}
+                      disabled={creatingProgram || uploadingImage || !newProgram.name || !newProgram.category || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                      className="btn-submit"
+                    >
+                      {creatingProgram ? 'Creating...' : 'Create Program'}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={creatingProgram || uploadingImage || (newProgram.startDate && newProgram.endDate && new Date(newProgram.endDate) <= new Date(newProgram.startDate))}
+                      className="btn-secondary"
+                    >
+                      Next: Add Video
+                    </button>
+                  </div>
                 )}
               </form>
               )}
@@ -1328,7 +1338,14 @@ const AdminDashboard = () => {
 
               {!videoData && !selectedExistingVideo && (
                 <div className="video-upload-section">
-                  {!isUploadingVideo && <VideoUploader onVideoLoad={handleVideoLoad} />}
+                  {!isUploadingVideo && (
+                    <>
+                      <VideoUploader onVideoLoad={handleVideoLoad} />
+                      <p style={{ marginTop: '15px', color: '#666', fontSize: '14px', textAlign: 'center' }}>
+                        Video upload is optional. You can create the program now or add videos later.
+                      </p>
+                    </>
+                  )}
                   {isUploadingVideo && (
                     <div className="upload-progress">
                       <div className="progress-label">Uploading: {uploadProgress}%</div>
@@ -1347,6 +1364,16 @@ const AdminDashboard = () => {
               >
                 Back to Details
               </button>
+              {!editingProgramId && (
+                <button
+                  type="button"
+                  onClick={() => handleCreateProgram()}
+                  disabled={creatingProgram || uploadingImage || !newProgram.name || !newProgram.category}
+                  className="btn-submit"
+                >
+                  {creatingProgram ? 'Creating...' : 'Create Program'}
+                </button>
+              )}
             </div>
           </div>
         )}
