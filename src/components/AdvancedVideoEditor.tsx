@@ -112,11 +112,18 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showRemotionPreview, setShowRemotionPreview] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
+  // Auto-generation overlay panel state
+  const [showAutoPanel, setShowAutoPanel] = useState(false);
+  const [autoExerciseTime, setAutoExerciseTime] = useState(40);
+  const [autoBreakTime, setAutoBreakTime] = useState(20);
+  const [autoExerciseName, setAutoExerciseName] = useState('Exercise');
+  const [autoBreakName, setAutoBreakName] = useState('Break');
+  const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const nextExerciseId = useRef(1);
   const nextClipId = useRef(1);
-  const handleDeleteClipRef = useRef<(clipId: string) => void>();
+  const handleDeleteClipRef = useRef<((clipId: string) => void) | null>(null);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -422,6 +429,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                 currentTime={currentTime}
                 videoRef={videoRef}
                 playing={playing}
+                videoDuration={duration}
               />
             )}
           </div>
@@ -485,6 +493,15 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
               />
               {/* Live overlay preview: show timer overlays with exercise name in green box during active interval */}
               <div className="overlay-preview-layer" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                {/* Quick toggle button to open auto-generation panel */}
+                {!showAutoPanel && (
+                  <div style={{ position: 'absolute', right: 12, top: 12, pointerEvents: 'auto' }}>
+                    <button onClick={() => setShowAutoPanel(true)}
+                      style={{ background: '#764ba2', color: '#fff', border: '1px solid #555', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>
+                      Automatic
+                    </button>
+                  </div>
+                )}
                 {overlays
                   .filter(ov => ov.type === 'timer' && currentTime >= ov.startTime && currentTime <= ov.endTime)
                   .map(ov => {
@@ -531,6 +548,100 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                       </div>
                     );
                   })}
+                {/* Auto-generation panel rendered at top-right over the video */}
+                {showAutoPanel && (
+                  <div
+                    className="auto-panel"
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: 12,
+                      width: 340,
+                      maxHeight: 360,
+                      backgroundColor: 'rgba(26,26,26,0.95)',
+                      border: '1px solid #444',
+                      borderRadius: 8,
+                      padding: 12,
+                      color: '#fff',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                      pointerEvents: 'auto'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong>Automatic Generation</strong>
+                      <button onClick={() => setShowAutoPanel(false)} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer' }}>✕</button>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#bbb' }}>Video length: {Math.round(duration)}s</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#ccc' }}>Exercise sec</label>
+                        <input type="number" value={autoExerciseTime} min={1} onChange={(e) => { setAutoExerciseTime(parseInt(e.target.value)||40); setPreviewSegments([]); }}
+                          style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#ccc' }}>Break sec</label>
+                        <input type="number" value={autoBreakTime} min={1} onChange={(e) => { setAutoBreakTime(parseInt(e.target.value)||20); setPreviewSegments([]); }}
+                          style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#ccc' }}>Exercise name</label>
+                        <input type="text" value={autoExerciseName} onChange={(e) => setAutoExerciseName(e.target.value||'Exercise')}
+                          style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#ccc' }}>Break name</label>
+                        <input type="text" value={autoBreakName} onChange={(e) => setAutoBreakName(e.target.value||'Break')}
+                          style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px' }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <button
+                        onClick={() => {
+                          if (duration <= 0) return;
+                          const segs: Array<{ name: string; start: number; end: number; type: 'exercise'|'break' }> = [];
+                          let pos = 0; let idx = 1;
+                          while (pos < duration) {
+                            const eEnd = Math.min(pos + autoExerciseTime, duration);
+                            if (eEnd > pos) { segs.push({ name: `${autoExerciseName} ${idx}`, start: pos, end: eEnd, type: 'exercise' }); pos = eEnd; idx++; }
+                            if (pos < duration) {
+                              const bEnd = Math.min(pos + autoBreakTime, duration);
+                              if (bEnd > pos) { segs.push({ name: autoBreakName, start: pos, end: bEnd, type: 'break' }); pos = bEnd; }
+                            }
+                          }
+                          setPreviewSegments(segs);
+                        }}
+                        style={{ flex: 1, background: '#667eea', color: '#fff', border: 'none', borderRadius: 4, padding: '8px', cursor: 'pointer' }}
+                      >
+                        Preview
+                      </button>
+                      {previewSegments.length > 0 && (
+                        <button
+                          onClick={() => {
+                            previewSegments.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
+                            setPreviewSegments([]);
+                            setShowAutoPanel(false);
+                          }}
+                          style={{ flex: 1, background: '#22c55e', color: '#fff', border: 'none', borderRadius: 4, padding: '8px', cursor: 'pointer' }}
+                        >
+                          Add All
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ marginTop: 10, maxHeight: 160, overflowY: 'auto', borderTop: '1px solid #444', paddingTop: 8 }}>
+                      {previewSegments.length === 0 ? (
+                        <div style={{ fontSize: 12, color: '#888' }}>No preview yet. Click Preview.</div>
+                      ) : (
+                        previewSegments.map((seg, i) => (
+                          <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center', padding: '6px 8px', background: seg.type==='break' ? '#2d2a22' : '#333', borderLeft: `3px solid ${seg.type==='break' ? '#f59e0b' : '#667eea'}`, borderRadius: 4, marginBottom: 6 }}>
+                            <div style={{ fontSize: 11, color: '#bbb', textAlign: 'center' }}>{Math.floor(seg.start)}s - {Math.floor(seg.end)}s</div>
+                            <input type="text" value={seg.name} onChange={(e)=> setPreviewSegments(prev=> prev.map((s, idx)=> idx===i ? { ...s, name: e.target.value } : s))}
+                              style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px', fontSize: 12 }} />
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="preview-info">
@@ -574,11 +685,12 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
             </button>
           </div>
           <Player
-            component={useOverlayComposition ? OverlayVideoComposition : WorkoutVideoComposition}
+            component={(useOverlayComposition ? OverlayVideoComposition : WorkoutVideoComposition) as any}
             inputProps={{
               videoUrl,
               exercises: exercises.length > 0 ? exercises : undefined,
               overlays: overlays.length > 0 ? overlays : undefined,
+              previews: []
             }}
             durationInFrames={durationInFrames}
             fps={30}
