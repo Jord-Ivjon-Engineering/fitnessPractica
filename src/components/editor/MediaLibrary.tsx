@@ -5,6 +5,7 @@ import '../../styles/MediaLibrary.css';
 
 interface MediaLibraryProps {
   videoUrl: string;
+  videoDimensions?: { width: number; height: number } | null;
   onAddExercise: (name: string, start: number, end: number) => void;
   onAddOverlay: (overlay: Overlay) => void;
   currentTime: number;
@@ -13,6 +14,7 @@ interface MediaLibraryProps {
 }
 
 const MediaLibrary: React.FC<MediaLibraryProps> = ({
+  videoDimensions,
   onAddExercise,
   onAddOverlay,
   currentTime,
@@ -91,8 +93,42 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   };
 
 
+  const calculateAspectRatio = (width: number, height: number): string => {
+    const gcd = (a: number, b: number): number => {
+      return b === 0 ? a : gcd(b, a % b);
+    };
+    
+    const divisor = gcd(width, height);
+    const ratioWidth = width / divisor;
+    const ratioHeight = height / divisor;
+    
+    const commonRatios: { [key: string]: string } = {
+      '16:9': '16:9',
+      '4:3': '4:3',
+      '21:9': '21:9',
+      '1:1': '1:1',
+      '9:16': '9:16',
+    };
+    
+    const ratioKey = `${ratioWidth}:${ratioHeight}`;
+    if (commonRatios[ratioKey]) {
+      return commonRatios[ratioKey];
+    }
+    
+    return `${ratioWidth}:${ratioHeight}`;
+  };
+
   return (
     <div className="media-library">
+      {videoDimensions && (
+        <div className="media-section video-info-section">
+          <h3>Video Info</h3>
+          <div className="video-info">
+            <p>Resolution: <strong>{videoDimensions.width} × {videoDimensions.height}</strong></p>
+            <p>Aspect Ratio: <strong>{calculateAspectRatio(videoDimensions.width, videoDimensions.height)}</strong></p>
+          </div>
+        </div>
+      )}
       <div className="media-section">
         <h3>Exercises</h3>
         {!showAddExercise ? (

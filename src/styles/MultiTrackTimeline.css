@@ -14,6 +14,8 @@
   background: #252525;
   border-bottom: 1px solid #333;
   height: 48px; /* Reduced from 60px */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .track-label-header {
@@ -34,6 +36,8 @@
   height: 48px; /* Reduced from 60px */
   cursor: pointer;
   background: #1f1f1f;
+  overflow: visible;
+  min-width: 100%;
 }
 
 .ruler-mark {
@@ -43,20 +47,45 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  pointer-events: none;
+}
+
+.ruler-mark.major {
+  z-index: 10;
+}
+
+.ruler-mark.minor {
+  z-index: 5;
 }
 
 .ruler-line {
   width: 1px;
-  height: 20px;
   background: #444;
   margin-top: 8px;
 }
 
+.ruler-line.major-line {
+  height: 24px;
+  background: #666;
+  width: 1px;
+}
+
+.ruler-line.minor-line {
+  height: 12px;
+  background: #444;
+  width: 1px;
+}
+
 .ruler-label {
-  font-size: 11px;
-  color: #666;
-  margin-top: 4px;
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 2px;
   font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+  background: rgba(31, 31, 31, 0.8);
+  padding: 1px 2px;
+  border-radius: 2px;
 }
 
 .playhead {
@@ -83,7 +112,7 @@
 .timeline-tracks {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .timeline-track {
@@ -130,6 +159,7 @@
   min-height: 64px; /* Reduced from 80px */
   background: #1f1f1f;
   cursor: pointer;
+  min-width: 100%;
 }
 
 .timeline-clip {

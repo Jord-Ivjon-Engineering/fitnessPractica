@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { GripVertical, Scissors, Trash2 } from 'lucide-react';
+import { GripVertical, Trash2 } from 'lucide-react';
 import { TimelineTrack, TimelineClip } from '../AdvancedVideoEditor';
 import '../../styles/MultiTrackTimeline.css';
 
@@ -27,12 +27,39 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
   selectedClip,
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
+  const tracksContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ clipId: string; startX: number; startTime: number } | null>(null);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
   const [resizeStart, setResizeStart] = useState<{ clipId: string; startX: number; startTime: number; startDuration: number } | null>(null);
 
-  const pixelsPerSecond = 50 * zoom;
+  // Synchronize horizontal scrolling between ruler and tracks
+  useEffect(() => {
+    const ruler = timelineRef.current;
+    const tracks = tracksContainerRef.current;
+    
+    if (!ruler || !tracks) return;
+
+    const handleRulerScroll = () => {
+      tracks.scrollLeft = ruler.scrollLeft;
+    };
+
+    const handleTracksScroll = () => {
+      ruler.scrollLeft = tracks.scrollLeft;
+    };
+
+    ruler.addEventListener('scroll', handleRulerScroll);
+    tracks.addEventListener('scroll', handleTracksScroll);
+
+    return () => {
+      ruler.removeEventListener('scroll', handleRulerScroll);
+      tracks.removeEventListener('scroll', handleTracksScroll);
+    };
+  }, []);
+
+  // Minimum pixels per second to ensure readable spacing
+  const minPixelsPerSecond = 30;
+  const pixelsPerSecond = Math.max(minPixelsPerSecond, 50 * zoom);
   const timelineWidth = duration * pixelsPerSecond;
 
   const formatTime = (seconds: number): string => {
@@ -41,19 +68,78 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const timeToPosition = (time: number): number => {
-    return (time / duration) * 100;
+  const timeToPixels = (time: number): number => {
+    return time * pixelsPerSecond;
   };
 
-  const positionToTime = (percent: number): number => {
-    return (percent / 100) * duration;
+  const pixelsToTime = (pixels: number): number => {
+    return pixels / pixelsPerSecond;
+  };
+
+  // Generate second markers
+  const generateSecondMarkers = (): Array<{ time: number; position: number; isMajor: boolean; showLabel: boolean }> => {
+    if (duration <= 0) return [];
+    
+    const markers: Array<{ time: number; position: number; isMajor: boolean; showLabel: boolean }> = [];
+    const totalSeconds = Math.ceil(duration);
+    
+    // Calculate label interval based on zoom and duration
+    // Show labels more frequently when zoomed in or for shorter videos
+    let labelInterval = 5; // Default: every 5 seconds for very long videos at default zoom
+    if (zoom > 1) {
+      // When zoomed in at all, show every second
+      labelInterval = 1;
+    } else if (duration <= 300) {
+      // For videos 5 minutes or less, show every second
+      labelInterval = 1;
+    } else if (duration <= 600) {
+      // For videos 10 minutes or less, show every 2 seconds
+      labelInterval = 2;
+    } else if (duration <= 1200) {
+      // For videos 20 minutes or less, show every 3 seconds
+      labelInterval = 3;
+    }
+    
+    // Generate markers for every second - always show the line, conditionally show label
+    for (let i = 0; i <= totalSeconds; i++) {
+      if (i <= duration) {
+        const shouldShowLabel = i % labelInterval === 0 || i === 0 || i === totalSeconds;
+        markers.push({
+          time: i,
+          position: (i / duration) * 100,
+          isMajor: true,
+          showLabel: shouldShowLabel,
+        });
+      }
+    }
+    
+    // Add sub-second markers if zoomed in enough
+    if (zoom > 1 && duration > 0) {
+      const subSecondInterval = zoom > 2 ? 0.1 : 0.5;
+      for (let t = 0; t <= duration; t += subSecondInterval) {
+        const wholeSecond = Math.floor(t);
+        const remainder = t - wholeSecond;
+        // Don't duplicate whole seconds
+        if (remainder > 0.01 && remainder < 0.99) {
+          markers.push({
+            time: t,
+            position: (t / duration) * 100,
+            isMajor: false,
+            showLabel: false,
+          });
+        }
+      }
+    }
+    
+    return markers.sort((a, b) => a.time - b.time);
   };
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (timelineRef.current && !isDragging && !isResizing) {
+    if (timelineRef.current && !isDragging && !isResizing && duration > 0) {
       const rect = timelineRef.current.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const time = (clickX / rect.width) * duration;
+      const scrollLeft = timelineRef.current.scrollLeft || 0;
+      const clickX = e.clientX - rect.left + scrollLeft;
+      const time = Math.max(0, Math.min(pixelsToTime(clickX), duration));
       onSeek(time);
     }
   };
@@ -62,7 +148,6 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
     e.stopPropagation();
     onClipSelect(clip.id);
     
-    const rect = e.currentTarget.getBoundingClientRect();
     const startX = e.clientX;
     const startTime = clip.startTime;
     
@@ -87,15 +172,11 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging && dragStart && timelineRef.current) {
-        const rect = timelineRef.current.getBoundingClientRect();
         const deltaX = e.clientX - dragStart.startX;
-        const deltaTime = (deltaX / rect.width) * duration;
-        const newStartTime = Math.max(0, Math.min(dragStart.startTime + deltaTime, duration - (dragStart.startTime + deltaTime)));
-        const clipDuration = tracks
-          .flatMap(t => t.clips)
-          .find(c => c.id === dragStart.clipId)?.endTime - tracks
-          .flatMap(t => t.clips)
-          .find(c => c.id === dragStart.clipId)?.startTime || 0;
+        const deltaTime = pixelsToTime(deltaX);
+        const clip = tracks.flatMap(t => t.clips).find(c => c.id === dragStart.clipId);
+        const clipDuration = clip ? clip.endTime - clip.startTime : 0;
+        const newStartTime = Math.max(0, Math.min(dragStart.startTime + deltaTime, duration - clipDuration));
         
         onClipUpdate(dragStart.clipId, {
           startTime: newStartTime,
@@ -103,10 +184,9 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
         });
       }
 
-      if (isResizing && resizeStart && timelineRef.current) {
-        const rect = timelineRef.current.getBoundingClientRect();
+      if (isResizing && resizeStart) {
         const deltaX = e.clientX - resizeStart.startX;
-        const deltaTime = (deltaX / rect.width) * duration;
+        const deltaTime = pixelsToTime(deltaX);
         
         if (isResizing === 'left') {
           const newStartTime = Math.max(0, resizeStart.startTime + deltaTime);
@@ -160,25 +240,32 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
     <div className="multi-track-timeline">
       <div className="timeline-header">
         <div className="track-label-header">Tracks</div>
-        <div className="timeline-ruler" ref={timelineRef} onClick={handleTimelineClick}>
-          {Array.from({ length: Math.ceil(duration) + 1 }).map((_, i) => (
+        <div 
+          className="timeline-ruler" 
+          ref={timelineRef} 
+          onClick={handleTimelineClick}
+          style={{ width: `${timelineWidth}px`, minWidth: '100%' }}
+        >
+          {duration > 0 && generateSecondMarkers().map((marker, index) => (
             <div
-              key={i}
-              className="ruler-mark"
-              style={{ left: `${(i / duration) * 100}%` }}
+              key={`marker-${marker.time}-${index}`}
+              className={`ruler-mark ${marker.isMajor ? 'major' : 'minor'}`}
+              style={{ left: `${timeToPixels(marker.time)}px` }}
             >
-              <div className="ruler-line" />
-              <span className="ruler-label">{formatTime(i)}</span>
+              <div className={`ruler-line ${marker.isMajor ? 'major-line' : 'minor-line'}`} />
+              {marker.isMajor && marker.showLabel && (
+                <span className="ruler-label">{formatTime(marker.time)}</span>
+              )}
             </div>
           ))}
           <div
             className="playhead"
-            style={{ left: `${timeToPosition(currentTime)}%` }}
+            style={{ left: `${timeToPixels(currentTime)}px` }}
           />
         </div>
       </div>
 
-      <div className="timeline-tracks">
+      <div className="timeline-tracks" ref={tracksContainerRef}>
         {tracks.map((track) => (
           <div key={track.id} className="timeline-track">
             <div className="track-controls">
@@ -190,10 +277,14 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
               </button>
               <span className="track-name">{track.name}</span>
             </div>
-            <div className="track-clips-container" onClick={handleTimelineClick}>
+            <div 
+              className="track-clips-container" 
+              onClick={handleTimelineClick}
+              style={{ width: `${timelineWidth}px`, minWidth: '100%' }}
+            >
               {track.clips.map((clip) => {
-                const clipWidth = ((clip.endTime - clip.startTime) / duration) * 100;
-                const clipLeft = (clip.startTime / duration) * 100;
+                const clipWidth = timeToPixels(clip.endTime - clip.startTime);
+                const clipLeft = timeToPixels(clip.startTime);
                 const isSelected = selectedClip === clip.id;
 
                 return (
@@ -201,8 +292,9 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
                     key={clip.id}
                     className={`timeline-clip ${isSelected ? 'selected' : ''}`}
                     style={{
-                      left: `${clipLeft}%`,
-                      width: `${clipWidth}%`,
+                      left: `${clipLeft}px`,
+                      width: `${clipWidth}px`,
+                      minWidth: '20px',
                       backgroundColor: getClipColor(clip.type),
                     }}
                     onMouseDown={(e) => handleClipMouseDown(e, clip)}

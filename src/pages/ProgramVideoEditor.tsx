@@ -19,6 +19,7 @@ interface VideoData {
   name: string;
   isExisting?: boolean;
   existingVideoId?: number;
+  fileSize?: number;
 }
 
 const ProgramVideoEditor = () => {
@@ -29,6 +30,7 @@ const ProgramVideoEditor = () => {
   // Get video data from location state
   const videoDataFromState = location.state as VideoData | null;
   const programId = location.state?.programId as number | undefined;
+  const videoFileSize = videoDataFromState?.fileSize;
   
   const [exercises, setExercises] = useState<Array<{ id: number; name: string; start: number; end: number }>>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
@@ -222,6 +224,7 @@ const ProgramVideoEditor = () => {
         <AdvancedVideoEditor
           videoUrl={videoUrl}
           videoTitle={videoTitle}
+          videoSize={videoFileSize}
           onTitleChange={setVideoTitle}
           onExercisesChange={(exs) => {
             setExercises(exs);

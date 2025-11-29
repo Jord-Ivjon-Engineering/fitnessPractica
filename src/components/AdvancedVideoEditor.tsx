@@ -62,6 +62,7 @@ export interface Overlay {
 interface AdvancedVideoEditorProps {
   videoUrl: string;
   videoTitle?: string;
+  videoSize?: number;
   onTitleChange?: (title: string) => void;
   onExercisesChange?: (exercises: Exercise[]) => void;
   onOverlaysChange?: (overlays: Overlay[]) => void;
@@ -72,6 +73,7 @@ interface AdvancedVideoEditorProps {
 const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   videoUrl,
   videoTitle = 'Untitled Video',
+  videoSize,
   onTitleChange,
   onExercisesChange,
   onOverlaysChange,
@@ -104,6 +106,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   const [history, setHistory] = useState<any[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showRemotionPreview, setShowRemotionPreview] = useState(true);
+  const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const nextExerciseId = useRef(1);
@@ -119,16 +122,30 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   useEffect(() => {
     if (videoRef.current) {
       const handleLoadedMetadata = () => {
-        if (videoRef.current && videoRef.current.duration) {
-          const dur = videoRef.current.duration;
-          setDuration(dur);
-          onDurationChange?.(dur);
+        if (videoRef.current) {
+          if (videoRef.current.duration) {
+            const dur = videoRef.current.duration;
+            setDuration(dur);
+            onDurationChange?.(dur);
+          }
+          if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
+            setVideoDimensions({
+              width: videoRef.current.videoWidth,
+              height: videoRef.current.videoHeight,
+            });
+          }
         }
       };
       videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
       if (videoRef.current.duration) {
         setDuration(videoRef.current.duration);
         onDurationChange?.(videoRef.current.duration);
+      }
+      if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
+        setVideoDimensions({
+          width: videoRef.current.videoWidth,
+          height: videoRef.current.videoHeight,
+        });
       }
       return () => {
         if (videoRef.current) {
@@ -305,6 +322,34 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const calculateAspectRatio = (width: number, height: number): string => {
+    // Calculate GCD to simplify the ratio
+    const gcd = (a: number, b: number): number => {
+      return b === 0 ? a : gcd(b, a % b);
+    };
+    
+    const divisor = gcd(width, height);
+    const ratioWidth = width / divisor;
+    const ratioHeight = height / divisor;
+    
+    // Check for common aspect ratios
+    const commonRatios: { [key: string]: string } = {
+      '16:9': '16:9',
+      '4:3': '4:3',
+      '21:9': '21:9',
+      '1:1': '1:1',
+      '9:16': '9:16',
+    };
+    
+    const ratioKey = `${ratioWidth}:${ratioHeight}`;
+    if (commonRatios[ratioKey]) {
+      return commonRatios[ratioKey];
+    }
+    
+    // Return simplified ratio
+    return `${ratioWidth}:${ratioHeight}`;
+  };
+
   const durationInFrames = Math.ceil(duration * 30);
 
   return (
@@ -333,6 +378,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
             {activePanel === 'media' && (
               <MediaLibrary
                 videoUrl={videoUrl}
+                videoDimensions={videoDimensions}
                 onAddExercise={handleAddExercise}
                 onAddOverlay={handleAddOverlay}
                 currentTime={currentTime}
@@ -347,7 +393,12 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
         <div className="editor-main">
           {/* Video Preview */}
           <div className="video-preview-container">
-            <div className="video-wrapper">
+            <div 
+              className="video-wrapper"
+              style={videoDimensions ? {
+                aspectRatio: `${videoDimensions.width} / ${videoDimensions.height}`
+              } : undefined}
+            >
               <video
                 ref={videoRef}
                 src={videoUrl}
@@ -395,8 +446,15 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                 }}
               />
             </div>
-            <div className="preview-time">
-              {formatTime(currentTime)} / {formatTime(duration)}
+            <div className="preview-info">
+              <div className="preview-time">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </div>
+              {videoDimensions && (
+                <div className="preview-aspect-ratio">
+                  {videoDimensions.width} × {videoDimensions.height} ({calculateAspectRatio(videoDimensions.width, videoDimensions.height)})
+                </div>
+              )}
             </div>
           </div>
 
