@@ -89,13 +89,13 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
     {
       id: 'video-1',
       type: 'video',
-      name: 'Video Track 1',
+      name: 'Exercises',
       clips: [],
     },
     {
       id: 'overlay-1',
       type: 'overlay',
-      name: 'Overlays',
+      name: 'Breaks',
       clips: [],
     },
   ]);

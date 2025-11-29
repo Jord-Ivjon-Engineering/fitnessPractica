@@ -1304,7 +1304,7 @@ const AdminDashboard = () => {
 
               {!videoData && !selectedExistingVideo && (
                 <div className="video-upload-section">
-                  <VideoUploader onVideoLoad={handleVideoLoad} />
+                  {!isUploadingVideo && <VideoUploader onVideoLoad={handleVideoLoad} />}
                   {isUploadingVideo && (
                     <div className="upload-progress">
                       <div className="progress-label">Uploading: {uploadProgress}%</div>
