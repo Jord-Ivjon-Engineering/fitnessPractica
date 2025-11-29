@@ -26,41 +26,42 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
   onClipDelete,
   selectedClip,
 }) => {
-  const timelineRef = useRef<HTMLDivElement>(null);
   const tracksContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ clipId: string; startX: number; startTime: number } | null>(null);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
   const [resizeStart, setResizeStart] = useState<{ clipId: string; startX: number; startTime: number; startDuration: number } | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
-  // Synchronize horizontal scrolling between ruler and tracks
+  // Calculate pixels per second based on container width and duration
   useEffect(() => {
-    const ruler = timelineRef.current;
-    const tracks = tracksContainerRef.current;
+    const updateWidth = () => {
+      if (tracksContainerRef.current) {
+        // Get the width of the tracks container
+        const tracksWidth = tracksContainerRef.current.offsetWidth;
+        // Subtract the track-controls width (160px) to get the clips container width
+        const clipsWidth = tracksWidth - 160;
+        setContainerWidth(Math.max(0, clipsWidth));
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    // Use ResizeObserver for more accurate width tracking
+    const resizeObserver = new ResizeObserver(updateWidth);
+    if (tracksContainerRef.current) {
+      resizeObserver.observe(tracksContainerRef.current);
+    }
     
-    if (!ruler || !tracks) return;
-
-    const handleRulerScroll = () => {
-      tracks.scrollLeft = ruler.scrollLeft;
-    };
-
-    const handleTracksScroll = () => {
-      ruler.scrollLeft = tracks.scrollLeft;
-    };
-
-    ruler.addEventListener('scroll', handleRulerScroll);
-    tracks.addEventListener('scroll', handleTracksScroll);
-
     return () => {
-      ruler.removeEventListener('scroll', handleRulerScroll);
-      tracks.removeEventListener('scroll', handleTracksScroll);
+      window.removeEventListener('resize', updateWidth);
+      resizeObserver.disconnect();
     };
   }, []);
 
-  // Minimum pixels per second to ensure readable spacing
-  const minPixelsPerSecond = 30;
-  const pixelsPerSecond = Math.max(minPixelsPerSecond, 50 * zoom);
-  const timelineWidth = duration * pixelsPerSecond;
+  const pixelsPerSecond = duration > 0 && containerWidth > 0 
+    ? containerWidth / duration 
+    : 50;
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -76,69 +77,11 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
     return pixels / pixelsPerSecond;
   };
 
-  // Generate second markers
-  const generateSecondMarkers = (): Array<{ time: number; position: number; isMajor: boolean; showLabel: boolean }> => {
-    if (duration <= 0) return [];
-    
-    const markers: Array<{ time: number; position: number; isMajor: boolean; showLabel: boolean }> = [];
-    const totalSeconds = Math.ceil(duration);
-    
-    // Calculate label interval based on zoom and duration
-    // Show labels more frequently when zoomed in or for shorter videos
-    let labelInterval = 5; // Default: every 5 seconds for very long videos at default zoom
-    if (zoom > 1) {
-      // When zoomed in at all, show every second
-      labelInterval = 1;
-    } else if (duration <= 300) {
-      // For videos 5 minutes or less, show every second
-      labelInterval = 1;
-    } else if (duration <= 600) {
-      // For videos 10 minutes or less, show every 2 seconds
-      labelInterval = 2;
-    } else if (duration <= 1200) {
-      // For videos 20 minutes or less, show every 3 seconds
-      labelInterval = 3;
-    }
-    
-    // Generate markers for every second - always show the line, conditionally show label
-    for (let i = 0; i <= totalSeconds; i++) {
-      if (i <= duration) {
-        const shouldShowLabel = i % labelInterval === 0 || i === 0 || i === totalSeconds;
-        markers.push({
-          time: i,
-          position: (i / duration) * 100,
-          isMajor: true,
-          showLabel: shouldShowLabel,
-        });
-      }
-    }
-    
-    // Add sub-second markers if zoomed in enough
-    if (zoom > 1 && duration > 0) {
-      const subSecondInterval = zoom > 2 ? 0.1 : 0.5;
-      for (let t = 0; t <= duration; t += subSecondInterval) {
-        const wholeSecond = Math.floor(t);
-        const remainder = t - wholeSecond;
-        // Don't duplicate whole seconds
-        if (remainder > 0.01 && remainder < 0.99) {
-          markers.push({
-            time: t,
-            position: (t / duration) * 100,
-            isMajor: false,
-            showLabel: false,
-          });
-        }
-      }
-    }
-    
-    return markers.sort((a, b) => a.time - b.time);
-  };
-
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (timelineRef.current && !isDragging && !isResizing && duration > 0) {
-      const rect = timelineRef.current.getBoundingClientRect();
-      const scrollLeft = timelineRef.current.scrollLeft || 0;
-      const clickX = e.clientX - rect.left + scrollLeft;
+    if (!isDragging && !isResizing && duration > 0 && containerWidth > 0) {
+      const target = e.currentTarget;
+      const rect = target.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
       const time = Math.max(0, Math.min(pixelsToTime(clickX), duration));
       onSeek(time);
     }
@@ -171,7 +114,7 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging && dragStart && timelineRef.current) {
+      if (isDragging && dragStart) {
         const deltaX = e.clientX - dragStart.startX;
         const deltaTime = pixelsToTime(deltaX);
         const clip = tracks.flatMap(t => t.clips).find(c => c.id === dragStart.clipId);
@@ -223,7 +166,7 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, isResizing, dragStart, resizeStart, duration, tracks, onClipUpdate]);
+  }, [isDragging, isResizing, dragStart, resizeStart, duration, tracks, onClipUpdate, pixelsPerSecond, pixelsToTime]);
 
   const getClipColor = (type: string): string => {
     switch (type) {
@@ -240,29 +183,6 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
     <div className="multi-track-timeline">
       <div className="timeline-header">
         <div className="track-label-header">Tracks</div>
-        <div 
-          className="timeline-ruler" 
-          ref={timelineRef} 
-          onClick={handleTimelineClick}
-          style={{ width: `${timelineWidth}px`, minWidth: '100%' }}
-        >
-          {duration > 0 && generateSecondMarkers().map((marker, index) => (
-            <div
-              key={`marker-${marker.time}-${index}`}
-              className={`ruler-mark ${marker.isMajor ? 'major' : 'minor'}`}
-              style={{ left: `${timeToPixels(marker.time)}px` }}
-            >
-              <div className={`ruler-line ${marker.isMajor ? 'major-line' : 'minor-line'}`} />
-              {marker.isMajor && marker.showLabel && (
-                <span className="ruler-label">{formatTime(marker.time)}</span>
-              )}
-            </div>
-          ))}
-          <div
-            className="playhead"
-            style={{ left: `${timeToPixels(currentTime)}px` }}
-          />
-        </div>
       </div>
 
       <div className="timeline-tracks" ref={tracksContainerRef}>
@@ -280,7 +200,6 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
             <div 
               className="track-clips-container" 
               onClick={handleTimelineClick}
-              style={{ width: `${timelineWidth}px`, minWidth: '100%' }}
             >
               {track.clips.map((clip) => {
                 const clipWidth = timeToPixels(clip.endTime - clip.startTime);
@@ -329,12 +248,6 @@ const MultiTrackTimeline: React.FC<MultiTrackTimelineProps> = ({
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="timeline-footer">
-        <div className="zoom-controls">
-          <span>Zoom: {Math.round(zoom * 100)}%</span>
-        </div>
       </div>
     </div>
   );

@@ -4,8 +4,7 @@
   background: #1a1a1a;
   border-top: 1px solid #333;
   flex: 1 1 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   min-height: 200px; /* Reduced from 250px */
 }
 
@@ -14,8 +13,8 @@
   background: #252525;
   border-bottom: 1px solid #333;
   height: 48px; /* Reduced from 60px */
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .track-label-header {
@@ -112,7 +111,9 @@
 .timeline-tracks {
   flex: 1;
   overflow-y: auto;
-  overflow-x: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .timeline-track {
@@ -159,7 +160,7 @@
   min-height: 64px; /* Reduced from 80px */
   background: #1f1f1f;
   cursor: pointer;
-  min-width: 100%;
+  width: 100%;
 }
 
 .timeline-clip {
@@ -277,6 +278,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .zoom-controls {
