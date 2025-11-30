@@ -224,7 +224,6 @@ function buildFilterComplex(
 ): { filterString: string; inputs: string[]; hasFilters: boolean; useFilterFile: boolean } {
   const filterComplexParts: string[] = [];
   const inputs: string[] = [];
-  let badgeAdded = false;
   let streamCounter = 0;
 
   overlays.forEach((overlay, idx) => {
@@ -248,42 +247,23 @@ function buildFilterComplex(
         `x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:` +
         `enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10:fontfile=/Windows/Fonts/arial.ttf${outputStream}`
       );
-    } else if (overlay.type === 'timer' && badgePath) {
+    } else if (overlay.type === 'timer') {
       const timerType = overlay.timerType || 'elapsed';
       const format = overlay.timerFormat || 'MM:SS';
       const label = (overlay as any).text || '';
-      const badgeSize = 120;
-
-      const boxX = `(w*${x}/100-${badgeSize/2})`;  // Center badge at x position
-      const boxY = `(h*${y}/100+10)`;
-
-      // Only add badge once to inputs (it's always input index 1)
-      if (!badgeAdded) {
-        inputs.push(badgePath);
-        badgeAdded = true;
-      }
-      
-      const badgeInputIndex = 1; // Badge is always at index 1 (index 0 is the video)
 
       const inputStream = streamCounter === 0 ? '[0:v]' : `[v${streamCounter}]`;
-      streamCounter++;
-      const afterBadgeStream = `[v${streamCounter}]`;
-
-      filterComplexParts.push(
-        `${inputStream}[${badgeInputIndex}:v]overlay=x=${boxX}:y=${boxY}:` +
-        `enable='between(t,${start},${end})'${afterBadgeStream}`
-      );
 
       const safeLabel = String(label).replace(/'/g, "\\'").replace(/:/g, "\\:");
-      const nameSize = Math.max(12, Math.floor((fontSize || 18) * 0.7));
-      const nameCenterX = `(${boxX}+${badgeSize/2})`;
-      const nameCenterY = `(${boxY}+${badgeSize*0.35})`;
+      const nameSize = Math.max(24, Math.floor((fontSize || 18) * 1.2));
+      const nameCenterX = `(w*${x}/100)`;
+      const nameCenterY = `(h*${y}/100 - 20)`;
 
       streamCounter++;
       const afterNameStream = `[v${streamCounter}]`;
 
       filterComplexParts.push(
-        `${afterBadgeStream}drawtext=text='${safeLabel}':fontcolor=white:fontsize=${nameSize}:` +
+        `${inputStream}drawtext=text='${safeLabel}':fontcolor=white:fontsize=${nameSize}:` +
         `x=${nameCenterX}-text_w/2:y=${nameCenterY}-text_h/2:` +
         `enable='between(t,${start},${end})':fontfile=/Windows/Fonts/arialbd.ttf${afterNameStream}`
       );
@@ -299,9 +279,9 @@ function buildFilterComplex(
           : `'%{eif\\:floor(t-${start})\\:d}'`;
       }
 
-      const timerSize = Math.max(14, Math.floor((fontSize || 18) * 0.85));
+      const timerSize = Math.max(32, Math.floor((fontSize || 18) * 1.6));
       const timerCenterX = nameCenterX;
-      const timerCenterY = `(${boxY}+${badgeSize*0.65})`;
+      const timerCenterY = `(h*${y}/100 + 20)`;
 
       streamCounter++;
       const outputStream = idx === overlays.length - 1 ? '' : `[v${streamCounter}]`;
@@ -344,12 +324,7 @@ async function processVideoSinglePass(
   hwAccel: HardwareAccel
 ): Promise<void> {
   let badgePath: string | null = null;
-  const hasTimerOverlays = overlays.some(o => o.type === 'timer');
-  
-  if (hasTimerOverlays) {
-    badgePath = path.join(tempDir, `badge_${Date.now()}.png`);
-    await createCircularBadgePNG(badgePath);
-  }
+  // No badge creation: render timer text only (no green circle)
   
   return new Promise(async (resolve, reject) => {
     const inputs: string[] = [inputPath];
@@ -536,13 +511,7 @@ async function processVideoInBatches(
   
   try {
     let badgePath: string | null = null;
-    const hasTimerOverlays = overlays.some(o => o.type === 'timer');
-    
-    if (hasTimerOverlays) {
-      badgePath = path.join(tempDir, `badge_${Date.now()}.png`);
-      await createCircularBadgePNG(badgePath);
-      tempFiles.push(badgePath);
-    }
+    // No badge creation in batch mode either
     
     for (let i = 0; i < overlays.length; i += batchSize) {
       const batch = overlays.slice(i, i + batchSize);

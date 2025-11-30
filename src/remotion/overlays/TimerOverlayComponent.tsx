@@ -70,12 +70,9 @@ export const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({
   const xPos = (width * x) / 100;
   const yPos = (height * y) / 100;
   
-  // Badge size matching preview and final render
-  const badgeSize = 120;
-  
-  // Font sizes matching preview
-  const nameSize = Math.max(12, Math.floor(fontSize * 0.7));
-  const timerSize = Math.max(14, Math.floor(fontSize * 0.85));
+  // Font sizes: larger for clarity on export
+  const nameSize = Math.max(24, Math.floor(fontSize * 1.2));
+  const timerSize = Math.max(32, Math.floor(fontSize * 1.6));
 
   return (
     <div
@@ -84,11 +81,11 @@ export const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({
         left: xPos,
         top: yPos,
         transform: 'translate(-50%, -50%)',
-        width: badgeSize,
-        height: badgeSize,
-        backgroundColor: backgroundColor || 'rgba(34, 197, 94, 0.9)', // Green circular badge matching preview
-        borderRadius: '50%', // Circular shape
-        padding: '8px',
+        width: 'auto',
+        height: 'auto',
+        backgroundColor: 'transparent',
+        borderRadius: 0,
+        padding: 0,
         color: fontColor || '#fff',
         display: 'flex',
         flexDirection: 'column',
@@ -96,7 +93,7 @@ export const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({
         alignItems: 'center',
         textAlign: 'center',
         opacity,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        boxShadow: 'none',
         zIndex: 10,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}

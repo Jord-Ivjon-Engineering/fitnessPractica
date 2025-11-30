@@ -725,28 +725,22 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                 {overlays
                   .filter(ov => ov.type === 'timer' && currentTime >= ov.startTime && currentTime <= ov.endTime)
                   .map(ov => {
-                    // Circular badge size for top-right
-                    const badgeSize = 120;
-                    // Calculate position based on video's rendered size
+                    // Calculate centered position based on video's rendered size
                     let left: string | number;
                     let top: string | number;
-                    
+
                     if (videoRenderedSize) {
-                      // Position relative to video's rendered area within the container
                       const xPercent = Math.max(0, Math.min(100, ov.x)) / 100;
                       const yPercent = Math.max(0, Math.min(100, ov.y)) / 100;
-                      // Calculate position within the video's rendered bounds
                       const xPos = videoRenderedSize.left + (videoRenderedSize.width * xPercent);
                       const yPos = videoRenderedSize.top + (videoRenderedSize.height * yPercent);
-                      // Position badge so its right edge aligns with xPos, and top edge at yPos
-                      left = xPos - badgeSize;
+                      left = xPos;
                       top = yPos;
                     } else {
-                      // Fallback to percentage if video size not calculated yet
                       left = `${Math.max(0, Math.min(100, ov.x))}%`;
                       top = `${Math.max(0, Math.min(100, ov.y))}%`;
                     }
-                    
+
                     return (
                       <div
                         key={`live-${ov.id}`}
@@ -754,27 +748,23 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                           position: 'absolute',
                           left: typeof left === 'number' ? `${left}px` : left,
                           top: typeof top === 'number' ? `${top}px` : top,
-                          transform: typeof left === 'number' ? 'none' : `translateX(-${badgeSize}px)`,
-                          width: badgeSize,
-                          height: badgeSize,
-                          backgroundColor: 'rgba(34, 197, 94, 0.9)', // #22c55e @ 0.9
-                          borderRadius: '50%', // circular
-                          padding: '8px',
+                          transform: 'translate(-50%, -50%)',
+                          backgroundColor: 'transparent',
+                          borderRadius: 0,
+                          padding: 0,
                           color: '#fff',
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'center',
                           alignItems: 'center',
                           textAlign: 'center',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                           zIndex: 1000,
                         }}
                       >
-                        <div style={{ fontSize: Math.min(14, (ov.fontSize || 18) * 0.7), lineHeight: 1.1, fontWeight: 700, marginBottom: 4 }}>
+                        <div style={{ fontSize: Math.max(24, Math.floor((ov.fontSize || 18) * 1.2)), lineHeight: 1.1, fontWeight: 700, marginBottom: 6 }}>
                           {ov.text || ''}
                         </div>
-                        <div style={{ fontSize: Math.min(16, (ov.fontSize || 18) * 0.85), fontWeight: 600 }}>
-                          {/* Render elapsed MM:SS in preview */}
+                        <div style={{ fontSize: Math.max(32, Math.floor((ov.fontSize || 18) * 1.6)), fontWeight: 700 }}>
                           {(() => {
                             const elapsed = Math.max(0, currentTime - ov.startTime);
                             const mm = Math.floor(elapsed / 60).toString().padStart(2, '0');
