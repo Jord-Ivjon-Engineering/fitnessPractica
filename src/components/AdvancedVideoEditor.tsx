@@ -108,6 +108,31 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   const [zoom, setZoom] = useState(1);
   const [selectedClip, setSelectedClip] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<'media'>('media');
+
+  // One-time migration: ensure existing exercises have sequential odd IDs (1,3,5,...)
+  const hasMigratedRef = useRef(false);
+  useEffect(() => {
+    if (hasMigratedRef.current) return;
+    if (exercises.length === 0) return;
+    // If any exercise has an even ID, remap all to odd sequential IDs preserving order
+    const hasEven = exercises.some(ex => ex.id % 2 === 0);
+    if (!hasEven) {
+      hasMigratedRef.current = true;
+      return;
+    }
+    const sorted = [...exercises].sort((a, b) => a.start - b.start);
+    let nextOdd = 1;
+    const remapped = sorted.map(ex => {
+      const newEx = { ...ex, id: nextOdd };
+      nextOdd += 2;
+      return newEx;
+    });
+    // Preserve original order indices by mapping back
+    const byStartMap = new Map(sorted.map((ex, idx) => [ex.start, remapped[idx]]));
+    const finalOrder = exercises.map(ex => byStartMap.get(ex.start) || ex);
+    setExercises(finalOrder);
+    hasMigratedRef.current = true;
+  }, [exercises]);
   const [history, setHistory] = useState<any[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showRemotionPreview, setShowRemotionPreview] = useState(false);
@@ -225,11 +250,14 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
 
   const handleAddExercise = (name: string, start: number, end: number) => {
     const newExercise: Exercise = {
-      id: nextExerciseId.current++,
+      // Ensure exercise IDs are always odd so breaks (even IDs) are excluded
+      id: nextExerciseId.current,
       name,
       start,
       end,
     };
+    // Increment by 2 to keep IDs odd: 1,3,5,...
+    nextExerciseId.current += 2;
     setExercises([...exercises, newExercise].sort((a, b) => a.start - b.start));
     // Add a single timer overlay that carries the exercise name so backend can render a green box
     const timerOverlay: Overlay = {
@@ -420,6 +448,107 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
           </div>
 
           <div className="sidebar-content">
+            {/* All Exercises Editable Section - Always visible */}
+            <div className="odd-exercises-section" style={{ marginBottom: '20px', padding: '10px', background: '#fafafa', borderRadius: '8px', border: '2px solid #764ba2' }}>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#764ba2' }}>
+                Ushtrimet ne video te shtuara manualisht - {exercises.length}
+              </h3>
+              
+              {/* Preview Timeline (ALL exercises) */}
+              <div style={{ marginBottom: '16px', background: '#1a1a1a', padding: '12px', borderRadius: '6px' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 600, color: '#fff' }}>Preview Timeline</h4>
+                {exercises.length === 0 ? (
+                  <div style={{ color: '#888', fontStyle: 'italic', fontSize: '12px' }}>
+                    No exercises added yet.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {exercises.map(exercise => (
+                      <div key={exercise.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '4px', height: '40px', background: '#667eea', borderRadius: '2px' }} />
+                        <div style={{ flex: 1, background: '#2a2a2a', padding: '8px 10px', borderRadius: '4px', border: '1px solid #3a3a3a' }}>
+                          <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+                            {Math.floor(exercise.start)}s - {Math.floor(exercise.end)}s
+                          </div>
+                          <input
+                            type="text"
+                            value={exercise.name}
+                            onChange={e => {
+                              const newName = e.target.value;
+                              setExercises(prev => prev.map(ei => ei.id === exercise.id ? { ...ei, name: newName } : ei));
+                            }}
+                            style={{
+                              width: '100%',
+                              background: '#1a1a1a',
+                              border: '1px solid #4a4a4a',
+                              borderRadius: '3px',
+                              padding: '4px 6px',
+                              fontSize: '12px',
+                              color: '#fff',
+                              fontWeight: 500
+                            }}
+                            placeholder="Exercise name"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* If user has generated an automatic preview but not added yet, show it here too */}
+                {previewSegments && previewSegments.length > 0 && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #333' }}>
+                    <h5 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: '#ddd' }}>Pending Preview (not yet added)</h5>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {previewSegments.map((seg, i) => (
+                        <div key={`preview-${i}`} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 80px', gap: '8px', alignItems: 'center' }}>
+                          <div style={{ fontSize: 11, color: '#bbb' }}>{Math.floor(seg.start)}s - {Math.floor(seg.end)}s</div>
+                          <input
+                            type="text"
+                            value={seg.name}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPreviewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, name: val } : s));
+                            }}
+                            style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
+                          />
+                          <button
+                            onClick={() => handleAddExercise(seg.name, seg.start, seg.end)}
+                            style={{ background: '#22c55e', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 12 }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => {
+                          previewSegments.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
+                          setPreviewSegments([]);
+                        }}
+                        style={{ background: '#667eea', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 12px', cursor: 'pointer', fontSize: 12 }}
+                      >
+                        Add All to Exercises
+                      </button>
+                      <button
+                        onClick={() => setPreviewSegments([])}
+                        style={{ background: '#444', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 12px', cursor: 'pointer', fontSize: 12 }}
+                      >
+                        Clear Preview
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {exercises.length === 0 ? (
+                <div style={{ color: '#888', fontStyle: 'italic', fontSize: '13px' }}>
+                  No exercises yet. Add exercises using the Media panel below.
+                </div>
+              ) : null}
+            </div>
+
             {activePanel === 'media' && (
               <MediaLibrary
                 videoUrl={videoUrl}
@@ -450,6 +579,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                 src={videoUrl}
                 controls={true}
                 preload="auto"
+                style={{ width: '100%', height: '100%', maxHeight: '70vh', display: 'block' }}
                 onPlay={() => setPlaying(true)}
                 onPause={() => setPlaying(false)}
                 onTimeUpdate={() => {
@@ -594,7 +724,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                           style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px' }} />
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
                       <button
                         onClick={() => {
                           if (duration <= 0) return;
@@ -608,7 +738,10 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                               if (bEnd > pos) { segs.push({ name: autoBreakName, start: pos, end: bEnd, type: 'break' }); pos = bEnd; }
                             }
                           }
-                          setPreviewSegments(segs);
+                          // Always commit generated segments to exercises immediately
+                          segs.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
+                          // Also show them briefly as preview (optional); then clear
+                          setPreviewSegments([]);
                         }}
                         style={{ flex: 1, background: '#667eea', color: '#fff', border: 'none', borderRadius: 4, padding: '8px', cursor: 'pointer' }}
                       >

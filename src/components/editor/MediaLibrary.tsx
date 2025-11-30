@@ -34,6 +34,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const [autoExerciseName, setAutoExerciseName] = useState('Exercise');
   const [autoBreakName, setAutoBreakName] = useState('Break');
   const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
+  // Keep preview visible after adding; button remains functional
 
   const handleShowAddExercise = () => {
     // Pause video when opening add exercise form
@@ -140,18 +141,41 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
       }
     }
 
-    setPreviewSegments(segments);
+  setPreviewSegments(segments);
   };
 
   const handleConfirmGeneration = () => {
+    const count = previewSegments.length;
+    
     // Add all segments as exercises
     previewSegments.forEach(segment => {
       onAddExercise(segment.name, segment.start, segment.end);
     });
 
-    setShowAutoModal(false);
-    setPreviewSegments([]);
-    alert(`Successfully added ${previewSegments.length} segments!`);
+  setShowAutoModal(false);
+  // Keep preview visible below the Overlays section (no clearing)
+    
+    // Show success message after a brief delay to ensure state updates
+    setTimeout(() => {
+      alert(`Successfully added ${count} segments!`);
+    }, 100);
+  };
+
+  // Handle "Add All" from below overlays section
+  const handleAddAllPreview = () => {
+    const count = previewSegments.length;
+    
+    // Add all segments as exercises
+    previewSegments.forEach(segment => {
+      onAddExercise(segment.name, segment.start, segment.end);
+    });
+
+  // Keep preview visible after adding (no clearing)
+    
+    // Show success message
+    setTimeout(() => {
+      alert(`Successfully added ${count} segments!`);
+    }, 100);
   };
 
   const handleUpdateSegmentName = (index: number, newName: string) => {
@@ -207,7 +231,49 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 <Plus size={18} /> Add Exercise
               </button>
               <button
-                onClick={() => setShowAutoModal(true)}
+                onClick={() => {
+                  if (videoDuration <= 0) {
+                    alert('Video duration not available. Please wait for the video to load.');
+                    return;
+                  }
+
+                  // Generate preview segments inline to ensure they're set before modal opens
+                  const segments: Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }> = [];
+                  let currentPos = 0;
+                  let exerciseCounter = 1;
+
+                  while (currentPos < videoDuration) {
+                    // Add exercise
+                    const exerciseEnd = Math.min(currentPos + autoExerciseTime, videoDuration);
+                    if (exerciseEnd > currentPos) {
+                      segments.push({
+                        name: `${autoExerciseName} ${exerciseCounter}`,
+                        start: currentPos,
+                        end: exerciseEnd,
+                        type: 'exercise'
+                      });
+                      currentPos = exerciseEnd;
+                      exerciseCounter++;
+                    }
+
+                    // Add break (if there's time remaining)
+                    if (currentPos < videoDuration) {
+                      const breakEnd = Math.min(currentPos + autoBreakTime, videoDuration);
+                      if (breakEnd > currentPos) {
+                        segments.push({
+                          name: autoBreakName,
+                          start: currentPos,
+                          end: breakEnd,
+                          type: 'break'
+                        });
+                        currentPos = breakEnd;
+                      }
+                    }
+                  }
+
+                  setPreviewSegments(segments);
+                  setShowAutoModal(true);
+                }}
                 className="add-item-btn auto-btn"
                 title="Automatically divide video into exercises and breaks"
               >
@@ -358,7 +424,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
               )}
               <button onClick={() => {
                 setShowAutoModal(false);
-                setPreviewSegments([]);
+                // Don't clear preview segments - keep them visible below Overlays
               }} className="btn-secondary">
                 Cancel
               </button>
@@ -375,6 +441,36 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
             <span>Timer</span>
           </button>
         </div>
+        {/* Render automatic preview list directly below overlays */}
+        {previewSegments.length > 0 && (
+          <div className="auto-preview-below-overlays" style={{ marginTop: '12px' }}>
+            <h4 style={{ margin: '8px 0' }}>Preview Timeline</h4>
+            <div className="preview-list">
+              {previewSegments.map((segment, index) => (
+                <div key={`overlay-preview-${index}`} className={`preview-segment ${segment.type}`}>
+                  <div className="segment-time">
+                    {Math.floor(segment.start)}s - {Math.floor(segment.end)}s
+                  </div>
+                  <input
+                    type="text"
+                    value={segment.name}
+                    onChange={(e) => handleUpdateSegmentName(index, e.target.value)}
+                    className="segment-name-input"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="preview-actions" style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button onClick={handleAddAllPreview} className="btn-primary">
+                Add All to Timeline
+              </button>
+              <button onClick={() => setPreviewSegments([])} className="btn-secondary">
+                Clear Preview
+              </button>
+              {/* Removed extra status text to reduce clutter; the disabled button label is enough feedback */}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
