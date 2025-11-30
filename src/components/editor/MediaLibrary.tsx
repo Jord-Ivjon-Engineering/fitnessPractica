@@ -33,6 +33,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const [autoBreakTime, setAutoBreakTime] = useState(20);
   const [autoExerciseName, setAutoExerciseName] = useState('Exercise');
   const [autoBreakName, setAutoBreakName] = useState('Break');
+  const [autoFirstExerciseStart, setAutoFirstExerciseStart] = useState(0);
   const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
   // Keep preview visible after adding; button remains functional
 
@@ -107,9 +108,12 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
       return;
     }
 
+    // Validate first exercise start time
+    const startTime = Math.max(0, Math.min(autoFirstExerciseStart, videoDuration - 1));
+
     // Generate preview segments
     const segments: Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }> = [];
-    let currentPos = 0;
+    let currentPos = startTime;
     let exerciseCounter = 1;
 
     while (currentPos < videoDuration) {
@@ -237,9 +241,12 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     return;
                   }
 
+                  // Validate first exercise start time
+                  const startTime = Math.max(0, Math.min(autoFirstExerciseStart, videoDuration - 1));
+
                   // Generate preview segments inline to ensure they're set before modal opens
                   const segments: Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }> = [];
-                  let currentPos = 0;
+                  let currentPos = startTime;
                   let exerciseCounter = 1;
 
                   while (currentPos < videoDuration) {
@@ -364,6 +371,21 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     min="1"
                     className="form-input"
                   />
+                </div>
+                <div className="form-group">
+                  <label>First Exercise Start Time (seconds)</label>
+                  <input
+                    type="number"
+                    value={autoFirstExerciseStart}
+                    onChange={(e) => {
+                      setAutoFirstExerciseStart(parseFloat(e.target.value) || 0);
+                      setPreviewSegments([]); // Clear preview when config changes
+                    }}
+                    min="0"
+                    step="0.1"
+                    className="form-input"
+                  />
+                  <small>Where the first exercise should start in the video</small>
                 </div>
                 <div className="form-group">
                   <label>Exercise Name Template</label>

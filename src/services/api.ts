@@ -146,6 +146,7 @@ export const trainingProgramApi = {
   getById: (id: number) => api.get<{ success: boolean; data: TrainingProgram }>(`/training-programs/${id}`),
   attachVideo: (id: number, fileUrl: string, title?: string) => api.post<{ success: boolean; data: any }>(`/training-programs/${id}/videos`, { fileUrl, title }),
   updateVideo: (programId: number, videoId: number, fileUrl: string, title?: string) => api.put<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}`, { fileUrl, title }),
+  deleteVideo: (programId: number, videoId: number) => api.delete<{ success: boolean; message: string }>(`/training-programs/${programId}/videos/${videoId}`),
   getVideos: (id: number) => api.get<{ success: boolean; data: { id: number; programId: number; url: string; title: string | null; createdAt: string }[] }>(`/training-programs/${id}/videos`),
   updateVideoProgress: (programId: number, videoId: number, watchedPercentage: number) => api.post<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}/progress`, { watchedPercentage }),
   getVideoProgress: (programId: number) => api.get<{ success: boolean; data: any[] }>(`/training-programs/${programId}/progress`),

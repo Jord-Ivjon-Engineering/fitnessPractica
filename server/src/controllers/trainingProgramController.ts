@@ -141,6 +141,43 @@ export const updateProgramVideo = async (req: Request, res: Response, next: Next
   }
 };
 
+export const deleteProgramVideo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { programId, videoId } = req.params;
+
+    const programIdNum = parseInt(programId, 10);
+    const videoIdNum = parseInt(videoId, 10);
+
+    // Verify program exists
+    const program = await prisma.trainingProgram.findUnique({ where: { id: programIdNum } });
+    if (!program) {
+      const error: ApiError = new Error('Program not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Verify video exists and belongs to program
+    const existingVideo = await (prisma as any).programVideo.findFirst({
+      where: { id: videoIdNum, programId: programIdNum },
+    });
+
+    if (!existingVideo) {
+      const error: ApiError = new Error('Video not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Delete the video (cascade will handle related records like videoProgress)
+    await (prisma as any).programVideo.delete({
+      where: { id: videoIdNum },
+    });
+
+    res.json({ success: true, message: 'Video deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateVideoProgress = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { videoId, programId } = req.params;

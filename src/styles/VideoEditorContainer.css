@@ -344,6 +344,16 @@ body.video-editor-active .video-editor-container:has(.video-editor-wrapper) {
   font-size: 14px;
 }
 
+.success-message {
+  margin: 20px;
+  padding: 16px;
+  background: #14532d;
+  border: 1px solid #22c55e;
+  border-radius: 8px;
+  color: #86efac;
+  font-size: 14px;
+}
+
 .upload-progress,
 .processing-progress {
   margin: 20px 0;

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AdvancedVideoEditor from '../components/AdvancedVideoEditor';
 import { io, Socket } from 'socket.io-client';
+import { trainingProgramApi } from '../services/api';
 import '../styles/VideoEditorContainer.css';
 
 interface Overlay {
@@ -49,6 +50,7 @@ const ProgramVideoEditor = () => {
   const [videoError, setVideoError] = useState<string>('');
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('');
   const [videoTitle, setVideoTitle] = useState<string>(videoDataFromState?.name || 'Untitled Video');
+  const [attachStatus, setAttachStatus] = useState<string>('');
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -213,10 +215,35 @@ const ProgramVideoEditor = () => {
 
       const result = await resultPromise;
       if (result.success && result.data?.url) {
-        setProcessedVideoUrl(result.data.url);
+        const processedUrl = result.data.url;
+        setProcessedVideoUrl(processedUrl);
         setVideoError('');
         const timestamp = new Date().toLocaleString();
         setVideoTitle(`${videoTitle} - Processed ${timestamp}`);
+        
+        // Auto-attach/update video to program if programId is available
+        if (programId) {
+          try {
+            setAttachStatus('Attaching video to program...');
+            const existingVideoId = videoDataFromState?.existingVideoId;
+            
+            if (existingVideoId) {
+              // Update existing video
+              await trainingProgramApi.updateVideo(programId, existingVideoId, processedUrl, videoTitle);
+              setAttachStatus('Video updated successfully!');
+            } else {
+              // Attach new video to program
+              await trainingProgramApi.attachVideo(programId, processedUrl, videoTitle);
+              setAttachStatus('Video attached to program successfully!');
+            }
+          } catch (attachErr: any) {
+            console.error('Error attaching/updating video to program:', attachErr);
+            const errorMsg = attachErr?.response?.data?.error || attachErr?.message || 'Unknown error';
+            setAttachStatus(`Warning: Video processed but failed to attach to program: ${errorMsg}`);
+          }
+        } else {
+          setAttachStatus('No program ID available — video processed but not attached.');
+        }
       } else {
         throw new Error(result.error || 'Video processing failed');
       }
@@ -269,6 +296,12 @@ const ProgramVideoEditor = () => {
 
         {videoError && (
           <div className="error-message">{videoError}</div>
+        )}
+        
+        {attachStatus && (
+          <div className={attachStatus.includes('Warning') || attachStatus.includes('failed') ? 'error-message' : 'success-message'}>
+            {attachStatus}
+          </div>
         )}
 
         {/* Upload Progress */}

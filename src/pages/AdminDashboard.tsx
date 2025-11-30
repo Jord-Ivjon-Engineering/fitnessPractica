@@ -659,6 +659,33 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteVideo = async (programId: number, videoId: number) => {
+    if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await trainingProgramApi.deleteVideo(programId, videoId);
+      
+      if (response.data.success) {
+        // Reload videos list
+        const videosResponse = await trainingProgramApi.getVideos(programId);
+        if (videosResponse.data.success) {
+          setExistingVideos(videosResponse.data.data || []);
+        }
+        alert('Video deleted successfully!');
+      }
+    } catch (err: any) {
+      console.error('Error deleting video:', err);
+      setError(err.response?.data?.error || 'Failed to delete video');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdateProgram = async (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
@@ -1317,25 +1344,48 @@ const AdminDashboard = () => {
                           <p><strong>Title:</strong> {video.title || 'Untitled'}</p>
                           <p><strong>Added:</strong> {formatDate(video.createdAt)}</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // Navigate to editor page
-                            navigate('/admin/program-video-editor', {
-                              state: {
-                                url: video.url,
-                                name: video.title || 'Existing Video',
-                                isExisting: true,
-                                existingVideoId: video.id,
-                                programId: editingProgramId
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Navigate to editor page
+                              navigate('/admin/program-video-editor', {
+                                state: {
+                                  url: video.url,
+                                  name: video.title || 'Existing Video',
+                                  isExisting: true,
+                                  existingVideoId: video.id,
+                                  programId: editingProgramId
+                                }
+                              });
+                            }}
+                            className="btn-select-video"
+                            disabled={isProcessingVideo || loading}
+                          >
+                            Edit This Video
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editingProgramId) {
+                                handleDeleteVideo(editingProgramId, video.id);
                               }
-                            });
-                          }}
-                          className="btn-select-video"
-                          disabled={isProcessingVideo}
-                        >
-                          Edit This Video
-                        </button>
+                            }}
+                            className="btn-delete"
+                            disabled={isProcessingVideo || loading}
+                            style={{ 
+                              background: '#dc2626', 
+                              color: '#fff', 
+                              border: 'none', 
+                              borderRadius: '4px', 
+                              padding: '8px 16px', 
+                              cursor: loading || isProcessingVideo ? 'not-allowed' : 'pointer',
+                              opacity: loading || isProcessingVideo ? 0.6 : 1
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1347,9 +1397,6 @@ const AdminDashboard = () => {
                   {!isUploadingVideo && (
                     <>
                       <VideoUploader onVideoLoad={handleVideoLoad} />
-                      <p style={{ marginTop: '15px', color: '#666', fontSize: '14px', textAlign: 'center' }}>
-                        Video upload is optional. You can create the program now or add videos later.
-                      </p>
                     </>
                   )}
                   {isUploadingVideo && (

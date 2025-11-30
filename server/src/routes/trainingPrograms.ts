@@ -5,6 +5,7 @@ import {
   attachVideoToProgram,
   getProgramVideos,
   updateProgramVideo,
+  deleteProgramVideo,
   updateVideoProgress,
   getVideoProgress,
   getVideoExercises,
@@ -27,6 +28,8 @@ router.post('/:id/videos', authenticate, requireAdmin, attachVideoToProgram);
 router.post('/:programId/videos/:videoId/progress', authenticate, updateVideoProgress);
 // Update an existing video (admin only)
 router.put('/:programId/videos/:videoId', authenticate, requireAdmin, updateProgramVideo);
+// Delete a video from a program (admin only)
+router.delete('/:programId/videos/:videoId', authenticate, requireAdmin, deleteProgramVideo);
 
 export default router;
 

@@ -143,6 +143,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   const [autoBreakTime, setAutoBreakTime] = useState(20);
   const [autoExerciseName, setAutoExerciseName] = useState('Exercise');
   const [autoBreakName, setAutoBreakName] = useState('Break');
+  const [autoFirstExerciseStart, setAutoFirstExerciseStart] = useState(0);
   const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -723,13 +724,19 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                         <input type="text" value={autoBreakName} onChange={(e) => setAutoBreakName(e.target.value||'Break')}
                           style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px' }} />
                       </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#ccc' }}>First start (s)</label>
+                        <input type="number" value={autoFirstExerciseStart} min={0} step={0.1} onChange={(e) => { setAutoFirstExerciseStart(parseFloat(e.target.value)||0); setPreviewSegments([]); }}
+                          style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px' }} />
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
                       <button
                         onClick={() => {
                           if (duration <= 0) return;
+                          const startTime = Math.max(0, Math.min(autoFirstExerciseStart, duration - 1));
                           const segs: Array<{ name: string; start: number; end: number; type: 'exercise'|'break' }> = [];
-                          let pos = 0; let idx = 1;
+                          let pos = startTime; let idx = 1;
                           while (pos < duration) {
                             const eEnd = Math.min(pos + autoExerciseTime, duration);
                             if (eEnd > pos) { segs.push({ name: `${autoExerciseName} ${idx}`, start: pos, end: eEnd, type: 'exercise' }); pos = eEnd; idx++; }
@@ -738,10 +745,8 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                               if (bEnd > pos) { segs.push({ name: autoBreakName, start: pos, end: bEnd, type: 'break' }); pos = bEnd; }
                             }
                           }
-                          // Always commit generated segments to exercises immediately
-                          segs.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
-                          // Also show them briefly as preview (optional); then clear
-                          setPreviewSegments([]);
+                          // Set preview segments for user to review before adding
+                          setPreviewSegments(segs);
                         }}
                         style={{ flex: 1, background: '#667eea', color: '#fff', border: 'none', borderRadius: 4, padding: '8px', cursor: 'pointer' }}
                       >

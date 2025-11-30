@@ -41,17 +41,17 @@ async function detectHardwareAcceleration(): Promise<HardwareAccel> {
       return hardwareAccelCache;
     }
     
-    // Check for QSV FIRST (Intel QuickSync) - prioritize for Intel integrated graphics
-    if (encoderList.toLowerCase().includes('h264_qsv')) {
-      hardwareAccelCache = { type: 'qsv', available: true };
-      console.log('✅ Hardware acceleration detected: Intel QuickSync');
+    // Check for NVENC FIRST (NVIDIA GeForce RTX) - prioritize dedicated GPU
+    if (encoderList.toLowerCase().includes('h264_nvenc')) {
+      hardwareAccelCache = { type: 'nvenc', available: true };
+      console.log('✅ Hardware acceleration detected: NVIDIA NVENC (GeForce RTX preferred)');
       return hardwareAccelCache;
     }
 
-    // Check for NVENC (NVIDIA)
-    if (encoderList.toLowerCase().includes('h264_nvenc')) {
-      hardwareAccelCache = { type: 'nvenc', available: true };
-      console.log('✅ Hardware acceleration detected: NVIDIA NVENC');
+    // Check for QSV (Intel QuickSync) - fallback for integrated graphics
+    if (encoderList.toLowerCase().includes('h264_qsv')) {
+      hardwareAccelCache = { type: 'qsv', available: true };
+      console.log('✅ Hardware acceleration detected: Intel QuickSync');
       return hardwareAccelCache;
     }
 
@@ -136,13 +136,14 @@ function getEncoderOptions(hwAccel: HardwareAccel): string[] {
   const options: string[] = [];
 
   if (hwAccel.type === 'nvenc') {
-    // NVIDIA NVENC - output encoding (CPU decoding + GPU encoding)
-    // This is more reliable than using CUDA decoder
+    // NVIDIA NVENC - optimized for GeForce RTX GPUs
+    // CPU decoding + GPU encoding for better compatibility with filters
+    // FFmpeg will automatically use the first available NVIDIA GPU (RTX if available)
     options.push(
       '-c:v', 'h264_nvenc',
-      '-preset', 'p1',  // Fastest preset (p1-p7, p1 is fastest)
+      '-preset', 'p4',  // Balanced preset for RTX (p1-p7, p4 is good balance of speed/quality)
       '-rc', 'vbr',
-      '-cq', '23',  // Slightly higher CQ for faster encoding
+      '-cq', '23',  // Quality setting (lower = better quality, 18-28 is typical range)
       '-b:v', '0',  // Let CQ control bitrate
       '-pix_fmt', 'yuv420p',
       '-c:a', 'copy',
