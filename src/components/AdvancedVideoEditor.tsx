@@ -73,6 +73,7 @@ interface AdvancedVideoEditorProps {
   onOverlaysChange?: (overlays: Overlay[]) => void;
   onDurationChange?: (duration: number) => void;
   onExport?: (data: { exercises: Exercise[]; overlays: Overlay[] }) => void;
+  onPreviewSegmentsChange?: (segments: Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>) => void;
 }
 
 const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
@@ -84,6 +85,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   onOverlaysChange,
   onDurationChange,
   onExport,
+  onPreviewSegmentsChange,
 }) => {
   const [tracks, setTracks] = useState<TimelineTrack[]>([
     {
@@ -197,6 +199,11 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
     }, 100);
     return () => clearInterval(interval);
   }, [playing]);
+
+  // Notify parent when preview segments change
+  useEffect(() => {
+    onPreviewSegmentsChange?.(previewSegments);
+  }, [previewSegments, onPreviewSegmentsChange]);
 
   // Calculate video's rendered size (accounting for object-fit: contain)
   useEffect(() => {
@@ -597,7 +604,8 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                       <button
                         onClick={() => {
                           previewSegments.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
-                          setPreviewSegments([]);
+                          // Don't clear previewSegments - keep them for processing video
+                          // setPreviewSegments([]);
                         }}
                         style={{ background: '#667eea', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 12px', cursor: 'pointer', fontSize: 12 }}
                       >
@@ -631,6 +639,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                 videoRef={videoRef}
                 playing={playing}
                 videoDuration={duration}
+                onPreviewSegmentsChange={onPreviewSegmentsChange}
               />
             )}
           </div>
@@ -852,7 +861,8 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                         <button
                           onClick={() => {
                             previewSegments.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
-                            setPreviewSegments([]);
+                            // Don't clear previewSegments - keep them for processing video
+                            // setPreviewSegments([]);
                             setShowAutoPanel(false);
                           }}
                           style={{ flex: 1, background: '#22c55e', color: '#fff', border: 'none', borderRadius: 4, padding: '8px', cursor: 'pointer' }}

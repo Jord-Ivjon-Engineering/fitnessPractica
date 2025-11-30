@@ -42,11 +42,6 @@ async function detectHardwareAcceleration(): Promise<HardwareAccel> {
     }
     
     // Check for NVENC FIRST (NVIDIA GeForce RTX) - prioritize dedicated GPU
-    if (encoderList.toLowerCase().includes('h264_nvenc')) {
-      hardwareAccelCache = { type: 'nvenc', available: true };
-      console.log('✅ Hardware acceleration detected: NVIDIA NVENC (GeForce RTX preferred)');
-      return hardwareAccelCache;
-    }
 
     // Check for QSV (Intel QuickSync) - fallback for integrated graphics
     if (encoderList.toLowerCase().includes('h264_qsv')) {
@@ -841,11 +836,53 @@ router.post(
         });
       }
 
+      // Calculate exercises and breaks data
+      let exercisesData: any = null;
+      if (exercises.length > 0) {
+        // Sort exercises by start time
+        const sortedExercises = [...exercises].sort((a, b) => a.start - b.start);
+        
+        // Convert exercises to include endTime
+        const exercisesWithEnd = sortedExercises.map(ex => ({
+          name: ex.name,
+          startTime: ex.start,
+          endTime: ex.start + ex.duration,
+        }));
+
+        // Calculate breaks between exercises
+        const breaks: Array<{ startTime: number; endTime: number; duration: number; nextExerciseName: string }> = [];
+        for (let i = 0; i < exercisesWithEnd.length - 1; i++) {
+          const currentExercise = exercisesWithEnd[i];
+          const nextExercise = exercisesWithEnd[i + 1];
+          const breakStart = currentExercise.endTime;
+          const breakEnd = nextExercise.startTime;
+          const breakDuration = breakEnd - breakStart;
+
+          // Only add break if there's a gap (breakDuration > 0)
+          if (breakDuration > 0) {
+            breaks.push({
+              startTime: breakStart,
+              endTime: breakEnd,
+              duration: breakDuration,
+              nextExerciseName: nextExercise.name,
+            });
+          }
+        }
+
+        exercisesData = {
+          exercises: exercisesWithEnd,
+          breaks: breaks,
+        };
+      }
+
       const fileUrl = `/uploads/edited/${outputName}`;
       res.json({ 
         success: true, 
         message: doPassThrough ? 'Video re-encoded' : 'Video edited successfully', 
-        data: { url: fileUrl } 
+        data: { 
+          url: fileUrl,
+          exercisesData: exercisesData
+        } 
       });
 
     } catch (err: any) {

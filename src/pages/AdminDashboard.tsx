@@ -61,6 +61,7 @@ const AdminDashboard = () => {
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [videoError, setVideoError] = useState<string>('');
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('');
+  const [processedExercisesData, setProcessedExercisesData] = useState<any>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -419,33 +420,47 @@ const AdminDashboard = () => {
 
       if (contentType.includes('application/json')) {
         const data = await response.json();
-        if (data && data.fileUrl) {
+        if (data && data.success && data.data && data.data.url) {
           // Store the relative URL path (like standalone editor does)
-          // data.fileUrl is already like "/uploads/edited/edited_123.mp4"
-          setProcessedVideoUrl(data.fileUrl);
+          // data.data.url is already like "/uploads/edited/edited_123.mp4"
+          const processedUrl = data.data.url;
+          const exercisesData = data.data.exercisesData || null;
+          setProcessedVideoUrl(processedUrl);
+          setProcessedExercisesData(exercisesData);
           setVideoError('');
           
           // If we're updating an existing video, update it immediately
           if (selectedExistingVideo && editingProgramId) {
             try {
-              await trainingProgramApi.updateVideo(editingProgramId, selectedExistingVideo.id, data.fileUrl);
+              // Update existing video with URL, title, and exercisesData
+              await trainingProgramApi.updateVideo(
+                editingProgramId, 
+                selectedExistingVideo.id, 
+                processedUrl,
+                selectedExistingVideo.title || undefined,
+                exercisesData
+              );
               // Reload videos to show updated video
               const videosResponse = await trainingProgramApi.getVideos(editingProgramId);
               if (videosResponse.data.success) {
                 setExistingVideos(videosResponse.data.data);
               }
-              // Clear selection and reset form
+              // Clear selection and reset form - IMPORTANT: Clear processedVideoUrl to prevent duplicate attachment
               setSelectedExistingVideo(null);
               setExercises([]);
               setPreviews([]);
               setShowPreview(false);
               setVideoData(null);
               setVideoFile(null);
-              setProcessedVideoUrl('');
+              setProcessedVideoUrl(''); // Clear to prevent attachVideo from being called later
+              setProcessedExercisesData(null);
               alert('Video updated successfully with new exercises!');
             } catch (updateErr: any) {
               console.error('Error updating video:', updateErr);
               setVideoError('Video processed but update failed. Please try updating the program.');
+              // Clear processedVideoUrl even on error to prevent duplicate attachment
+              setProcessedVideoUrl('');
+              setProcessedExercisesData(null);
             }
           }
         } else {
@@ -540,7 +555,7 @@ const AdminDashboard = () => {
         if (processedVideoUrl && processedVideoUrl.startsWith('/')) {
           // Only attach if we have a relative URL path (not blob URL)
           try {
-            await trainingProgramApi.attachVideo(createdProgramId, processedVideoUrl);
+            await trainingProgramApi.attachVideo(createdProgramId, processedVideoUrl, undefined, processedExercisesData);
           } catch (attachErr: any) {
             console.error('Error attaching video to program:', attachErr);
             // Don't fail the whole operation, just log the error
@@ -571,6 +586,7 @@ const AdminDashboard = () => {
         setVideoFile(null);
         setExercises([]);
         setProcessedVideoUrl('');
+        setProcessedExercisesData(null);
         setProgramStep('details');
         
         // Reload programs list
@@ -759,8 +775,8 @@ const AdminDashboard = () => {
         // (existing videos are updated immediately after processing in processVideo function)
         if (processedVideoUrl && processedVideoUrl.startsWith('/') && !selectedExistingVideo) {
           try {
-            // Attach new video
-            await trainingProgramApi.attachVideo(editingProgramId, processedVideoUrl);
+            // Attach new video with exercises data
+            await trainingProgramApi.attachVideo(editingProgramId, processedVideoUrl, undefined, processedExercisesData);
           } catch (attachErr: any) {
             console.error('Error attaching video to program:', attachErr);
             setError('Program updated but video attachment failed. You can attach it later.');
@@ -784,6 +800,7 @@ const AdminDashboard = () => {
         setVideoFile(null);
         setExercises([]);
         setProcessedVideoUrl('');
+        setProcessedExercisesData(null);
         setProgramStep('details');
         setEditingProgramId(null);
         setExistingVideos([]);

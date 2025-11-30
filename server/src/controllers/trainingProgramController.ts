@@ -40,10 +40,47 @@ export const getProgramById = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const createPlaceholderVideo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { title, exercisesData } = req.body as { 
+      title?: string; 
+      exercisesData?: any;
+    };
+
+    const programId = parseInt(id, 10);
+    const program = await prisma.trainingProgram.findUnique({ where: { id: programId } });
+
+    if (!program) {
+      const error: ApiError = new Error('Program not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Create a placeholder ProgramVideo record with exercisesData but no URL yet
+    const created = await (prisma as any).programVideo.create({
+      data: {
+        programId,
+        url: '', // Empty URL - will be updated when video is processed
+        title: title || null,
+        exercisesData: exercisesData || null,
+      },
+    });
+
+    res.json({ success: true, data: created });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const attachVideoToProgram = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { fileUrl, title } = req.body as { fileUrl?: string; title?: string };
+    const { fileUrl, title, exercisesData } = req.body as { 
+      fileUrl?: string; 
+      title?: string; 
+      exercisesData?: any;
+    };
 
     if (!fileUrl) {
       const error: ApiError = new Error('fileUrl is required');
@@ -68,6 +105,7 @@ export const attachVideoToProgram = async (req: Request, res: Response, next: Ne
         programId,
         url: fileUrl,
         title: title || null,
+        exercisesData: exercisesData || null,
       },
     });
 
@@ -96,7 +134,11 @@ export const getProgramVideos = async (req: Request, res: Response, next: NextFu
 export const updateProgramVideo = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { programId, videoId } = req.params;
-    const { fileUrl, title } = req.body as { fileUrl?: string; title?: string };
+    const { fileUrl, title, exercisesData } = req.body as { 
+      fileUrl?: string; 
+      title?: string; 
+      exercisesData?: any; 
+    };
 
     if (!fileUrl) {
       const error: ApiError = new Error('fileUrl is required');
@@ -132,6 +174,7 @@ export const updateProgramVideo = async (req: Request, res: Response, next: Next
       data: {
         url: fileUrl,
         ...(title !== undefined && { title: title || null }),
+        ...(exercisesData !== undefined && { exercisesData: exercisesData || null }),
       },
     });
 

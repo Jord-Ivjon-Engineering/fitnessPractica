@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getAllPrograms,
   getProgramById,
+  createPlaceholderVideo,
   attachVideoToProgram,
   getProgramVideos,
   updateProgramVideo,
@@ -22,6 +23,8 @@ router.get('/:id/videos', getProgramVideos);
 router.get('/:programId/progress', authenticate, getVideoProgress);
 // Get exercises for a specific video
 router.get('/videos/:videoId/exercises', getVideoExercises);
+// Create a placeholder video with exercisesData but no URL (admin only)
+router.post('/:id/videos/placeholder', authenticate, requireAdmin, createPlaceholderVideo);
 // Attach a processed video URL to a training program (admin only)
 router.post('/:id/videos', authenticate, requireAdmin, attachVideoToProgram);
 // Update video progress for a user

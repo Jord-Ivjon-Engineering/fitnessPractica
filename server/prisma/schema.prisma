@@ -8,145 +8,145 @@ datasource db {
 }
 
 model Plan {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(100)
-  description String?  @db.Text
-  price       Decimal? @db.Decimal(10, 2)
-  intervals   String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  members     Member[]
+  id           Int           @id @default(autoincrement())
+  name         String        @db.VarChar(100)
+  description  String?       @db.Text
+  price        Decimal?      @db.Decimal(10, 2)
+  intervals    String?       @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  members      Member[]
   userPrograms UserProgram[]
-  payments    Payment[]
+  payments     Payment[]
 
   @@map("plans")
 }
 
 model Member {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(100)
-  email       String   @unique @db.VarChar(255)
-  phone       String?  @db.VarChar(20)
-  planId      Int?     @map("plan_id")
-  plan        Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(255)
+  phone     String?  @db.VarChar(20)
+  planId    Int?     @map("plan_id")
+  plan      Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("members")
 }
 
 model Location {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(100)
-  address     String   @db.VarChar(255)
-  phone       String?  @db.VarChar(20)
-  mapUrl      String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  address   String   @db.VarChar(255)
+  phone     String?  @db.VarChar(20)
+  mapUrl    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("locations")
 }
 
 model TrainingProgram {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(100)
-  category    String   @db.VarChar(100)
-  description String?  @db.Text
-  imageUrl    String?  @db.Text
-  videoUrl    String?  @db.Text
-  price       Decimal? @db.Decimal(10, 2)
-  startDate   DateTime? @map("start_date")
-  endDate     DateTime? @map("end_date")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  userPrograms UserProgram[]
-  payments    Payment[]
-  videos      ProgramVideo[]
+  id            Int             @id @default(autoincrement())
+  name          String          @db.VarChar(100)
+  category      String          @db.VarChar(100)
+  description   String?         @db.Text
+  imageUrl      String?         @db.Text
+  videoUrl      String?         @db.Text
+  price         Decimal?        @db.Decimal(10, 2)
+  startDate     DateTime?       @map("start_date")
+  endDate       DateTime?       @map("end_date")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  userPrograms  UserProgram[]
+  payments      Payment[]
+  videos        ProgramVideo[]
   videoProgress VideoProgress[]
 
   @@map("training_programs")
 }
 
 model ProgramVideo {
-  id         Int      @id @default(autoincrement())
-  programId  Int      @map("program_id")
-  url        String   @db.Text
-  title      String?  @db.VarChar(255)
-  createdAt  DateTime @default(now()) @map("created_at")
+  id            Int      @id @default(autoincrement())
+  programId     Int      @map("program_id")
+  url           String   @db.Text
+  title         String?  @db.VarChar(255)
+  exercisesData Json?    @map("exercises_data")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  program    TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program      TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
   userProgress VideoProgress[]
 
   @@map("program_videos")
 }
 
 model VideoProgress {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @map("user_id")
-  videoId      Int      @map("video_id")
-  programId    Int      @map("program_id")
-  watchedPercentage Float @default(0) @map("watched_percentage")
-  lastWatchedAt DateTime @default(now()) @updatedAt @map("last_watched_at")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  videoId           Int      @map("video_id")
+  programId         Int      @map("program_id")
+  watchedPercentage Float    @default(0) @map("watched_percentage")
+  lastWatchedAt     DateTime @default(now()) @updatedAt @map("last_watched_at")
+  createdAt         DateTime @default(now()) @map("created_at")
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  video        ProgramVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  program      TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video   ProgramVideo    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  program TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@unique([userId, videoId])
   @@map("video_progress")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique @db.VarChar(255)
-  password  String   @db.VarChar(255)
-  name      String   @db.VarChar(100)
-  phone     String?  @db.VarChar(20)
-  role      String   @default("member") @db.VarChar(50)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  programs  UserProgram[]
-  payments  Payment[]
+  id            Int             @id @default(autoincrement())
+  email         String          @unique @db.VarChar(255)
+  password      String          @db.VarChar(255)
+  name          String          @db.VarChar(100)
+  phone         String?         @db.VarChar(20)
+  role          String          @default("member") @db.VarChar(50)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  programs      UserProgram[]
+  payments      Payment[]
   videoProgress VideoProgress[]
 
   @@map("users")
 }
 
 model UserProgram {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @map("user_id")
-  planId      Int?     @map("plan_id")
-  programId   Int?     @map("program_id")
-  status      String   @default("active") @db.VarChar(50)
-  purchasedAt DateTime @default(now()) @map("purchased_at")
-  expiresAt   DateTime? @map("expires_at")
-  paymentId   Int?     @map("payment_id")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan        Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  id          Int              @id @default(autoincrement())
+  userId      Int              @map("user_id")
+  planId      Int?             @map("plan_id")
+  programId   Int?             @map("program_id")
+  status      String           @default("active") @db.VarChar(50)
+  purchasedAt DateTime         @default(now()) @map("purchased_at")
+  expiresAt   DateTime?        @map("expires_at")
+  paymentId   Int?             @map("payment_id")
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan        Plan?            @relation(fields: [planId], references: [id], onDelete: SetNull)
   program     TrainingProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
-  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  payment     Payment?         @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@map("user_programs")
 }
 
 model Payment {
-  id              Int      @id @default(autoincrement())
-  userId          Int      @map("user_id")
-  stripeSessionId String   @unique @db.VarChar(255) @map("stripe_session_id")
-  stripePaymentId String?  @db.VarChar(255) @map("stripe_payment_id")
-  amount          Decimal  @db.Decimal(10, 2)
-  currency        String   @default("usd") @db.VarChar(10)
-  status          String   @default("pending") @db.VarChar(50)
-  programId       Int?     @map("program_id")
-  planId          Int?     @map("plan_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              Int              @id @default(autoincrement())
+  userId          Int              @map("user_id")
+  stripeSessionId String           @unique @map("stripe_session_id") @db.VarChar(255)
+  stripePaymentId String?          @map("stripe_payment_id") @db.VarChar(255)
+  amount          Decimal          @db.Decimal(10, 2)
+  currency        String           @default("usd") @db.VarChar(10)
+  status          String           @default("pending") @db.VarChar(50)
+  programId       Int?             @map("program_id")
+  planId          Int?             @map("plan_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   program         TrainingProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
-  plan            Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  plan            Plan?            @relation(fields: [planId], references: [id], onDelete: SetNull)
   userPrograms    UserProgram[]
 
   @@map("payments")
 }
-

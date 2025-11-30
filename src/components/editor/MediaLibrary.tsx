@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Clock, Zap } from 'lucide-react';
 import { Overlay } from '../AdvancedVideoEditor';
 import '../../styles/MediaLibrary.css';
@@ -12,6 +12,7 @@ interface MediaLibraryProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   playing: boolean;
   videoDuration: number;
+  onPreviewSegmentsChange?: (segments: Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>) => void;
 }
 
 const MediaLibrary: React.FC<MediaLibraryProps> = ({
@@ -22,6 +23,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   videoRef,
   playing,
   videoDuration,
+  onPreviewSegmentsChange,
 }) => {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [exerciseName, setExerciseName] = useState('');
@@ -36,6 +38,11 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const [autoFirstExerciseStart, setAutoFirstExerciseStart] = useState(0);
   const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
   // Keep preview visible after adding; button remains functional
+
+  // Notify parent when preview segments change
+  useEffect(() => {
+    onPreviewSegmentsChange?.(previewSegments);
+  }, [previewSegments, onPreviewSegmentsChange]);
 
   const handleShowAddExercise = () => {
     // Pause video when opening add exercise form

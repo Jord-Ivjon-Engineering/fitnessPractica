@@ -11,23 +11,214 @@ interface VideoModalProps {
   // percentage 0-100 where the user left off
   initialProgressPercent?: number;
   // all videos in the program with their progress
-  allVideos?: Array<{ id: number; title: string | null; createdAt: string; url: string }>;
+  allVideos?: Array<{ id: number; title: string | null; createdAt: string; url: string; exercisesData?: any }>;
   videoProgress?: Record<number, number>; // videoId -> percentage
+  exercisesData?: {
+    exercises: Array<{ name: string; startTime: number; endTime: number }>;
+    breaks: Array<{ startTime: number; endTime: number; duration: number; nextExerciseName: string }>;
+  } | null;
   onVideoSelect?: (videoId: number, videoUrl: string, videoTitle: string, progress: number) => void;
   onProgressUpdate?: (videoId: number, progress: number) => void;
   onClose: () => void;
 }
 
-const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, videoId, programId, initialProgressPercent, allVideos, videoProgress, onVideoSelect, onProgressUpdate, onClose }) => {
+const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, videoId, programId, initialProgressPercent, allVideos, videoProgress, exercisesData, onVideoSelect, onProgressUpdate, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedPercentRef = useRef<number>(0);
   const [currentProgress, setCurrentProgress] = useState<number>(initialProgressPercent || 0);
+  const [currentBreak, setCurrentBreak] = useState<{ startTime: number; endTime: number; duration: number; nextExerciseName: string; nextExerciseStartTime: number } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Reset current progress when video changes
   useEffect(() => {
     setCurrentProgress(initialProgressPercent || 0);
+    setCurrentBreak(null);
+    setShowPreview(false);
   }, [videoId, initialProgressPercent]);
+
+  // Detect breaks and show preview
+  useEffect(() => {
+    if (!videoRef.current || !exercisesData || !exercisesData.breaks || exercisesData.breaks.length === 0) {
+      setCurrentBreak(null);
+      setShowPreview(false);
+      return;
+    }
+
+    const video = videoRef.current;
+    
+    const checkBreak = () => {
+      const currentTime = video.currentTime;
+      
+      // Find if we're in a break period
+      for (const breakInfo of exercisesData.breaks) {
+        if (currentTime >= breakInfo.startTime && currentTime < breakInfo.endTime) {
+          // Find the next exercise start time
+          const nextExercise = exercisesData.exercises.find(ex => ex.name === breakInfo.nextExerciseName);
+          const nextExerciseStartTime = nextExercise?.startTime || breakInfo.endTime;
+          
+          setCurrentBreak({
+            ...breakInfo,
+            nextExerciseStartTime,
+          });
+          setShowPreview(true);
+          return;
+        }
+      }
+      
+      // Not in a break
+      setCurrentBreak(null);
+      setShowPreview(false);
+    };
+
+    const handleTimeUpdate = () => {
+      checkBreak();
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    
+    // Initial check
+    checkBreak();
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [exercisesData, videoRef.current]);
+
+  // Control preview video playback - plays independently during breaks
+  // ---------- Replace this whole useEffect in your component ----------
+useEffect(() => {
+  const previewVideo = previewVideoRef.current;
+  const mainVideo = videoRef.current;
+
+  if (!previewVideo || !mainVideo) return;
+
+  // If no break or preview should be hidden, ensure paused and exit
+  if (!currentBreak || !showPreview) {
+    // ensure preview is paused and we don't leave it playing
+    try {
+      previewVideo.pause();
+    } catch {}
+    return;
+  }
+
+  // Ensure element is muted before trying to autoplay (critical for browsers)
+  previewVideo.muted = true;
+  previewVideo.playsInline = true;
+
+  // Only update src when videoUrl changed to avoid reload race
+  if (previewVideo.src !== videoUrl) {
+    previewVideo.src = videoUrl;
+    // calling load() ensures the media element will start fetching metadata
+    try { previewVideo.load(); } catch {}
+  }
+
+  const previewStartTime = currentBreak.nextExerciseStartTime;
+  const previewEndTime = previewStartTime + currentBreak.duration;
+
+  let aborted = false;               // for cleanup to avoid actions after unmount
+  let pendingPlay = false;           // avoid duplicate play calls
+  let latestPlayPromise: Promise<void> | null = null;
+
+  const tryPlayPreview = async () => {
+    if (aborted) return;
+    // If already playing or play pending, skip
+    if (!previewVideo.paused || pendingPlay) return;
+
+    // If metadata not loaded, wait for canplay or loadedmetadata
+    const seekAndPlay = async () => {
+      if (aborted) return;
+      try {
+        // clamp seek inside duration when available
+        if (previewVideo.duration && previewStartTime <= previewVideo.duration) {
+          previewVideo.currentTime = Math.min(previewStartTime, previewVideo.duration || previewStartTime);
+        } else {
+          previewVideo.currentTime = previewStartTime;
+        }
+      } catch (err) {
+        // seeking might throw if not ready; ignore and let play attempt handle it
+      }
+
+      pendingPlay = true;
+      try {
+        latestPlayPromise = previewVideo.play();
+        await latestPlayPromise;
+      } catch (err: any) {
+        // suppress expected AbortError and log unexpected
+        if (err && err.name !== 'AbortError') {
+          console.warn('Preview play() failed', err);
+        }
+      } finally {
+        pendingPlay = false;
+        latestPlayPromise = null;
+      }
+    };
+
+    // If can play now
+    if (previewVideo.readyState >= 2) {
+      await seekAndPlay();
+    } else {
+      // wait until we can play through or at least canplay
+      const onCanPlay = async () => {
+        previewVideo.removeEventListener('canplay', onCanPlay);
+        if (!aborted) await seekAndPlay();
+      };
+      previewVideo.addEventListener('canplay', onCanPlay);
+    }
+  };
+
+  // Monitor main video time to determine break presence and to loop preview within preview window
+  const tick = () => {
+    if (aborted) return;
+    const mainCurrent = mainVideo.currentTime;
+    const isInBreak = mainCurrent >= currentBreak.startTime && mainCurrent < currentBreak.endTime;
+    const isMainPlaying = !mainVideo.paused && !mainVideo.ended;
+
+    if (isInBreak && isMainPlaying) {
+      // ensure preview is playing
+      tryPlayPreview();
+      // loop the preview within previewStartTime..previewEndTime
+      if (previewVideo.currentTime >= previewEndTime) {
+        // set currentTime back to previewStartTime (clamp)
+        try {
+          previewVideo.currentTime = previewStartTime;
+        } catch {}
+      }
+    } else {
+      // pause preview if it's playing (or wait for pending play to finish then pause)
+      if (latestPlayPromise) {
+        latestPlayPromise
+          .then(() => { if (!aborted) previewVideo.pause(); })
+          .catch(() => { if (!aborted) previewVideo.pause(); });
+      } else {
+        try { previewVideo.pause(); } catch {}
+      }
+    }
+  };
+
+  // Use requestAnimationFrame-driven loop for smooth checking while in break
+  let rafId: number | null = null;
+  const rafLoop = () => {
+    tick();
+    rafId = requestAnimationFrame(rafLoop);
+  };
+  rafId = requestAnimationFrame(rafLoop);
+
+  // initial try
+  tryPlayPreview();
+
+  return () => {
+    aborted = true;
+    if (rafId) cancelAnimationFrame(rafId);
+    try {
+      previewVideo.pause();
+    } catch {}
+    // clear src? optional:
+    // previewVideo.removeAttribute('src'); previewVideo.load();
+  };
+}, [currentBreak, showPreview, videoUrl]);
+
 
   // Calculate the day number based on video position in the program
   const getDayTitle = () => {
@@ -193,9 +384,9 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
       </div>
 
       {/* Main content: video on left, program content on right */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Video player */}
-        <div className="flex-1 flex items-center justify-center bg-background p-4 overflow-hidden">
+        <div className="flex-1 flex items-center justify-center bg-background p-4 overflow-hidden relative">
           <video
             ref={videoRef}
             src={videoUrl}
@@ -203,6 +394,47 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
             autoPlay
             className="w-full h-full object-contain"
           />
+
+          {/* Exercise Preview Box - Slides in from the right during breaks */}
+          <div
+            className={`absolute right-4 top-1/2 -translate-y-1/2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-border overflow-hidden transition-transform duration-500 ease-in-out z-50 ${
+              showPreview && currentBreak
+                ? 'translate-x-0'
+                : 'translate-x-full'
+            }`}
+            style={{
+              maxHeight: '60vh',
+            }}
+          >
+            {currentBreak && (
+              <>
+                {/* Preview Video - Separate muted video element */}
+                <div className="relative w-full aspect-video bg-black">
+                  <video
+                    ref={previewVideoRef}
+                    src={videoUrl}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                    preload="auto"
+                  />
+                  {/* Overlay gradient at bottom */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                </div>
+                
+                {/* Preview Info */}
+                <div className="p-4">
+                  <div className="text-xs text-muted-foreground mb-1">Next Exercise</div>
+                  <h3 className="text-lg font-bold text-foreground mb-2">
+                    {currentBreak.nextExerciseName}
+                  </h3>
+                  <div className="text-sm text-muted-foreground">
+                    Starting in {Math.ceil(currentBreak.endTime - (videoRef.current?.currentTime || 0))}s
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Right sidebar: program videos list */}

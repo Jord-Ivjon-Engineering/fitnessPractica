@@ -14,7 +14,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [programs, setPrograms] = useState<UserProgram[]>([]);
   const [expandedProgramId, setExpandedProgramId] = useState<number | null>(null);
-  const [programVideos, setProgramVideos] = useState<Record<number, { id: number; programId: number; url: string; title: string | null; createdAt: string }[]>>({});
+  const [programVideos, setProgramVideos] = useState<Record<number, { id: number; programId: number; url: string; title: string | null; createdAt: string; exercisesData?: any }[]>>({});
   const [videoProgress, setVideoProgress] = useState<Record<number, Record<number, number>>>({});
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -564,6 +564,9 @@ const Profile = () => {
         initialProgressPercent={fullscreenVideoInitialProgress}
         allVideos={fullscreenProgramId ? programVideos[fullscreenProgramId] : undefined}
         videoProgress={fullscreenProgramId ? videoProgress[fullscreenProgramId] : undefined}
+        exercisesData={fullscreenVideoId && fullscreenProgramId 
+          ? (programVideos[fullscreenProgramId]?.find(v => v.id === fullscreenVideoId)?.exercisesData || null)
+          : null}
         onVideoSelect={(newVideoId, newUrl, newTitle, progress) => {
           setFullscreenVideoUrl(newUrl);
           setFullscreenVideoTitle(newTitle);
