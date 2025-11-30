@@ -513,8 +513,9 @@ const AdminDashboard = () => {
         imageUrl: imageUrl || undefined,
       });
       
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         const createdProgramId = response.data.data.id;
+        let videoAttachmentError = false;
         
         // Attach video to program using program_videos table (like standalone editor)
         if (processedVideoUrl && processedVideoUrl.startsWith('/')) {
@@ -525,7 +526,13 @@ const AdminDashboard = () => {
             console.error('Error attaching video to program:', attachErr);
             // Don't fail the whole operation, just log the error
             setError('Program created but video attachment failed. You can attach it later.');
+            videoAttachmentError = true;
           }
+        }
+        
+        // Clear any previous errors on successful creation (unless video attachment failed)
+        if (!videoAttachmentError) {
+          setError('');
         }
         
         // Reset form
@@ -544,9 +551,6 @@ const AdminDashboard = () => {
         setImagePreview(null);
         setVideoFile(null);
         setExercises([]);
-        setExerciseName('');
-        setStartTime('');
-        setDuration('');
         setProcessedVideoUrl('');
         setProgramStep('details');
         
@@ -557,6 +561,11 @@ const AdminDashboard = () => {
         setActiveTab('programs');
         
         alert('Program created successfully!');
+      } else {
+        // Handle case where response doesn't have success: true
+        const errorMsg = response.data?.error || 'Failed to create program. Please try again.';
+        setError(errorMsg);
+        console.error('Unexpected response structure:', response);
       }
     } catch (err: any) {
       console.error('Error creating program:', err);
@@ -728,9 +737,6 @@ const AdminDashboard = () => {
         setImagePreview(null);
         setVideoFile(null);
         setExercises([]);
-        setExerciseName('');
-        setStartTime('');
-        setDuration('');
         setProcessedVideoUrl('');
         setProgramStep('details');
         setEditingProgramId(null);
