@@ -5,10 +5,11 @@ import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import { authenticate, requireAdmin } from '../middleware/auth';
+import { createCanvas } from 'canvas';
+import { Server as SocketIOServer } from 'socket.io';
 
 (ffmpeg as any).setFfmpegPath(ffmpegStatic);
 
-// Extend Request type to include multer file
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
 }
@@ -16,10 +17,11 @@ interface MulterRequest extends Request {
 const router = express.Router();
 const uploadsDir = path.join(__dirname, '../../uploads');
 const editedDir = path.join(uploadsDir, 'edited');
+const tempDir = path.join(uploadsDir, 'temp');
 
-// ensure folders exist
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(editedDir)) fs.mkdirSync(editedDir, { recursive: true });
+if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: uploadsDir,
@@ -28,11 +30,10 @@ const storage = multer.diskStorage({
     cb(null, `upload_${Date.now()}${ext}`);
   },
 });
+
 const upload = multer({
   storage,
-  limits: {
-    fileSize: 1024 * 1024 * 1024, // 1GB limit; adjust as needed
-  },
+  limits: { fileSize: 1024 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith('video/')) {
       return cb(new Error('Only video files are allowed'));
@@ -41,12 +42,297 @@ const upload = multer({
   },
 });
 
+// Store Socket.IO instance
+let io: SocketIOServer | null = null;
+
+export function setSocketIO(socketIO: SocketIOServer) {
+  io = socketIO;
+}
+
+// Helper: Create circular badge PNG
+async function createCircularBadgePNG(outputPath: string, size: number = 120): Promise<void> {
+  const canvas = createCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  
+  const centerX = size / 2;
+  const centerY = size / 2;
+  const radius = size / 2;
+  
+  ctx.fillStyle = 'rgba(34, 197, 94, 0.9)';
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  const buffer = canvas.toBuffer('image/png');
+  await fs.promises.writeFile(outputPath, buffer);
+}
+
+// Helper: Process video in batches
+async function processVideoInBatches(
+  inputPath: string,
+  outputPath: string,
+  overlays: any[],
+  socketId: string,
+  batchSize: number = 8
+): Promise<void> {
+  let currentInput = inputPath;
+  const tempFiles: string[] = [];
+  const totalBatches = Math.ceil(overlays.length / batchSize);
+  
+  try {
+    let badgePath: string | null = null;
+    const hasTimerOverlays = overlays.some(o => o.type === 'timer');
+    
+    if (hasTimerOverlays) {
+      badgePath = path.join(tempDir, `badge_${Date.now()}.png`);
+      await createCircularBadgePNG(badgePath);
+      tempFiles.push(badgePath);
+    }
+    
+    for (let i = 0; i < overlays.length; i += batchSize) {
+      const batch = overlays.slice(i, i + batchSize);
+      const isLastBatch = i + batchSize >= overlays.length;
+      const tempOutput = isLastBatch 
+        ? outputPath 
+        : path.join(tempDir, `temp_${Date.now()}_${i}.mp4`);
+      
+      if (!isLastBatch) tempFiles.push(tempOutput);
+      
+      const currentBatch = Math.floor(i / batchSize) + 1;
+      
+      await processBatch(currentInput, tempOutput, batch, badgePath, socketId, currentBatch, totalBatches);
+      
+      if (currentInput !== inputPath && tempFiles.includes(currentInput)) {
+        await fs.promises.unlink(currentInput);
+        tempFiles.splice(tempFiles.indexOf(currentInput), 1);
+      }
+      
+      currentInput = tempOutput;
+    }
+  } finally {
+    for (const file of tempFiles) {
+      try {
+        if (fs.existsSync(file)) await fs.promises.unlink(file);
+      } catch (err) {
+        console.warn(`Failed to delete temp file ${file}:`, err);
+      }
+    }
+  }
+}
+
+// Helper: Process a batch of overlays
+function processBatch(
+  inputPath: string, 
+  outputPath: string, 
+  overlays: any[],
+  badgePath: string | null,
+  socketId: string,
+  currentBatch: number,
+  totalBatches: number
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const filterComplexParts: string[] = [];
+    const inputs: string[] = [inputPath];
+    let badgeInputIndex = 1;
+    let streamCounter = 0;
+    let videoDuration = 0;
+    let totalFrames = 0;
+    
+    overlays.forEach((overlay, idx) => {
+      const start = Number(overlay.startTime) ?? 0;
+      const end = Number(overlay.endTime) ?? start + 5;
+      const x = Number(overlay.x) ?? 50;
+      const y = Number(overlay.y) ?? 50;
+      let fontSize = Number(overlay.fontSize);
+      if (isNaN(fontSize) || fontSize <= 0) fontSize = 48;
+      const fontColor = overlay.fontColor || '#FFFFFF';
+      const bgColor = overlay.backgroundColor || 'black@0.6';
+      
+      if (overlay.type === 'text' && overlay.text) {
+        const text = String(overlay.text).replace(/'/g, "\\'").replace(/:/g, "\\:");
+        const inputStream = streamCounter === 0 ? '[0:v]' : `[v${streamCounter}]`;
+        streamCounter++;
+        const outputStream = idx === overlays.length - 1 ? '' : `[v${streamCounter}]`;
+        
+        filterComplexParts.push(
+          `${inputStream}drawtext=text='${text}':fontcolor=${fontColor}:fontsize=${fontSize}:` +
+          `x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:` +
+          `enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10:fontfile=/Windows/Fonts/arial.ttf${outputStream}`
+        );
+      } else if (overlay.type === 'timer' && badgePath) {
+        const timerType = overlay.timerType || 'elapsed';
+        const format = overlay.timerFormat || 'MM:SS';
+        const label = (overlay as any).text || '';
+        const badgeSize = 120;
+        
+        const boxX = `(w*${x}/100-${badgeSize})`;
+        const boxY = `(h*${y}/100+10)`;
+        
+        if (badgeInputIndex === 1) {
+          inputs.push(badgePath);
+        }
+        
+        const inputStream = streamCounter === 0 ? '[0:v]' : `[v${streamCounter}]`;
+        streamCounter++;
+        const afterBadgeStream = `[v${streamCounter}]`;
+        
+        filterComplexParts.push(
+          `${inputStream}[${badgeInputIndex}:v]overlay=x=${boxX}:y=${boxY}:` +
+          `enable='between(t,${start},${end})'${afterBadgeStream}`
+        );
+        
+        const safeLabel = String(label).replace(/'/g, "\\'").replace(/:/g, "\\:");
+        const nameSize = Math.max(12, Math.floor((fontSize || 18) * 0.7));
+        const nameCenterX = `(${boxX}+${badgeSize/2})`;
+        const nameCenterY = `(${boxY}+${badgeSize*0.35})`;
+        
+        streamCounter++;
+        const afterNameStream = `[v${streamCounter}]`;
+        
+        filterComplexParts.push(
+          `${afterBadgeStream}drawtext=text='${safeLabel}':fontcolor=white:fontsize=${nameSize}:` +
+          `x=${nameCenterX}-text_w/2:y=${nameCenterY}-text_h/2:` +
+          `enable='between(t,${start},${end})':fontfile=/Windows/Fonts/arial.ttf${afterNameStream}`
+        );
+        
+        let timerExpr = '';
+        if (timerType === 'countdown') {
+          timerExpr = format === 'MM:SS'
+            ? `'%{eif\\:floor((${end}-t)/60)\\:d\\:2}\\:%{eif\\:mod(floor(${end}-t)\\,60)\\:d\\:2}'`
+            : `'%{eif\\:floor(${end}-t)\\:d}'`;
+        } else {
+          timerExpr = format === 'MM:SS'
+            ? `'%{eif\\:floor((t-${start})/60)\\:d\\:2}\\:%{eif\\:mod(floor(t-${start})\\,60)\\:d\\:2}'`
+            : `'%{eif\\:floor(t-${start})\\:d}'`;
+        }
+        
+        const timerSize = Math.max(14, Math.floor((fontSize || 18) * 0.85));
+        const timerCenterX = nameCenterX;
+        const timerCenterY = `(${boxY}+${badgeSize*0.65})`;
+        
+        streamCounter++;
+        const outputStream = idx === overlays.length - 1 ? '' : `[v${streamCounter}]`;
+        
+        filterComplexParts.push(
+          `${afterNameStream}drawtext=text=${timerExpr}:fontcolor=white:fontsize=${timerSize}:` +
+          `x=${timerCenterX}-text_w/2:y=${timerCenterY}-text_h/2:` +
+          `enable='between(t,${start},${end})':fontfile=/Windows/Fonts/arial.ttf${outputStream}`
+        );
+      }
+    });
+    
+    if (filterComplexParts.length === 0) {
+      return ffmpeg(inputPath)
+        .outputOptions(['-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'copy'])
+        .output(outputPath)
+        .on('end', () => resolve())
+        .on('error', (err: Error) => reject(err))
+        .run();
+    }
+    
+    const command = ffmpeg();
+    inputs.forEach(input => command.input(input));
+    
+    const filterString = filterComplexParts.join(';');
+    
+    console.log(`Processing batch ${currentBatch}/${totalBatches} with ${overlays.length} overlays`);
+    
+    command
+      .complexFilter(filterString)
+      .outputOptions([
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '23',
+        '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        '-movflags', '+faststart'
+      ])
+      .output(outputPath)
+      .on('start', (commandLine: string) => {
+        console.log('FFmpeg command:', commandLine);
+      })
+      .on('codecData', (data: any) => {
+        // Get video duration and calculate total frames
+        if (data.duration) {
+          const timeParts = data.duration.split(':');
+          videoDuration = 
+            parseInt(timeParts[0]) * 3600 + 
+            parseInt(timeParts[1]) * 60 + 
+            parseFloat(timeParts[2]);
+          totalFrames = Math.floor(videoDuration * 30); // Assuming 30fps
+          console.log(`Video duration: ${videoDuration}s, estimated frames: ${totalFrames}`);
+        }
+      })
+      .on('progress', (progress: any) => {
+        if (io && totalFrames > 0) {
+          // Calculate progress from frame count
+          const currentFrame = progress.frames || 0;
+          const batchProgress = Math.min(99, Math.round((currentFrame / totalFrames) * 100));
+          
+          // Calculate overall progress across all batches
+          const overallProgress = Math.round(
+            ((currentBatch - 1) / totalBatches) * 100 + 
+            (batchProgress / totalBatches)
+          );
+          
+          // Parse speed (e.g., "1.5x")
+          const speedMatch = progress.currentKbps?.toString().match(/(\d+\.?\d*)x/);
+          const speed = speedMatch ? parseFloat(speedMatch[1]) : null;
+          
+          io.to(socketId).emit('video:progress', {
+            percent: overallProgress,
+            stage: `Processing batch ${currentBatch} of ${totalBatches}`,
+            frame: currentFrame,
+            totalFrames: totalFrames,
+            fps: progress.currentFps,
+            speed: speed
+          });
+        }
+      })
+      .on('end', () => {
+        console.log(`Batch ${currentBatch}/${totalBatches} completed`);
+        resolve();
+      })
+      .on('error', (err: Error) => {
+        console.error(`Batch ${currentBatch} error:`, err.message);
+        reject(err);
+      })
+      .on('stderr', (line: string) => {
+        if (line.includes('Late SEI') || 
+            line.includes('videolan.org/upload') ||
+            line.includes('ffmpeg-devel@ffmpeg.org')) {
+          return;
+        }
+        
+        // Parse frame progress from stderr if progress event doesn't fire
+        const frameMatch = line.match(/frame=\s*(\d+)/);
+        const fpsMatch = line.match(/fps=\s*(\d+\.?\d*)/);
+        const speedMatch = line.match(/speed=\s*(\d+\.?\d*)x/);
+        
+        if (frameMatch && io && totalFrames > 0) {
+          const currentFrame = parseInt(frameMatch[1]);
+          const batchProgress = Math.min(99, Math.round((currentFrame / totalFrames) * 100));
+          const overallProgress = Math.round(
+            ((currentBatch - 1) / totalBatches) * 100 + 
+            (batchProgress / totalBatches)
+          );
+          
+          io.to(socketId).emit('video:progress', {
+            percent: overallProgress,
+            stage: `Processing batch ${currentBatch} of ${totalBatches}`,
+            frame: currentFrame,
+            totalFrames: totalFrames,
+            fps: fpsMatch ? parseFloat(fpsMatch[1]) : undefined,
+            speed: speedMatch ? parseFloat(speedMatch[1]) : undefined
+          });
+        }
+      })
+      .run();
+  });
+}
+
 // POST /video/edit
-// expects multipart form:
-//  - video: file (optional if videoUrl is provided)
-//  - videoUrl: string (optional if video file is uploaded)
-//  - exercises: JSON stringified array [{ name, start, duration }]
-// Requires admin authentication
 router.post(
   '/edit',
   authenticate,
@@ -63,239 +349,127 @@ router.post(
     });
   },
   async (req: MulterRequest, res: Response, next: NextFunction) => {
-  try {
-    const rawExercises = req.body.exercises;
-    let exercises: Array<{ name: string; start: number; duration: number }> = [];
-
-    if (typeof rawExercises === 'string') {
-      try {
-        exercises = JSON.parse(rawExercises);
-      } catch {
-        return res.status(400).json({ error: 'Invalid exercises JSON' });
-      }
-    } else if (Array.isArray(rawExercises)) {
-      exercises = rawExercises;
-    } else {
-      // If no exercises field at all, treat as empty list (allow overlay-only or plain processing)
-      exercises = [];
-    }
-
-    // Parse overlays if provided
-    const rawOverlays = req.body.overlays;
-    let overlays: Array<{
-      id: string;
-      type: 'timer' | 'text' | 'image';
-      startTime: number;
-      endTime: number;
-      x: number;
-      y: number;
-      text?: string;
-      fontSize?: number;
-      fontColor?: string;
-      backgroundColor?: string;
-      timerType?: 'countdown' | 'elapsed';
-      timerFormat?: 'MM:SS' | 'SS';
-      imageUrl?: string;
-      width?: number;
-      height?: number;
-    }> = [];
-
-    if (rawOverlays) {
-      if (typeof rawOverlays === 'string') {
+    try {
+      const rawExercises = req.body.exercises;
+      let exercises: Array<{ name: string; start: number; duration: number }> = [];
+      if (typeof rawExercises === 'string') {
         try {
-          overlays = JSON.parse(rawOverlays);
+          exercises = JSON.parse(rawExercises);
         } catch {
-          console.warn('Invalid overlays JSON, continuing without overlays');
+          return res.status(400).json({ error: 'Invalid exercises JSON' });
         }
-      } else if (Array.isArray(rawOverlays)) {
-        overlays = rawOverlays;
+      } else if (Array.isArray(rawExercises)) {
+        exercises = rawExercises;
       }
-    }
 
-    // Allow processing even if both empty (pass-through) so user can still re-encode for compatibility
-    const doPassThrough = exercises.length === 0 && overlays.length === 0;
-
-    let inputPath: string;
-    
-    // Check if video file was uploaded or videoUrl was provided
-    if (req.file) {
-      // Use uploaded file
-      inputPath = req.file.path;
-    } else if (req.body.videoUrl) {
-      // Use existing video from URL
-      const videoUrl = req.body.videoUrl as string;
-      // Remove leading slash and construct full path
-      const relativePath = videoUrl.startsWith('/') ? videoUrl.substring(1) : videoUrl;
-      inputPath = path.join(__dirname, '../../', relativePath);
-      
-      // Verify file exists
-      if (!fs.existsSync(inputPath)) {
-        return res.status(400).json({ error: 'Video file not found at the provided URL' });
-      }
-    } else {
-      return res.status(400).json({ error: 'Either video file or videoUrl must be provided' });
-    }
-
-    const outputName = `edited_${Date.now()}.mp4`;
-    const outputPath = path.join(editedDir, outputName);
-
-    // Build filters for exercises and overlays
-    const filterParts: string[] = [];
-    
-    // Add exercise name filters
-    exercises.forEach((ex, index) => {
-      const text = String(ex.name).replace(/'/g, "\\'");
-      const start = Number(ex.start) ?? 0;
-      const dur = Number(ex.duration) ?? 3;
-      const end = start + dur;
-      
-      // Exercise name at bottom center with background box
-      filterParts.push(`drawtext=text='${text}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h-120:enable='between(t,${start},${end})':box=1:boxcolor=black@0.6:boxborderw=10`);
-      
-      // Add break indicator if there's a gap before next exercise
-      if (index < exercises.length - 1) {
-        const breakStart = end;
-        const breakEnd = Number(exercises[index + 1].start) ?? end;
-        const breakDuration = breakEnd - breakStart;
-        
-        if (breakDuration > 0) {
-          const nextExerciseName = String(exercises[index + 1].name).replace(/'/g, "\\'");
-          // Break indicator at bottom left
-          filterParts.push(`drawtext=text='⏸️ Break - Next: ${nextExerciseName}':fontcolor=#f59e0b:fontsize=36:x=40:y=h-100:enable='between(t,${breakStart},${breakEnd})':box=1:boxcolor=black@0.6:boxborderw=10`);
-        }
-      }
-    });
-    
-    // Add overlay filters
-    overlays.forEach((overlay) => {
-      const start = Number(overlay.startTime) ?? 0;
-      const end = Number(overlay.endTime) ?? start + 5;
-      const x = Number(overlay.x) ?? 50;
-      const y = Number(overlay.y) ?? 50;
-      let fontSize = Number(overlay.fontSize);
-      if (isNaN(fontSize) || fontSize <= 0) {
-        fontSize = 48;
-      }
-      const fontColor = overlay.fontColor || '#FFFFFF';
-      const bgColor = overlay.backgroundColor || 'black@0.6';
-      
-      if (overlay.type === 'text' && overlay.text) {
-        const text = String(overlay.text).replace(/'/g, "\\'").replace(/:/g, "\\:");
-        filterParts.push(`drawtext=text='${text}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w*${x}/100)-text_w/2:y=(h*${y}/100)-text_h/2:enable='between(t,${start},${end})':box=1:boxcolor=${bgColor}:boxborderw=10`);
-      } else if (overlay.type === 'timer') {
-        const timerType = overlay.timerType || 'elapsed';
-        const format = overlay.timerFormat || 'MM:SS';
-        const label = (overlay as any).text || '';
-        // Compute base position from percentage
-        // Circular badge dimensions
-        const badgeSize = 120;
-        const radius = badgeSize / 2;
-        // Place circle so its right edge is near the (x,y) percentage point
-        const centerXExpr = `(w*${x}/100 - ${radius})`;
-        const centerYExpr = `(h*${y}/100 + 10 + ${radius})`;
-
-        // Draw green circle background using drawbox with rounded corners (simulate circle)
-        // ffmpeg doesn't have a native circle primitive, so we'll use an ellipse filter or overlay approach
-        // For simplicity, we'll draw a filled circle using the "drawbox" with a very high border radius approximation
-        // Actually, ffmpeg doesn't support border-radius on drawbox, so we'll draw it as an overlay using geq or use a PNG mask
-        // Simpler approach: draw a square box and rely on border-radius in client preview only; for backend, use a circular mask
-        // For now, we'll use drawbox with positioned text in a circular region (text will be centered)
-        
-        // We'll use drawtext with circular background simulation (box=1 with circle=1 doesn't exist in drawtext)
-        // Alternative: Use multiple drawtext with box and position them to form a circle-like appearance
-        // Easiest: Use a filled circle via drawing primitives or accept a rounded square
-        
-        // Let's use a rounded square as close approximation (drawbox doesn't support border-radius)
-        // We'll center the text in a square region for now
-        const boxX = `(w*${x}/100 - ${badgeSize})`;
-        const boxY = `(h*${y}/100 + 10)`;
-        
-        // Draw rounded green square (ffmpeg limitation: no true circle, we approximate)
-        filterParts.push(`drawbox=x=${boxX}:y=${boxY}:w=${badgeSize}:h=${badgeSize}:color=#22c55e@0.9:t=fill:enable='between(t,${start},${end})'`);
-
-        // Draw exercise name (centered, top portion)
-        const safeLabel = String(label).replace(/'/g, "\\'").replace(/:/g, "\\:");
-        const nameSize = Math.max(12, Math.floor((fontSize || 18) * 0.7));
-        const nameCenterX = `${boxX}+${badgeSize/2}`;
-        const nameCenterY = `${boxY}+${badgeSize*0.35}`;
-        filterParts.push(`drawtext=text='${safeLabel}':fontcolor=white:fontsize=${nameSize}:x=${nameCenterX}-text_w/2:y=${nameCenterY}-text_h/2:enable='between(t,${start},${end})'`);
-
-        // Draw timer (centered, bottom portion)
-        let timerExpr = '';
-        if (timerType === 'countdown') {
-          if (format === 'MM:SS') {
-            timerExpr = `'%{eif\\:floor((${end}-t)/60)\\:d\\:2}:%{eif\\:mod(floor(${end}-t)\\,60)\\:d\\:2}'`;
-          } else {
-            timerExpr = `'%{eif\\:floor(${end}-t)\\:d}'`;
+      const rawOverlays = req.body.overlays;
+      let overlays: any[] = [];
+      if (rawOverlays) {
+        if (typeof rawOverlays === 'string') {
+          try {
+            overlays = JSON.parse(rawOverlays);
+          } catch {
+            console.warn('Invalid overlays JSON');
           }
-        } else {
-          if (format === 'MM:SS') {
-            timerExpr = `'%{eif\\:floor((t-${start})/60)\\:d\\:2}:%{eif\\:mod(floor(t-${start})\\,60)\\:d\\:2}'`;
-          } else {
-            timerExpr = `'%{eif\\:floor(t-${start})\\:d}'`;
-          }
+        } else if (Array.isArray(rawOverlays)) {
+          overlays = rawOverlays;
         }
-        const timerSize = Math.max(14, Math.floor((fontSize || 18) * 0.85));
-        const timerCenterX = `${boxX}+${badgeSize/2}`;
-        const timerCenterY = `${boxY}+${badgeSize*0.65}`;
-        filterParts.push(`drawtext=text=${timerExpr}:fontcolor=white:fontsize=${timerSize}:x=${timerCenterX}-text_w/2:y=${timerCenterY}-text_h/2:enable='between(t,${start},${end})'`);
-      } else if (overlay.type === 'image' && overlay.imageUrl) {
-        // Note: Image overlays require the image to be downloaded first
-        // For now, we'll skip image overlays in backend processing
-        // They can be added in a future enhancement
-        console.warn('Image overlays not yet supported in backend processing');
       }
-    });
-    
-    const filterString = filterParts.join(',');
 
-    const command = ffmpeg(inputPath);
-    if (filterString.length > 0) {
-      command.videoFilters(filterString);
+      const socketId = req.body.socketId;
+      if (!socketId) {
+        return res.status(400).json({ error: 'Socket ID required for progress tracking' });
+      }
+
+      const doPassThrough = exercises.length === 0 && overlays.length === 0;
+
+      let inputPath: string;
+      if (req.file) {
+        inputPath = req.file.path;
+      } else if (req.body.videoUrl) {
+        const videoUrl = req.body.videoUrl as string;
+        const relativePath = videoUrl.startsWith('/') ? videoUrl.substring(1) : videoUrl;
+        inputPath = path.join(__dirname, '../../', relativePath);
+        if (!fs.existsSync(inputPath)) {
+          return res.status(400).json({ error: 'Video file not found' });
+        }
+      } else {
+        return res.status(400).json({ error: 'Video file or URL required' });
+      }
+
+      const outputName = `edited_${Date.now()}.mp4`;
+      const outputPath = path.join(editedDir, outputName);
+
+      req.setTimeout(3600000);
+
+      // Send initial progress
+      if (io) {
+        io.to(socketId).emit('video:progress', {
+          percent: 0,
+          stage: 'Starting video processing...',
+        });
+      }
+
+      if (overlays.length > 0) {
+        await processVideoInBatches(inputPath, outputPath, overlays, socketId);
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(inputPath)
+            .outputOptions(['-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'copy'])
+            .output(outputPath)
+            .on('progress', (progress: any) => {
+              if (progress.percent && io) {
+                const percent = Math.min(99, Math.round(progress.percent));
+                io.to(socketId).emit('video:progress', {
+                  percent,
+                  stage: 'Processing video...',
+                });
+              }
+            })
+            .on('end', () => resolve())
+            .on('error', (err: Error) => reject(err))
+            .run();
+        });
+      }
+
+      if (req.file) {
+        try {
+          await fs.promises.unlink(inputPath);
+        } catch (err) {
+          console.warn('Failed to delete temp file:', err);
+        }
+      }
+
+      // Send completion
+      if (io) {
+        io.to(socketId).emit('video:progress', {
+          percent: 100,
+          stage: 'Complete!',
+        });
+      }
+
+      const fileUrl = `/uploads/edited/${outputName}`;
+      res.json({ 
+        success: true, 
+        message: doPassThrough ? 'Video re-encoded' : 'Video edited successfully', 
+        data: { url: fileUrl } 
+      });
+
+    } catch (err: any) {
+      console.error('Video processing error:', err);
+      
+      if (req.file) {
+        try {
+          await fs.promises.unlink(req.file.path);
+        } catch {}
+      }
+      
+      next(err);
     }
-    // Force widely compatible encoding (yuv420p + AAC audio)
-    command
-      .outputOptions([
-        '-c:v libx264',
-        '-preset veryfast',
-        '-pix_fmt yuv420p',
-        '-c:a aac',
-        '-b:a 128k',
-        '-movflags +faststart'
-      ])
-      .output(outputPath)
-      .on('end', () => {
-        // Only delete uploaded files, not existing video files
-        if (req.file) {
-          try { fs.unlinkSync(inputPath); } catch {}
-        }
-        const fileUrl = `/uploads/edited/${outputName}`;
-        res.json({ success: true, message: doPassThrough ? 'Video re-encoded (pass-through)' : 'Video edited successfully', data: { url: fileUrl } });
-      })
-      .on('error', (err: Error) => {
-        console.error('FFmpeg error:', err);
-        // Only delete uploaded files, not existing video files
-        if (req.file) {
-          try { fs.unlinkSync(inputPath); } catch {}
-        }
-        next(err);
-      })
-      .on('progress', (p: { percent?: number }) => {
-        // Basic progress logging; can be upgraded to SSE/WebSocket later
-        if (p.percent) {
-          console.log(`FFmpeg processing: ${p.percent.toFixed(2)}%`);
-        }
-      })
-      .run();
-  } catch (err) {
-    next(err);
   }
-});
+);
 
-export default router;
-
-// New endpoint: simple upload without processing
-// Returns { fileUrl } to be used later in the editor
+// Upload endpoint
 router.post(
   '/upload',
   authenticate,
@@ -320,3 +494,5 @@ router.post(
     return res.json({ fileUrl });
   }
 );
+
+export default router;
