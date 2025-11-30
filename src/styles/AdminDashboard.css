@@ -872,6 +872,90 @@ body.video-editor-active .admin-dashboard-content:has(.video-editor-container:ha
   cursor: not-allowed;
 }
 
+/* Mobile Dropdown Styles */
+.mobile-tabs-dropdown {
+  display: none;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.mobile-tabs-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.mobile-tabs-button:hover {
+  border-color: #007bff;
+  background: #f8f9fa;
+}
+
+.mobile-tabs-button:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.dropdown-arrow {
+  font-size: 0.75rem;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.mobile-tabs-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: -2px;
+}
+
+.mobile-tabs-menu button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #666;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.mobile-tabs-menu button:last-child {
+  border-bottom: none;
+}
+
+.mobile-tabs-menu button:hover {
+  background: #f8f9fa;
+  color: #007bff;
+}
+
+.mobile-tabs-menu button.active {
+  background: #e7f3ff;
+  color: #007bff;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .admin-dashboard-container {
     padding: 1rem;
@@ -881,13 +965,14 @@ body.video-editor-active .admin-dashboard-content:has(.video-editor-container:ha
     padding: 1rem;
   }
 
+  /* Hide desktop tabs on mobile */
   .dashboard-tabs {
-    flex-wrap: wrap;
+    display: none;
   }
 
-  .dashboard-tabs button {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+  /* Show mobile dropdown on mobile */
+  .mobile-tabs-dropdown {
+    display: block;
   }
 
   .stats-grid {
@@ -901,6 +986,18 @@ body.video-editor-active .admin-dashboard-content:has(.video-editor-container:ha
   .data-table th,
   .data-table td {
     padding: 0.5rem;
+  }
+}
+
+@media (min-width: 769px) {
+  /* Hide mobile dropdown on desktop */
+  .mobile-tabs-dropdown {
+    display: none;
+  }
+
+  /* Show desktop tabs on desktop */
+  .dashboard-tabs {
+    display: flex;
   }
 }
 

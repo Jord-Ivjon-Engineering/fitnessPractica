@@ -50,6 +50,7 @@ export const TextOverlay: React.FC<TextOverlayProps> = ({
         top: yPos,
         transform: 'translate(-50%, -50%)',
         fontSize: `${fontSize}px`,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         color: fontColor,
         backgroundColor: backgroundColor || 'transparent',
         padding: backgroundColor ? '12px 24px' : '0',

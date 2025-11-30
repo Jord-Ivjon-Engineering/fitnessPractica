@@ -13,6 +13,7 @@ interface TimerOverlayComponentProps {
   timerFormat: 'MM:SS' | 'SS';
   startFrame: number;
   durationInFrames: number;
+  text?: string; // Exercise name label
 }
 
 export const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({
@@ -27,6 +28,7 @@ export const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({
   timerFormat,
   startFrame,
   durationInFrames,
+  text,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
@@ -64,9 +66,16 @@ export const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({
     }
   );
 
-  // Calculate position in pixels
+  // Calculate position in pixels (centered)
   const xPos = (width * x) / 100;
   const yPos = (height * y) / 100;
+  
+  // Badge size matching preview and final render
+  const badgeSize = 120;
+  
+  // Font sizes matching preview
+  const nameSize = Math.max(12, Math.floor(fontSize * 0.7));
+  const timerSize = Math.max(14, Math.floor(fontSize * 0.85));
 
   return (
     <div
@@ -75,20 +84,41 @@ export const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({
         left: xPos,
         top: yPos,
         transform: 'translate(-50%, -50%)',
-        fontSize: `${fontSize}px`,
-        color: fontColor,
-        backgroundColor: backgroundColor || 'rgba(0, 0, 0, 0.7)',
-        padding: '16px 24px',
-        borderRadius: '12px',
-        fontWeight: 'bold',
+        width: badgeSize,
+        height: badgeSize,
+        backgroundColor: backgroundColor || 'rgba(34, 197, 94, 0.9)', // Green circular badge matching preview
+        borderRadius: '50%', // Circular shape
+        padding: '8px',
+        color: fontColor || '#fff',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
         textAlign: 'center',
         opacity,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
         zIndex: 10,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      {timerType === 'countdown' ? '⏱️ ' : '⏰ '}
-      {formatTimer(timerValue)}
+      {/* Exercise name at top */}
+      {text && (
+        <div style={{ 
+          fontSize: `${nameSize}px`, 
+          lineHeight: 1.1, 
+          fontWeight: 700, 
+          marginBottom: 4 
+        }}>
+          {text}
+        </div>
+      )}
+      {/* Timer at bottom */}
+      <div style={{ 
+        fontSize: `${timerSize}px`, 
+        fontWeight: 600 
+      }}>
+        {formatTimer(timerValue)}
+      </div>
     </div>
   );
 };

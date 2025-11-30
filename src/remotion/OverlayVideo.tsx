@@ -77,6 +77,7 @@ export const OverlayVideoComposition: React.FC<OverlayVideoCompositionProps> = (
                 timerFormat={overlay.timerFormat || 'MM:SS'}
                 startFrame={startFrame}
                 durationInFrames={durationInFrames}
+                text={overlay.text}
               />
             )}
             {overlay.type === 'image' && overlay.imageUrl && (

@@ -63,6 +63,7 @@ const AdminDashboard = () => {
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('');
   const [videoDuration, setVideoDuration] = useState(0);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -86,6 +87,24 @@ const AdminDashboard = () => {
 
     loadDashboardData();
   }, [user, isAuthenticated, isLoading, navigate]);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (isMobileMenuOpen && !target.closest('.mobile-tabs-dropdown')) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
 
   // Handle return from video editor - go to upload step
   useEffect(() => {
@@ -822,6 +841,87 @@ const AdminDashboard = () => {
 
         {programStep !== 'upload' && (
           <>
+            {/* Mobile Dropdown Menu */}
+            <div className="mobile-tabs-dropdown">
+              <button
+                className="mobile-tabs-button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-expanded={isMobileMenuOpen}
+                aria-haspopup="true"
+              >
+                <span>
+                  {activeTab === 'stats' && 'Statistics'}
+                  {activeTab === 'users' && `Users (${users.length})`}
+                  {activeTab === 'transactions' && `Transactions (${transactions.length})`}
+                  {activeTab === 'programs' && `Programs (${programs.length})`}
+                  {activeTab === 'add-user' && 'Add User'}
+                  {activeTab === 'add-program' && 'Add Program'}
+                  {activeTab === 'edit-program' && 'Edit Program'}
+                </span>
+                <span className="dropdown-arrow">{isMobileMenuOpen ? '▲' : '▼'}</span>
+              </button>
+              {isMobileMenuOpen && (
+                <div className="mobile-tabs-menu">
+                  <button
+                    className={activeTab === 'stats' ? 'active' : ''}
+                    onClick={() => {
+                      setActiveTab('stats');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Statistics
+                  </button>
+                  <button
+                    className={activeTab === 'users' ? 'active' : ''}
+                    onClick={() => {
+                      setActiveTab('users');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Users ({users.length})
+                  </button>
+                  <button
+                    className={activeTab === 'transactions' ? 'active' : ''}
+                    onClick={() => {
+                      setActiveTab('transactions');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Transactions ({transactions.length})
+                  </button>
+                  <button
+                    className={activeTab === 'programs' ? 'active' : ''}
+                    onClick={() => {
+                      setActiveTab('programs');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Programs ({programs.length})
+                  </button>
+                  <button
+                    className={activeTab === 'add-user' ? 'active' : ''}
+                    onClick={() => {
+                      setActiveTab('add-user');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Add User
+                  </button>
+                  <button
+                    className={activeTab === 'add-program' ? 'active' : ''}
+                    onClick={() => {
+                      setActiveTab('add-program');
+                      setProgramStep('details');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Add Program
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Tabs */}
             <div className="dashboard-tabs">
           <button
             className={activeTab === 'stats' ? 'active' : ''}

@@ -53,7 +53,14 @@ export const getUserPrograms = async (req: Request, res: Response, next: NextFun
     }
 
     const userPrograms = await prisma.userProgram.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        // Exclude user programs where both plan and program are null (deleted programs)
+        OR: [
+          { planId: { not: null } },
+          { programId: { not: null } }
+        ]
+      },
       include: {
         plan: {
           select: {

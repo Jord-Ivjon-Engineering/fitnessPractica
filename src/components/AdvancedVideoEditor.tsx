@@ -147,6 +147,8 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
   const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const [videoRenderedSize, setVideoRenderedSize] = useState<{ width: number; height: number; left: number; top: number } | null>(null);
   const nextExerciseId = useRef(1);
   const nextClipId = useRef(1);
   const handleDeleteClipRef = useRef<((clipId: string) => void) | null>(null);
@@ -195,6 +197,75 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
     }, 100);
     return () => clearInterval(interval);
   }, [playing]);
+
+  // Calculate video's rendered size (accounting for object-fit: contain)
+  useEffect(() => {
+    const updateVideoSize = () => {
+      if (videoRef.current && videoContainerRef.current && videoDimensions) {
+        const container = videoContainerRef.current;
+        const video = videoRef.current;
+        // Get container dimensions (not viewport-relative)
+        const containerWidth = container.offsetWidth || container.clientWidth;
+        const containerHeight = container.offsetHeight || container.clientHeight;
+        const videoAspect = videoDimensions.width / videoDimensions.height;
+        const containerAspect = containerWidth / containerHeight;
+        
+        let renderedWidth: number;
+        let renderedHeight: number;
+        let left: number;
+        let top: number;
+        
+        if (videoAspect > containerAspect) {
+          // Video is wider - fit to width
+          renderedWidth = containerWidth;
+          renderedHeight = containerWidth / videoAspect;
+          left = 0;
+          top = (containerHeight - renderedHeight) / 2;
+        } else {
+          // Video is taller - fit to height
+          renderedHeight = containerHeight;
+          renderedWidth = containerHeight * videoAspect;
+          left = (containerWidth - renderedWidth) / 2;
+          top = 0;
+        }
+        
+        setVideoRenderedSize({ width: renderedWidth, height: renderedHeight, left, top });
+      }
+    };
+    
+    updateVideoSize();
+    window.addEventListener('resize', updateVideoSize);
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    
+    if (video) {
+      video.addEventListener('loadedmetadata', updateVideoSize);
+      video.addEventListener('resize', updateVideoSize);
+    }
+    
+    // Use ResizeObserver for more reliable size tracking
+    let resizeObserver: ResizeObserver | null = null;
+    if (container && window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        updateVideoSize();
+      });
+      resizeObserver.observe(container);
+      if (video) {
+        resizeObserver.observe(video);
+      }
+    }
+    
+    return () => {
+      window.removeEventListener('resize', updateVideoSize);
+      if (video) {
+        video.removeEventListener('loadedmetadata', updateVideoSize);
+        video.removeEventListener('resize', updateVideoSize);
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [videoDimensions, videoUrl]);
 
   useEffect(() => {
     // Convert exercises to timeline clips
@@ -575,55 +646,73 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                 aspectRatio: `${videoDimensions.width} / ${videoDimensions.height}`
               } : undefined}
             >
-              <video
-                ref={videoRef}
-                src={videoUrl}
-                controls={true}
-                preload="auto"
-                style={{ width: '100%', height: '100%', maxHeight: '70vh', display: 'block' }}
-                onPlay={() => setPlaying(true)}
-                onPause={() => setPlaying(false)}
-                onTimeUpdate={() => {
-                  if (videoRef.current) {
-                    setCurrentTime(videoRef.current.currentTime);
-                  }
-                }}
-                onStalled={() => {
-                  const v = videoRef.current;
-                  if (!v) return;
-                  try {
-                    const ranges: Array<[number, number]> = [];
-                    for (let i = 0; i < v.buffered.length; i++) {
-                      ranges.push([v.buffered.start(i), v.buffered.end(i)]);
+              <div 
+                ref={videoContainerRef}
+                style={{ position: 'relative', width: '100%', height: '100%', maxHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+              >
+                <video
+                  ref={videoRef}
+                  src={videoUrl}
+                  controls={true}
+                  controlsList="nodownload nofullscreen"
+                  disablePictureInPicture={true}
+                  preload="auto"
+                  style={{ width: '100%', height: '100%', maxHeight: '70vh', display: 'block', objectFit: 'contain' }}
+                  onPlay={() => setPlaying(true)}
+                  onPause={() => setPlaying(false)}
+                  onTimeUpdate={() => {
+                    if (videoRef.current) {
+                      setCurrentTime(videoRef.current.currentTime);
                     }
+                  }}
+                  onStalled={() => {
+                    const v = videoRef.current;
+                    if (!v) return;
+                    try {
+                      const ranges: Array<[number, number]> = [];
+                      for (let i = 0; i < v.buffered.length; i++) {
+                        ranges.push([v.buffered.start(i), v.buffered.end(i)]);
+                      }
+                      // eslint-disable-next-line no-console
+                      console.warn('Video stalled (Advanced). Buffered:', ranges, 't=', v.currentTime, 'rs=', v.readyState);
+                    } catch {}
+                    const i = v.buffered.length - 1;
+                    if (i >= 0) {
+                      const end = v.buffered.end(i);
+                      if (v.currentTime >= end - 0.25) {
+                        v.currentTime = Math.min(v.currentTime + 0.1, v.duration || v.currentTime + 0.1);
+                      }
+                    }
+                    v.play().catch(() => {
+                      v.load();
+                      setTimeout(() => v.play().catch(() => {}), 200);
+                    });
+                  }}
+                  onWaiting={() => {
+                    const v = videoRef.current;
+                    if (!v) return;
                     // eslint-disable-next-line no-console
-                    console.warn('Video stalled (Advanced). Buffered:', ranges, 't=', v.currentTime, 'rs=', v.readyState);
-                  } catch {}
-                  const i = v.buffered.length - 1;
-                  if (i >= 0) {
-                    const end = v.buffered.end(i);
-                    if (v.currentTime >= end - 0.25) {
-                      v.currentTime = Math.min(v.currentTime + 0.1, v.duration || v.currentTime + 0.1);
-                    }
-                  }
-                  v.play().catch(() => {
-                    v.load();
-                    setTimeout(() => v.play().catch(() => {}), 200);
-                  });
-                }}
-                onWaiting={() => {
-                  const v = videoRef.current;
-                  if (!v) return;
-                  // eslint-disable-next-line no-console
-                  console.info('Video waiting (Advanced) at', v.currentTime, 'rs=', v.readyState);
-                  v.play().catch(() => {
-                    v.load();
-                    setTimeout(() => v.play().catch(() => {}), 200);
-                  });
-                }}
-              />
-              {/* Live overlay preview: show timer overlays with exercise name in green box during active interval */}
-              <div className="overlay-preview-layer" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                    console.info('Video waiting (Advanced) at', v.currentTime, 'rs=', v.readyState);
+                    v.play().catch(() => {
+                      v.load();
+                      setTimeout(() => v.play().catch(() => {}), 200);
+                    });
+                  }}
+                />
+                {/* Live overlay preview: show timer overlays with exercise name in green box during active interval */}
+                <div 
+                  className="overlay-preview-layer" 
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    pointerEvents: 'none', 
+                    overflow: 'visible',
+                    zIndex: 10
+                  }}
+                >
                 {/* Quick toggle button to open auto-generation panel */}
                 {!showAutoPanel && (
                   <div style={{ position: 'absolute', right: 12, top: 12, pointerEvents: 'auto' }}>
@@ -638,18 +727,34 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                   .map(ov => {
                     // Circular badge size for top-right
                     const badgeSize = 120;
-                    const left = `${Math.max(0, Math.min(100, ov.x))}%`;
-                    const topPxOffset = 10;
-                    const top = `calc(${Math.max(0, Math.min(100, ov.y))}% + ${topPxOffset}px)`;
-                    // Position badge with its right edge near the percentage x
+                    // Calculate position based on video's rendered size
+                    let left: string | number;
+                    let top: string | number;
+                    
+                    if (videoRenderedSize) {
+                      // Position relative to video's rendered area within the container
+                      const xPercent = Math.max(0, Math.min(100, ov.x)) / 100;
+                      const yPercent = Math.max(0, Math.min(100, ov.y)) / 100;
+                      // Calculate position within the video's rendered bounds
+                      const xPos = videoRenderedSize.left + (videoRenderedSize.width * xPercent);
+                      const yPos = videoRenderedSize.top + (videoRenderedSize.height * yPercent);
+                      // Position badge so its right edge aligns with xPos, and top edge at yPos
+                      left = xPos - badgeSize;
+                      top = yPos;
+                    } else {
+                      // Fallback to percentage if video size not calculated yet
+                      left = `${Math.max(0, Math.min(100, ov.x))}%`;
+                      top = `${Math.max(0, Math.min(100, ov.y))}%`;
+                    }
+                    
                     return (
                       <div
                         key={`live-${ov.id}`}
                         style={{
                           position: 'absolute',
-                          left,
-                          top,
-                          transform: `translateX(-${badgeSize}px)`,
+                          left: typeof left === 'number' ? `${left}px` : left,
+                          top: typeof top === 'number' ? `${top}px` : top,
+                          transform: typeof left === 'number' ? 'none' : `translateX(-${badgeSize}px)`,
                           width: badgeSize,
                           height: badgeSize,
                           backgroundColor: 'rgba(34, 197, 94, 0.9)', // #22c55e @ 0.9
@@ -662,6 +767,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                           alignItems: 'center',
                           textAlign: 'center',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                          zIndex: 1000,
                         }}
                       >
                         <div style={{ fontSize: Math.min(14, (ov.fontSize || 18) * 0.7), lineHeight: 1.1, fontWeight: 700, marginBottom: 4 }}>
@@ -780,6 +886,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             </div>
             <div className="preview-info">

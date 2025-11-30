@@ -100,7 +100,11 @@ const Profile = () => {
     try {
       const response = await profileApi.getUserPrograms();
       if (response.data.success) {
-        setPrograms(response.data.data);
+        // Filter out programs where both plan and program are null (deleted programs)
+        const validPrograms = response.data.data.filter(
+          (userProgram: UserProgram) => userProgram.plan || userProgram.program
+        );
+        setPrograms(validPrograms);
       }
     } catch (error) {
       console.error("Error fetching programs:", error);
