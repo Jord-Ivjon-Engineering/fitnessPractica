@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AdvancedVideoEditor from '../components/AdvancedVideoEditor';
@@ -51,6 +51,85 @@ const ProgramVideoEditor = () => {
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string>('');
   const [videoTitle, setVideoTitle] = useState<string>(videoDataFromState?.name || 'Untitled Video');
   const [attachStatus, setAttachStatus] = useState<string>('');
+  const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
+  const [placeholderVideoId, setPlaceholderVideoId] = useState<number | null>(null);
+
+  // Convert preview segments to exercisesData format (defined early so it can be used in useEffect)
+  const convertPreviewSegmentsToExercisesData = useCallback((
+    segments: Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>
+  ) => {
+    if (segments.length === 0) {
+      console.log('convertPreviewSegmentsToExercisesData: segments array is empty');
+      return null;
+    }
+
+    console.log('convertPreviewSegmentsToExercisesData: input segments', segments);
+
+    // Separate exercises and breaks
+    const exercises = segments
+      .filter(seg => seg.type === 'exercise')
+      .map(seg => ({
+        name: seg.name,
+        startTime: seg.start,
+        endTime: seg.end,
+      }));
+
+    const breaks = segments
+      .filter(seg => seg.type === 'break')
+      .map(seg => {
+        // Find the next exercise after this break
+        const currentIndex = segments.indexOf(seg);
+        const nextExercise = segments
+          .slice(currentIndex + 1)
+          .find(s => s.type === 'exercise');
+        
+        return {
+          startTime: seg.start,
+          endTime: seg.end,
+          duration: seg.end - seg.start,
+          nextExerciseName: nextExercise?.name || '',
+        };
+      });
+
+    console.log('convertPreviewSegmentsToExercisesData: exercises', exercises);
+    console.log('convertPreviewSegmentsToExercisesData: breaks', breaks);
+
+    return {
+      exercises,
+      breaks,
+    };
+  }, []);
+
+  // Debug: Log when preview segments change
+  useEffect(() => {
+    console.log('ProgramVideoEditor: previewSegments updated', previewSegments);
+  }, [previewSegments]);
+
+  // Create placeholder video when preview segments are generated
+  useEffect(() => {
+    const createPlaceholder = async () => {
+      // Only create placeholder if:
+      // 1. We have preview segments
+      // 2. We have a programId
+      // 3. We don't already have a placeholder or existing video
+      if (previewSegments.length > 0 && programId && !placeholderVideoId && !videoDataFromState?.existingVideoId) {
+        try {
+          const exercisesData = convertPreviewSegmentsToExercisesData(previewSegments);
+          console.log('Creating placeholder video with exercisesData:', exercisesData);
+          const response = await trainingProgramApi.createPlaceholderVideo(programId, videoTitle, exercisesData);
+          if (response.data.success && response.data.data?.id) {
+            setPlaceholderVideoId(response.data.data.id);
+            console.log('Placeholder video created with ID:', response.data.data.id);
+          }
+        } catch (error) {
+          console.error('Error creating placeholder video:', error);
+          // Don't show error to user - this is a background operation
+        }
+      }
+    };
+
+    createPlaceholder();
+  }, [previewSegments, programId, videoTitle, placeholderVideoId, videoDataFromState?.existingVideoId, convertPreviewSegmentsToExercisesData]);
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -216,24 +295,33 @@ const ProgramVideoEditor = () => {
       const result = await resultPromise;
       if (result.success && result.data?.url) {
         const processedUrl = result.data.url;
+        // Use preview segments if available, otherwise use backend-calculated exercisesData
+        const exercisesData = previewSegments.length > 0 
+          ? convertPreviewSegmentsToExercisesData(previewSegments)
+          : (result.data.exercisesData || null);
         setProcessedVideoUrl(processedUrl);
         setVideoError('');
         const timestamp = new Date().toLocaleString();
-        setVideoTitle(`${videoTitle} - Processed ${timestamp}`);
+        const updatedTitle = `${videoTitle} - Processed ${timestamp}`;
+        setVideoTitle(updatedTitle);
         
         // Auto-attach/update video to program if programId is available
         if (programId) {
           try {
             setAttachStatus('Attaching video to program...');
-            const existingVideoId = videoDataFromState?.existingVideoId;
+            const existingVideoId = videoDataFromState?.existingVideoId || placeholderVideoId;
             
             if (existingVideoId) {
-              // Update existing video
-              await trainingProgramApi.updateVideo(programId, existingVideoId, processedUrl, videoTitle);
+              // Update existing video (or placeholder) with URL, updated title, and exercisesData
+              await trainingProgramApi.updateVideo(programId, existingVideoId, processedUrl, updatedTitle, exercisesData);
               setAttachStatus('Video updated successfully!');
+              // Clear placeholder ID since it's now a real video
+              if (placeholderVideoId) {
+                setPlaceholderVideoId(null);
+              }
             } else {
-              // Attach new video to program
-              await trainingProgramApi.attachVideo(programId, processedUrl, videoTitle);
+              // Attach new video to program with exercises data
+              await trainingProgramApi.attachVideo(programId, processedUrl, updatedTitle, exercisesData);
               setAttachStatus('Video attached to program successfully!');
             }
           } catch (attachErr: any) {
@@ -289,6 +377,7 @@ const ProgramVideoEditor = () => {
           }}
           onOverlaysChange={setOverlays}
           onDurationChange={setVideoDuration}
+          onPreviewSegmentsChange={setPreviewSegments}
           onExport={({ exercises, overlays }) => {
             processVideo();
           }}
