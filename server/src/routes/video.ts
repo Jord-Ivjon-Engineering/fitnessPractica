@@ -42,6 +42,11 @@ async function detectHardwareAcceleration(): Promise<HardwareAccel> {
     }
     
     // Check for NVENC FIRST (NVIDIA GeForce RTX) - prioritize dedicated GPU
+    if (encoderList.toLowerCase().includes('h264_nvenc')) {
+      hardwareAccelCache = { type: 'nvenc', available: true };
+      console.log('✅ Hardware acceleration detected: NVIDIA NVENC (GeForce RTX)');
+      return hardwareAccelCache;
+    }
 
     // Check for QSV (Intel QuickSync) - fallback for integrated graphics
     if (encoderList.toLowerCase().includes('h264_qsv')) {
