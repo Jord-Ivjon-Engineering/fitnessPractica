@@ -41,17 +41,17 @@ async function detectHardwareAcceleration(): Promise<HardwareAccel> {
       return hardwareAccelCache;
     }
     
-    // Check for QSV (Intel QuickSync) FIRST - prioritize Intel rendering
-    if (encoderList.toLowerCase().includes('h264_qsv')) {
-      hardwareAccelCache = { type: 'qsv', available: true };
-      console.log('✅ Hardware acceleration detected: Intel QuickSync');
-      return hardwareAccelCache;
-    }
-
-    // Check for NVENC (NVIDIA GeForce RTX) - fallback for dedicated GPU
+    // Check for NVENC (NVIDIA GeForce RTX) FIRST - prioritize GeForce hardware acceleration
     if (encoderList.toLowerCase().includes('h264_nvenc')) {
       hardwareAccelCache = { type: 'nvenc', available: true };
       console.log('✅ Hardware acceleration detected: NVIDIA NVENC (GeForce RTX)');
+      return hardwareAccelCache;
+    }
+
+    // Check for QSV (Intel QuickSync) - fallback for integrated graphics
+    if (encoderList.toLowerCase().includes('h264_qsv')) {
+      hardwareAccelCache = { type: 'qsv', available: true };
+      console.log('✅ Hardware acceleration detected: Intel QuickSync');
       return hardwareAccelCache;
     }
 
@@ -138,16 +138,16 @@ function getEncoderOptions(hwAccel: HardwareAccel): string[] {
   if (hwAccel.type === 'nvenc') {
     // NVIDIA NVENC - optimized for GeForce RTX GPUs
     // CPU decoding + GPU encoding for better compatibility with filters
-    // FFmpeg will automatically use the first available NVIDIA GPU (RTX if available)
+    // FFmpeg will automatically use the first available NVIDIA GPU (GeForce RTX if available)
     options.push(
       '-c:v', 'h264_nvenc',
-      '-preset', 'p4',  // Balanced preset for RTX (p1-p7, p4 is good balance of speed/quality)
-      '-rc', 'vbr',
+      '-preset', 'p1',  // Fastest preset for GeForce rendering (p1-p7, p1 = fastest)
+      '-rc', 'vbr',  // Variable bitrate for quality/size balance
       '-cq', '23',  // Quality setting (lower = better quality, 18-28 is typical range)
       '-b:v', '0',  // Let CQ control bitrate
-      '-pix_fmt', 'yuv420p',
-      '-c:a', 'copy',
-      '-movflags', '+faststart'
+      '-pix_fmt', 'yuv420p',  // Standard pixel format for compatibility
+      '-c:a', 'copy',  // Copy audio without re-encoding
+      '-movflags', '+faststart'  // Enable fast start for web playback
     );
   } else if (hwAccel.type === 'qsv') {
     // Intel QuickSync - optimized for integrated graphics
