@@ -39,6 +39,7 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [breakCountdown, setBreakCountdown] = useState<number | null>(null);
 
   // Reset current progress when video changes
   useEffect(() => {
@@ -57,7 +58,7 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
     }
   }, [videoId, initialProgressPercent]);
 
-  // Countdown timer for program videos
+  // Countdown timer for program videos (start-of-video logic)
   useEffect(() => {
     // Only show countdown for program videos (when programId is provided)
     if (!isOpen || !programId || !videoRef.current) {
@@ -67,7 +68,18 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
     }
 
     const video = videoRef.current;
-    
+
+    // If we have exercises and the first exercise starts AFTER 00:00,
+    // we do NOT pause at the start. Instead, we use a running countdown
+    // similar to breaks (handled in a separate effect below).
+    const firstExerciseStartTime = exercisesData?.exercises?.[0]?.startTime ?? 0;
+    if (firstExerciseStartTime > 0) {
+      setCountdown(null);
+      countdownRef.current = null;
+      return;
+    }
+
+    // If first exercise starts at 00:00 (or no exercises data), use the original paused countdown logic
     // Pause video during countdown
     video.pause();
 
@@ -111,7 +123,70 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
       video.removeEventListener('play', handlePlay);
       countdownRef.current = null;
     };
-  }, [isOpen, programId, videoId]);
+  }, [isOpen, programId, videoId, exercisesData]);
+
+  // Handle first exercise countdown when it starts after 00:00 (break-style, video keeps playing)
+  useEffect(() => {
+    if (!isOpen || !programId || !videoRef.current || !exercisesData?.exercises || exercisesData.exercises.length === 0) {
+      // Only clear countdown if we're not in the initial paused countdown
+      if (countdownRef.current === null) {
+        setCountdown(null);
+      }
+      return;
+    }
+
+    const video = videoRef.current;
+    const firstExercise = exercisesData.exercises[0];
+    const firstExerciseStartTime = firstExercise.startTime;
+
+    // Only handle this if first exercise starts after 00:00
+    if (firstExerciseStartTime <= 0) {
+      return;
+    }
+
+    // Calculate when to start showing countdown (5 seconds before first exercise)
+    const countdownStartTime = Math.max(0, firstExerciseStartTime - 5);
+
+    const handleTimeUpdate = () => {
+      const currentTime = video.currentTime;
+
+      // If we're in the 5 seconds before the first exercise starts, show countdown
+      if (currentTime >= countdownStartTime && currentTime < firstExerciseStartTime) {
+        const remaining = Math.ceil(firstExerciseStartTime - currentTime);
+        const value = Math.min(5, Math.max(1, remaining));
+        setCountdown(value);
+        countdownRef.current = value;
+      } else if (currentTime >= firstExerciseStartTime) {
+        // Past the first exercise start, clear countdown
+        if (countdownRef.current !== null) {
+          setCountdown(null);
+          countdownRef.current = null;
+        }
+      } else {
+        // Before countdown should start, clear countdown
+        if (countdownRef.current !== null) {
+          setCountdown(null);
+          countdownRef.current = null;
+        }
+      }
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+
+    // Initial check
+    handleTimeUpdate();
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      // Only clear countdown if this effect is cleaning up before the first exercise
+      if (video.currentTime < firstExerciseStartTime) {
+        if (countdownRef.current !== null) {
+          setCountdown(null);
+          countdownRef.current = null;
+        }
+      }
+    };
+  }, [isOpen, programId, exercisesData, videoId]);
 
   // Handle fullscreen: exit video fullscreen and allow container fullscreen via custom button
   useEffect(() => {
@@ -226,12 +301,13 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
     }
   };
 
-  // Detect breaks and show preview
+  // Detect breaks and show preview / break countdown
   useEffect(() => {
     if (!videoRef.current || !exercisesData || !exercisesData.breaks || exercisesData.breaks.length === 0) {
       setCurrentBreak(null);
       setShowPreview(false);
       setIsAnimatingOut(false);
+      setBreakCountdown(null);
       if (exitAnimationTimeoutRef.current) {
         clearTimeout(exitAnimationTimeoutRef.current);
         exitAnimationTimeoutRef.current = null;
@@ -248,7 +324,22 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
       for (const breakInfo of exercisesData.breaks) {
         // Calculate when popup should end (25% before break ends)
         const popupEndTime = breakInfo.endTime - (breakInfo.duration * 0.25);
-        
+        const breakLastFiveStart = Math.max(breakInfo.startTime, breakInfo.endTime - 5);
+
+        // If we're in the last 5 seconds of this break, show only the countdown (hide popup)
+        if (currentTime >= breakLastFiveStart && currentTime < breakInfo.endTime) {
+          const remaining = Math.ceil(breakInfo.endTime - currentTime);
+          setBreakCountdown(Math.min(5, Math.max(1, remaining)));
+
+          // Ensure the side preview popup is hidden while the 5s timer is visible
+          setShowPreview(false);
+          showPreviewRef.current = false;
+          setIsAnimatingOut(false);
+          isAnimatingOutRef.current = false;
+          return;
+        }
+
+        // Handle main break preview window (before the last 5 seconds)
         if (currentTime >= breakInfo.startTime && currentTime < popupEndTime) {
           // Clear any pending exit animation
           if (exitAnimationTimeoutRef.current) {
@@ -272,6 +363,9 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
         }
       }
       
+      // Not in any break range
+      setBreakCountdown(null);
+
       // Not in a break - start exit animation if preview is currently showing
       if (showPreviewRef.current && !isAnimatingOutRef.current) {
         isAnimatingOutRef.current = true;
@@ -688,17 +782,23 @@ useEffect(() => {
           />
 
           {/* Countdown Overlay - Only show for program videos */}
-          {countdown !== null && programId && (
+          {(countdown !== null || breakCountdown !== null) && programId && (
+            (() => {
+              const displayCountdown = countdown !== null ? countdown : breakCountdown;
+              if (displayCountdown === null) return null;
+              return (
             <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/30">
               <div className="text-center">
                 <div className="text-8xl md:text-9xl font-bold text-white mb-4 drop-shadow-2xl">
-                  {countdown}
+                  {displayCountdown}
                 </div>
                 <div className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
                   Get Ready
                 </div>
               </div>
             </div>
+              );
+            })()
           )}
 
           {/* Custom Fullscreen Button */}
@@ -786,9 +886,14 @@ useEffect(() => {
 
                 // Format day title
                 const dayNumber = index + 1;
-                const displayTitle = v.title 
+                const fullTitle = v.title 
                   ? `Day ${dayNumber} - ${v.title}` 
                   : `Day ${dayNumber}`;
+                
+                // Truncate title if longer than 40 characters
+                const displayTitle = fullTitle.length > 40 
+                  ? fullTitle.substring(0, 40) + '...' 
+                  : fullTitle;
 
                 return (
                   <div
@@ -812,7 +917,10 @@ useEffect(() => {
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <div className="flex items-center gap-1 flex-1 min-w-0">
                             {!isUnlocked && <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
-                            <div className="font-semibold text-sm truncate">
+                            <div 
+                              className="font-semibold text-sm truncate"
+                              title={fullTitle.length > 40 ? fullTitle : undefined}
+                            >
                               {displayTitle}
                             </div>
                           </div>

@@ -483,9 +483,14 @@ const Profile = () => {
                                   
                                   // Format day title
                                   const dayNumber = index + 1;
-                                  const displayTitle = v.title 
+                                  const fullTitle = v.title 
                                     ? `Day ${dayNumber} - ${v.title}` 
                                     : `Day ${dayNumber}`;
+                                  
+                                  // Truncate title if longer than 40 characters
+                                  const displayTitle = fullTitle.length > 70 
+                                    ? fullTitle.substring(0, 70) + '...' 
+                                    : fullTitle;
                                   
                                   return (
                                     <div 
@@ -505,7 +510,12 @@ const Profile = () => {
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-2">
                                             {!isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
-                                            <span className="font-semibold truncate text-sm">{displayTitle}</span>
+                                            <span 
+                                              className="font-semibold truncate text-sm"
+                                              title={fullTitle.length > 40 ? fullTitle : undefined}
+                                            >
+                                              {displayTitle}
+                                            </span>
                                           </div>
                                           <span className="text-xs text-muted-foreground ml-2">{Math.round(progress)}%</span>
                                         </div>
