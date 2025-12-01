@@ -12,7 +12,6 @@ import Checkout from './pages/Checkout'
 import VideoEditor from './pages/VideoEditor'
 import ProgramVideoEditor from './pages/ProgramVideoEditor'
 import AdminDashboard from './pages/AdminDashboard'
-import SuperAdminDashboard from './pages/SuperAdminDashboard'
 import './App.css'
 
 function AppContent() {
@@ -31,7 +30,6 @@ function AppContent() {
         <Route path="/video-editor" element={<VideoEditor />} />
         <Route path="/admin/program-video-editor" element={<ProgramVideoEditor />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
       </Routes>
       {!hideFooter && <Footer />}
     </>

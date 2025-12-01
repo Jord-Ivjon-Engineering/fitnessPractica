@@ -7,7 +7,6 @@ import {
   Film, Image as ImageIcon, Type, Clock,
   Download, Save, Undo, Redo, Maximize2, X
 } from 'lucide-react';
-import MultiTrackTimeline from './timeline/MultiTrackTimeline';
 import MediaLibrary from './editor/MediaLibrary';
 import Toolbar from './editor/Toolbar';
 import '../styles/AdvancedVideoEditor.css';
@@ -62,6 +61,7 @@ export interface Overlay {
   imageUrl?: string;
   width?: number;
   height?: number;
+  role?: 'exercise' | 'break';
 }
 
 interface AdvancedVideoEditorProps {
@@ -283,22 +283,27 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
       endTime: ex.end,
       data: { name: ex.name, exerciseId: ex.id },
     }));
+    // Break overlays become clips in Breaks track
+    const breakClips: TimelineClip[] = overlays
+      .filter(ov => ov.role === 'break')
+      .map(ov => ({
+        id: ov.id,
+        type: ov.type === 'timer' ? 'timer' : ov.type === 'image' ? 'image' : 'text',
+        startTime: ov.startTime,
+        endTime: ov.endTime,
+        data: ov,
+      }));
 
-    // Convert overlays to timeline clips
-    const overlayClips: TimelineClip[] = overlays.map(ov => ({
-      id: ov.id,
-      type: ov.type === 'timer' ? 'timer' : ov.type === 'image' ? 'image' : 'text',
-      startTime: ov.startTime,
-      endTime: ov.endTime,
-      data: ov,
+    // Update separate tracks
+    setTracks(prev => prev.map(track => {
+      if (track.id === 'video-1') {
+        return { ...track, clips: exerciseClips };
+      }
+      if (track.id === 'overlay-1') {
+        return { ...track, clips: breakClips };
+      }
+      return track;
     }));
-
-    // Update overlay track
-    setTracks(prev => prev.map(track => 
-      track.id === 'overlay-1' 
-        ? { ...track, clips: [...exerciseClips, ...overlayClips] }
-        : track
-    ));
   }, [exercises, overlays]);
 
   useEffect(() => {
@@ -351,9 +356,30 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
       fontColor: '#FFFFFF',
       backgroundColor: '#22c55e', // hint color; backend will draw box
       timerType: 'elapsed',
-      timerFormat: 'MM:SS'
+      timerFormat: 'MM:SS',
+      role: 'exercise'
     };
     setOverlays(prev => [...prev, timerOverlay]);
+    saveHistory();
+  };
+
+  const handleAddBreak = (name: string, start: number, end: number) => {
+    const breakOverlay: Overlay = {
+      id: `break-timer-${start}-${end}-${Date.now()}`,
+      type: 'timer',
+      startTime: start,
+      endTime: end,
+      x: 95,
+      y: 5,
+      text: name,
+      fontSize: 18,
+      fontColor: '#FFFFFF',
+      backgroundColor: '#f59e0b',
+      timerType: 'elapsed',
+      timerFormat: 'MM:SS',
+      role: 'break'
+    };
+    setOverlays(prev => [...prev, breakOverlay]);
     saveHistory();
   };
 
@@ -408,6 +434,13 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
             ? { ...ex, start: updates.startTime ?? ex.start, end: updates.endTime ?? ex.end }
             : ex
         ));
+        // Keep exercise timer overlay in sync
+        setOverlays(prev => prev.map(ov => {
+          if (ov.role === 'exercise' && ov.id === `exercise-timer-${exerciseId}`) {
+            return { ...ov, startTime: updates.startTime ?? ov.startTime, endTime: updates.endTime ?? ov.endTime };
+          }
+            return ov;
+        }));
       } else {
         setOverlays(overlays.map(ov => 
           ov.id === clipId
@@ -592,8 +625,8 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                             style={{ width: '100%', background: '#2a2a2a', border: '1px solid #555', color: '#fff', borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                           />
                           <button
-                            onClick={() => handleAddExercise(seg.name, seg.start, seg.end)}
-                            style={{ background: '#22c55e', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 12 }}
+                            onClick={() => seg.type === 'break' ? handleAddBreak(seg.name, seg.start, seg.end) : handleAddExercise(seg.name, seg.start, seg.end)}
+                            style={{ background: seg.type === 'break' ? '#f59e0b' : '#22c55e', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 12 }}
                           >
                             Add
                           </button>
@@ -603,7 +636,13 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                     <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
                       <button
                         onClick={() => {
-                          previewSegments.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
+                          previewSegments.forEach(seg => {
+                            if (seg.type === 'break') {
+                              handleAddBreak(seg.name, seg.start, seg.end);
+                            } else {
+                              handleAddExercise(seg.name, seg.start, seg.end);
+                            }
+                          });
                           // Don't clear previewSegments - keep them for processing video
                           // setPreviewSegments([]);
                         }}
@@ -860,7 +899,13 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
                       {previewSegments.length > 0 && (
                         <button
                           onClick={() => {
-                            previewSegments.forEach(seg => handleAddExercise(seg.name, seg.start, seg.end));
+                            previewSegments.forEach(seg => {
+                              if (seg.type === 'break') {
+                                handleAddBreak(seg.name, seg.start, seg.end);
+                              } else {
+                                handleAddExercise(seg.name, seg.start, seg.end);
+                              }
+                            });
                             // Don't clear previewSegments - keep them for processing video
                             // setPreviewSegments([]);
                             setShowAutoPanel(false);
@@ -901,18 +946,7 @@ const AdvancedVideoEditor: React.FC<AdvancedVideoEditorProps> = ({
             </div>
           </div>
 
-          {/* Multi-Track Timeline */}
-          <MultiTrackTimeline
-            tracks={tracks}
-            currentTime={currentTime}
-            duration={duration}
-            zoom={zoom}
-            onSeek={handleSeek}
-            onClipSelect={setSelectedClip}
-            onClipUpdate={handleClipUpdate}
-            onClipDelete={handleDeleteClip}
-            selectedClip={selectedClip}
-          />
+          {/* Timeline removed intentionally */}
         </div>
       </div>
 

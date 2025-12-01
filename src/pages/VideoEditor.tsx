@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Player } from '@remotion/player';
 import VideoUploader from '../components/VideoUploader';
-import VideoTimeline from '../components/VideoTimeline';
 import { WorkoutVideoComposition } from '../remotion/WorkoutVideo';
 import { createPreviewClips } from '../utils/ffmpegHelper';
 import { trainingProgramApi, TrainingProgram } from '../services/api';
@@ -259,10 +258,7 @@ const VideoEditor = () => {
           <VideoUploader onVideoLoad={handleVideoLoad} />
         ) : (
           <>
-            <VideoTimeline
-              videoUrl={video.url}
-              onExercisesUpdate={handleExercisesUpdate}
-            />
+            {/* Timeline removed intentionally */}
 
             {error && <div className="error-message">{error}</div>}
 

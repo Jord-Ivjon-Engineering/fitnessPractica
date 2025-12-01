@@ -53,6 +53,32 @@ const ProgramVideoEditor = () => {
   const [attachStatus, setAttachStatus] = useState<string>('');
   const [previewSegments, setPreviewSegments] = useState<Array<{ name: string; start: number; end: number; type: 'exercise' | 'break' }>>([]);
   const [placeholderVideoId, setPlaceholderVideoId] = useState<number | null>(null);
+  const [initialExercisesData, setInitialExercisesData] = useState<any>(null);
+
+  // Load existing video data from database if editing
+  useEffect(() => {
+    const loadExistingVideoData = async () => {
+      if (!videoDataFromState?.existingVideoId) return;
+      
+      try {
+        console.log('Loading existing video data for ID:', videoDataFromState.existingVideoId);
+        const response = await trainingProgramApi.getProgramVideos(programId || 0);
+        
+        if (response.data.success && response.data.data) {
+          const existingVideo = response.data.data.find((v: any) => v.id === videoDataFromState.existingVideoId);
+          
+          if (existingVideo && existingVideo.exercisesData) {
+            console.log('Found existing video with exercisesData:', existingVideo.exercisesData);
+            setInitialExercisesData(existingVideo.exercisesData);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading existing video data:', error);
+      }
+    };
+    
+    loadExistingVideoData();
+  }, [videoDataFromState?.existingVideoId, programId]);
 
   // Convert preview segments to exercisesData format (defined early so it can be used in useEffect)
   const convertPreviewSegmentsToExercisesData = useCallback((
@@ -370,6 +396,7 @@ const ProgramVideoEditor = () => {
           videoUrl={videoUrl}
           videoTitle={videoTitle}
           videoSize={videoFileSize}
+          initialExercisesData={initialExercisesData}
           onTitleChange={setVideoTitle}
           onExercisesChange={(exs) => {
             setExercises(exs);
