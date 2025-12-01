@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { X, Lock, ArrowLeft } from 'lucide-react';
+import { X, Lock, ArrowLeft, Maximize, Minimize } from 'lucide-react';
 import { trainingProgramApi } from '@/services/api';
 
 interface VideoModalProps {
@@ -25,24 +25,217 @@ interface VideoModalProps {
 const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, videoId, programId, initialProgressPercent, allVideos, videoProgress, exercisesData, onVideoSelect, onProgressUpdate, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedPercentRef = useRef<number>(0);
+  const lastBreakStartTimeRef = useRef<number>(-1); // Track which break we last seeked for (persist across renders)
+  const exitAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const showPreviewRef = useRef<boolean>(false);
+  const isAnimatingOutRef = useRef<boolean>(false);
+  const countdownRef = useRef<number | null>(null);
   const [currentProgress, setCurrentProgress] = useState<number>(initialProgressPercent || 0);
   const [currentBreak, setCurrentBreak] = useState<{ startTime: number; endTime: number; duration: number; nextExerciseName: string; nextExerciseStartTime: number } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   // Reset current progress when video changes
   useEffect(() => {
     setCurrentProgress(initialProgressPercent || 0);
     setCurrentBreak(null);
     setShowPreview(false);
+    setIsAnimatingOut(false);
+    setCountdown(null);
+    countdownRef.current = null;
+    lastBreakStartTimeRef.current = -1; // Reset break tracking when video changes
+    showPreviewRef.current = false;
+    isAnimatingOutRef.current = false;
+    if (exitAnimationTimeoutRef.current) {
+      clearTimeout(exitAnimationTimeoutRef.current);
+      exitAnimationTimeoutRef.current = null;
+    }
   }, [videoId, initialProgressPercent]);
+
+  // Countdown timer for program videos
+  useEffect(() => {
+    // Only show countdown for program videos (when programId is provided)
+    if (!isOpen || !programId || !videoRef.current) {
+      setCountdown(null);
+      countdownRef.current = null;
+      return;
+    }
+
+    const video = videoRef.current;
+    
+    // Pause video during countdown
+    video.pause();
+
+    // Prevent video from playing during countdown
+    const handlePlay = (e: Event) => {
+      if (countdownRef.current !== null && countdownRef.current > 0) {
+        e.preventDefault();
+        video.pause();
+      }
+    };
+
+    video.addEventListener('play', handlePlay);
+
+    // Start countdown from 5
+    setCountdown(5);
+    countdownRef.current = 5;
+
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownInterval);
+          countdownRef.current = null;
+          // Remove play listener
+          video.removeEventListener('play', handlePlay);
+          // Start playing video after countdown ends
+          setTimeout(() => {
+            video.play().catch(() => {
+              // Play failed, ignore
+            });
+          }, 100);
+          return null;
+        }
+        const newCount = prev - 1;
+        countdownRef.current = newCount;
+        return newCount;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(countdownInterval);
+      video.removeEventListener('play', handlePlay);
+      countdownRef.current = null;
+    };
+  }, [isOpen, programId, videoId]);
+
+  // Handle fullscreen: exit video fullscreen and allow container fullscreen via custom button
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    
+    if (!video || !container || !isOpen) return;
+
+    const handleFullscreenChange = () => {
+      const fullscreenElement = document.fullscreenElement || 
+                                (document as any).webkitFullscreenElement ||
+                                (document as any).mozFullScreenElement ||
+                                (document as any).msFullscreenElement;
+      
+      const isVideoFullscreen = fullscreenElement === video;
+      
+      setIsFullscreen(!!fullscreenElement);
+      
+      if (isVideoFullscreen) {
+        // Video went fullscreen - exit it immediately so popup remains visible
+        // We can exit fullscreen programmatically (doesn't require user gesture)
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen().catch(() => {});
+        } else if ((document as any).mozCancelFullScreen) {
+          (document as any).mozCancelFullScreen().catch(() => {});
+        } else if ((document as any).msExitFullscreen) {
+          (document as any).msExitFullscreen().catch(() => {});
+        }
+      }
+    };
+
+    // Listen for fullscreen change events
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, [isOpen, videoRef.current, videoContainerRef.current]);
+
+  // Custom fullscreen handler for container
+  const handleContainerFullscreen = async () => {
+    const container = videoContainerRef.current;
+    if (!container) return;
+
+    const isCurrentlyFullscreen = document.fullscreenElement || 
+                                  (document as any).webkitFullscreenElement ||
+                                  (document as any).mozFullScreenElement ||
+                                  (document as any).msFullscreenElement;
+
+    try {
+      if (isCurrentlyFullscreen) {
+        // Exit fullscreen
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
+      } else {
+        // Enter fullscreen on container (requires user gesture - this is called from button click)
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        } else if ((container as any).webkitRequestFullscreen) {
+          await (container as any).webkitRequestFullscreen();
+        } else if ((container as any).mozRequestFullScreen) {
+          await (container as any).mozRequestFullScreen();
+        } else if ((container as any).msRequestFullscreen) {
+          await (container as any).msRequestFullscreen();
+        }
+      }
+    } catch (err) {
+      // Fullscreen operation failed
+    }
+  };
+
+  // Handle video click to toggle play/pause
+  const handleVideoClick = (e: React.MouseEvent<HTMLVideoElement>) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Get the bounding rectangle of the video element
+    const rect = video.getBoundingClientRect();
+    const clickY = e.clientY - rect.top;
+    const videoHeight = rect.height;
+    
+    // Controls are typically in the bottom 15% of the video
+    // If click is in the control area, let native controls handle it
+    const controlAreaHeight = videoHeight * 0.15;
+    const isInControlArea = clickY > (videoHeight - controlAreaHeight);
+    
+    // Only toggle if clicking on the video area (not controls)
+    if (!isInControlArea) {
+      // Toggle play/pause
+      if (video.paused) {
+        video.play().catch(() => {
+          // Play failed, ignore
+        });
+      } else {
+        video.pause();
+      }
+    }
+  };
 
   // Detect breaks and show preview
   useEffect(() => {
     if (!videoRef.current || !exercisesData || !exercisesData.breaks || exercisesData.breaks.length === 0) {
       setCurrentBreak(null);
       setShowPreview(false);
+      setIsAnimatingOut(false);
+      if (exitAnimationTimeoutRef.current) {
+        clearTimeout(exitAnimationTimeoutRef.current);
+        exitAnimationTimeoutRef.current = null;
+      }
       return;
     }
 
@@ -53,7 +246,16 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
       
       // Find if we're in a break period
       for (const breakInfo of exercisesData.breaks) {
-        if (currentTime >= breakInfo.startTime && currentTime < breakInfo.endTime) {
+        // Calculate when popup should end (25% before break ends)
+        const popupEndTime = breakInfo.endTime - (breakInfo.duration * 0.25);
+        
+        if (currentTime >= breakInfo.startTime && currentTime < popupEndTime) {
+          // Clear any pending exit animation
+          if (exitAnimationTimeoutRef.current) {
+            clearTimeout(exitAnimationTimeoutRef.current);
+            exitAnimationTimeoutRef.current = null;
+          }
+          
           // Find the next exercise start time
           const nextExercise = exercisesData.exercises.find(ex => ex.name === breakInfo.nextExerciseName);
           const nextExerciseStartTime = nextExercise?.startTime || breakInfo.endTime;
@@ -63,13 +265,26 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
             nextExerciseStartTime,
           });
           setShowPreview(true);
+          setIsAnimatingOut(false);
+          showPreviewRef.current = true;
+          isAnimatingOutRef.current = false;
           return;
         }
       }
       
-      // Not in a break
-      setCurrentBreak(null);
-      setShowPreview(false);
+      // Not in a break - start exit animation if preview is currently showing
+      if (showPreviewRef.current && !isAnimatingOutRef.current) {
+        isAnimatingOutRef.current = true;
+        setShowPreview(false);
+        showPreviewRef.current = false;
+        // Clear currentBreak after animation completes (500ms)
+        exitAnimationTimeoutRef.current = setTimeout(() => {
+          setCurrentBreak(null);
+          setIsAnimatingOut(false);
+          isAnimatingOutRef.current = false;
+          exitAnimationTimeoutRef.current = null;
+        }, 500);
+      }
     };
 
     const handleTimeUpdate = () => {
@@ -83,8 +298,31 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
+      if (exitAnimationTimeoutRef.current) {
+        clearTimeout(exitAnimationTimeoutRef.current);
+        exitAnimationTimeoutRef.current = null;
+      }
     };
   }, [exercisesData, videoRef.current]);
+
+  // Preload the preview video when modal opens
+  useEffect(() => {
+    const previewVideo = previewVideoRef.current;
+    if (!previewVideo || !isOpen || !videoUrl) return;
+
+    // Preload the preview video when modal opens
+    previewVideo.muted = true;
+    previewVideo.playsInline = true;
+    
+    // Set src if not already set
+    if (!previewVideo.src || previewVideo.src !== videoUrl) {
+      previewVideo.src = videoUrl;
+      previewVideo.load();
+    }
+
+    // Don't pre-seek - let the break detection logic handle seeking dynamically
+    // when each break occurs, as different breaks have different nextExerciseStartTime values
+  }, [isOpen, videoUrl]);
 
   // Control preview video playback - plays independently during breaks
   // ---------- Replace this whole useEffect in your component ----------
@@ -106,13 +344,8 @@ useEffect(() => {
   // Ensure element is muted before trying to autoplay (critical for browsers)
   previewVideo.muted = true;
   previewVideo.playsInline = true;
-
-  // Only update src when videoUrl changed to avoid reload race
-  if (previewVideo.src !== videoUrl) {
-    previewVideo.src = videoUrl;
-    // calling load() ensures the media element will start fetching metadata
-    try { previewVideo.load(); } catch {}
-  }
+  
+  // Video is already preloaded, no need to set src or load again
 
   const previewStartTime = currentBreak.nextExerciseStartTime;
   const previewEndTime = previewStartTime + currentBreak.duration;
@@ -120,38 +353,83 @@ useEffect(() => {
   let aborted = false;               // for cleanup to avoid actions after unmount
   let pendingPlay = false;           // avoid duplicate play calls
   let latestPlayPromise: Promise<void> | null = null;
+  let isSeeking = false;             // track if a seek is in progress
 
   const tryPlayPreview = async () => {
     if (aborted) return;
+    
     // If already playing or play pending, skip
-    if (!previewVideo.paused || pendingPlay) return;
+    if (!previewVideo.paused || pendingPlay) {
+      return;
+    }
 
     // If metadata not loaded, wait for canplay or loadedmetadata
     const seekAndPlay = async () => {
       if (aborted) return;
-      try {
-        // clamp seek inside duration when available
-        if (previewVideo.duration && previewStartTime <= previewVideo.duration) {
-          previewVideo.currentTime = Math.min(previewStartTime, previewVideo.duration || previewStartTime);
-        } else {
-          previewVideo.currentTime = previewStartTime;
+      
+      // CRITICAL: Ensure muted is set immediately before play() call
+      previewVideo.muted = true;
+      previewVideo.playsInline = true;
+      
+      // Only seek if we haven't already seeked to this position for this break
+      const targetTime = previewVideo.duration && previewStartTime <= previewVideo.duration
+        ? Math.min(previewStartTime, previewVideo.duration)
+        : previewStartTime;
+      
+      // Check if we need to seek (new break, before start, or beyond end)
+      const isNewBreak = lastBreakStartTimeRef.current !== currentBreak.startTime;
+      const currentTime = previewVideo.currentTime;
+      // Only seek if BEFORE the start time (hasn't started) or BEYOND the end time (needs to loop)
+      // Don't seek if video is within the valid range (previewStartTime to previewEndTime)
+      const isBeforeStart = currentTime < previewStartTime - 0.5; // Larger buffer to avoid tiny seeks
+      const isBeyondEnd = currentTime > previewEndTime + 0.5; // Larger buffer
+      // If it's a new break, we need to seek. Otherwise, only seek if outside valid range
+      const needsSeek = isNewBreak || (isBeforeStart || isBeyondEnd);
+      
+      if (needsSeek && !isSeeking) {
+        isSeeking = true;
+        try {
+          // For new breaks, seek to start. For beyond end, loop back to start. For before start, seek to start.
+          const seekToTime = isBeyondEnd ? previewStartTime : targetTime;
+          previewVideo.currentTime = seekToTime;
+          lastBreakStartTimeRef.current = currentBreak.startTime; // Track which break we seeked for (persist in ref)
+          
+          // Wait for seek to complete before playing
+          await new Promise((resolve) => {
+            const onSeeked = () => {
+              previewVideo.removeEventListener('seeked', onSeeked);
+              isSeeking = false;
+              resolve(undefined);
+            };
+            previewVideo.addEventListener('seeked', onSeeked);
+            // Timeout fallback
+            setTimeout(() => {
+              previewVideo.removeEventListener('seeked', onSeeked);
+              isSeeking = false;
+              resolve(undefined);
+            }, 500);
+          });
+        } catch (err) {
+          // seeking might throw if not ready; ignore and let play attempt handle it
+          isSeeking = false;
         }
-      } catch (err) {
-        // seeking might throw if not ready; ignore and let play attempt handle it
       }
 
-      pendingPlay = true;
-      try {
-        latestPlayPromise = previewVideo.play();
-        await latestPlayPromise;
-      } catch (err: any) {
-        // suppress expected AbortError and log unexpected
-        if (err && err.name !== 'AbortError') {
-          console.warn('Preview play() failed', err);
+      // Only try to play if not already playing and not seeking
+      // Check if video is in valid range and should be playing
+      const isInValidRange = currentTime >= previewStartTime - 1 && currentTime <= previewEndTime + 1;
+      
+      if (previewVideo.paused && !isSeeking && isInValidRange) {
+        pendingPlay = true;
+        try {
+          latestPlayPromise = previewVideo.play();
+          await latestPlayPromise;
+        } catch (err: any) {
+          // suppress expected AbortError
+        } finally {
+          pendingPlay = false;
+          latestPlayPromise = null;
         }
-      } finally {
-        pendingPlay = false;
-        latestPlayPromise = null;
       }
     };
 
@@ -174,16 +452,21 @@ useEffect(() => {
     const mainCurrent = mainVideo.currentTime;
     const isInBreak = mainCurrent >= currentBreak.startTime && mainCurrent < currentBreak.endTime;
     const isMainPlaying = !mainVideo.paused && !mainVideo.ended;
+    
 
     if (isInBreak && isMainPlaying) {
       // ensure preview is playing
       tryPlayPreview();
       // loop the preview within previewStartTime..previewEndTime
-      if (previewVideo.currentTime >= previewEndTime) {
+      // Only check/loop if video is playing and not currently seeking
+      const currentPreviewTime = previewVideo.currentTime;
+      if (!previewVideo.paused && !isSeeking && currentPreviewTime >= previewEndTime) {
         // set currentTime back to previewStartTime (clamp)
         try {
           previewVideo.currentTime = previewStartTime;
-        } catch {}
+        } catch (err) {
+          // Loop seek error
+        }
       }
     } else {
       // pause preview if it's playing (or wait for pending play to finish then pause)
@@ -217,7 +500,7 @@ useEffect(() => {
     // clear src? optional:
     // previewVideo.removeAttribute('src'); previewVideo.load();
   };
-}, [currentBreak, showPreview, videoUrl]);
+  }, [currentBreak, showPreview, videoUrl]);
 
 
   // Calculate the day number based on video position in the program
@@ -255,7 +538,7 @@ useEffect(() => {
           // don't seek beyond duration
           video.currentTime = Math.min(seekTime, Math.max(0, video.duration));
         } catch (e) {
-          console.warn('Could not set video currentTime', e);
+          // Could not set video currentTime
         }
       }
 
@@ -280,7 +563,7 @@ useEffect(() => {
         if (percentage === 100) {
           if (videoId && programId) {
             trainingProgramApi.updateVideoProgress(programId, videoId, 100)
-              .catch(err => console.error('Error updating video progress', err));
+              .catch(() => {});
             lastSavedPercentRef.current = 100;
             // Notify parent component about progress update
             onProgressUpdate?.(videoId, 100);
@@ -291,7 +574,7 @@ useEffect(() => {
         if (percentage - lastSavedPercentRef.current >= thresholdPercent) {
           if (videoId && programId) {
             trainingProgramApi.updateVideoProgress(programId, videoId, percentage)
-              .catch(err => console.error('Error updating video progress', err));
+              .catch(() => {});
             lastSavedPercentRef.current = percentage;
             // Notify parent component about progress update
             onProgressUpdate?.(videoId, percentage);
@@ -306,7 +589,7 @@ useEffect(() => {
         setCurrentProgress(100);
         if (videoId && programId) {
           trainingProgramApi.updateVideoProgress(programId, videoId, 100)
-            .catch(err => console.error('Error updating video progress on ended', err));
+            .catch(() => {});
           lastSavedPercentRef.current = 100;
           // Notify parent component about progress update
           onProgressUpdate?.(videoId, 100);
@@ -347,7 +630,7 @@ useEffect(() => {
           const rawPercent = (video.currentTime / video.duration) * 100;
           const percentage = rawPercent >= 99.5 ? 100 : Math.round(rawPercent);
           trainingProgramApi.updateVideoProgress(programId, videoId, percentage)
-            .catch(err => console.error('Error updating final video progress', err));
+            .catch(() => {});
         }
       }
     };
@@ -356,8 +639,15 @@ useEffect(() => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-background z-40 flex flex-col pt-24">
-      {/* Custom header with back button and close button */}
+    <>
+      {/* Hide native video fullscreen button (fallback for browsers that don't support controlsList) */}
+      <style>{`
+        video::-webkit-media-controls-fullscreen-button {
+          display: none !important;
+        }
+      `}</style>
+      <div className="fixed inset-0 bg-background z-40 flex flex-col pt-24">
+        {/* Custom header with back button and close button */}
       <div className="bg-white dark:bg-slate-900 border-b border-border px-4 py-3">
         <div className="flex items-center justify-between max-w-full">
           <div className="flex items-center gap-3">
@@ -386,27 +676,63 @@ useEffect(() => {
       {/* Main content: video on left, program content on right */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Video player */}
-        <div className="flex-1 flex items-center justify-center bg-background p-4 overflow-hidden relative">
+        <div ref={videoContainerRef} className="flex-1 flex items-center justify-center bg-background p-4 overflow-hidden relative">
           <video
             ref={videoRef}
             src={videoUrl}
             controls
-            autoPlay
+            controlsList="nofullscreen"
+            autoPlay={countdown === null}
             className="w-full h-full object-contain"
+            onClick={handleVideoClick}
           />
+
+          {/* Countdown Overlay - Only show for program videos */}
+          {countdown !== null && programId && (
+            <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/30">
+              <div className="text-center">
+                <div className="text-8xl md:text-9xl font-bold text-white mb-4 drop-shadow-2xl">
+                  {countdown}
+                </div>
+                <div className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+                  Get Ready
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Fullscreen Button */}
+          <button
+            onClick={handleContainerFullscreen}
+            className="absolute top-4 left-4 z-50 p-2 bg-black/70 hover:bg-black/90 text-white rounded-lg transition-colors flex items-center gap-2"
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen (keeps preview visible)"}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize className="w-5 h-5" />
+                <span className="text-sm font-medium">Exit Fullscreen</span>
+              </>
+            ) : (
+              <>
+                <Maximize className="w-5 h-5" />
+                <span className="text-sm font-medium">Fullscreen</span>
+              </>
+            )}
+          </button>
 
           {/* Exercise Preview Box - Slides in from the right during breaks */}
           <div
-            className={`absolute right-4 top-1/2 -translate-y-1/2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-border overflow-hidden transition-transform duration-500 ease-in-out z-50 ${
+            className={`absolute right-4 top-1/2 -translate-y-1/2 w-[800px] bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-border overflow-hidden transition-transform duration-500 ease-in-out z-50 ${
               showPreview && currentBreak
                 ? 'translate-x-0'
                 : 'translate-x-full'
             }`}
             style={{
-              maxHeight: '60vh',
+              maxHeight: '100vh',
             }}
           >
-            {currentBreak && (
+            {(currentBreak || isAnimatingOut) && currentBreak && (
               <>
                 {/* Preview Video - Separate muted video element */}
                 <div className="relative w-full aspect-video bg-black">
@@ -537,6 +863,7 @@ useEffect(() => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
