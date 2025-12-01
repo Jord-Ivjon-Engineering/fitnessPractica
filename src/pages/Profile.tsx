@@ -59,7 +59,9 @@ const Profile = () => {
       try {
         const resp = await trainingProgramApi.getVideos(progId);
         if (resp && resp.data && resp.data.data) {
-          setProgramVideos(prev => ({ ...prev, [progId]: resp.data.data }));
+          // Hide placeholder/blank videos from users
+          const visible = resp.data.data.filter((v: any) => typeof v.url === 'string' && v.url.trim() !== '');
+          setProgramVideos(prev => ({ ...prev, [progId]: visible }));
         }
       } catch (err) {
         console.error('Error fetching program videos', err);

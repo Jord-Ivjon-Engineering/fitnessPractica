@@ -345,17 +345,22 @@ export const getVideoExercises = async (req: Request, res: Response, next: NextF
 
 export const deleteVideosWithoutUrl = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Delete all ProgramVideo rows where url is empty (placeholder videos that were never completed)
+    // Safer cleanup: only delete very old placeholders (e.g., > 1 hour)
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+
     const result = await (prisma as any).programVideo.deleteMany({
       where: {
         url: '',
+        createdAt: {
+          lt: cutoff,
+        },
       },
     });
 
-    res.json({ 
-      success: true, 
-      message: `Deleted ${result.count} video(s) without URL`,
-      data: { deletedCount: result.count }
+    res.json({
+      success: true,
+      message: `Deleted ${result.count} old placeholder video(s)` ,
+      data: { deletedCount: result.count, cutoff },
     });
   } catch (error) {
     next(error);

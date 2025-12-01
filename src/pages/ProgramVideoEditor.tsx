@@ -173,17 +173,9 @@ const ProgramVideoEditor = () => {
     socketRef.current.on('video:progress', async (progress: ProcessingProgress) => {
       console.log('Progress update:', progress);
       setProcessingProgress(progress);
-      
-      // When video completion message shows, delete any rows without video URLs
-      if (progress.stage === 'Complete!' && progress.percent === 100) {
-        try {
-          await trainingProgramApi.deleteVideosWithoutUrl();
-          console.log('Cleaned up videos without URLs');
-        } catch (error) {
-          console.error('Error cleaning up videos without URLs:', error);
-          // Don't show error to user - this is a background cleanup operation
-        }
-      }
+
+      // Cleanup of placeholder videos moved server-side with an age cutoff
+      // to avoid race conditions with updateVideo.
     });
 
     socketRef.current.on('disconnect', () => {

@@ -120,7 +120,8 @@ const AdminDashboard = () => {
         try {
           const videosResponse = await trainingProgramApi.getVideos(programId);
           if (videosResponse.data.success) {
-            setExistingVideos(videosResponse.data.data || []);
+            const visible = (videosResponse.data.data || []).filter((v: any) => typeof v.url === 'string' && v.url.trim() !== '');
+            setExistingVideos(visible);
           }
         } catch (err) {
           console.error('Error fetching videos:', err);
@@ -443,7 +444,8 @@ const AdminDashboard = () => {
               // Reload videos to show updated video
               const videosResponse = await trainingProgramApi.getVideos(editingProgramId);
               if (videosResponse.data.success) {
-                setExistingVideos(videosResponse.data.data);
+                const visible = (videosResponse.data.data || []).filter((v: any) => typeof v.url === 'string' && v.url.trim() !== '');
+                setExistingVideos(visible);
               }
               // Clear selection and reset form - IMPORTANT: Clear processedVideoUrl to prevent duplicate attachment
               setSelectedExistingVideo(null);
@@ -644,7 +646,8 @@ const AdminDashboard = () => {
       // Fetch existing videos
       const videosResponse = await trainingProgramApi.getVideos(programId);
       if (videosResponse.data.success) {
-        setExistingVideos(videosResponse.data.data);
+        const visible = (videosResponse.data.data || []).filter((v: any) => typeof v.url === 'string' && v.url.trim() !== '');
+        setExistingVideos(visible);
       }
 
       // Populate form with program data
@@ -709,7 +712,8 @@ const AdminDashboard = () => {
         // Reload videos list
         const videosResponse = await trainingProgramApi.getVideos(programId);
         if (videosResponse.data.success) {
-          setExistingVideos(videosResponse.data.data || []);
+          const visible = (videosResponse.data.data || []).filter((v: any) => typeof v.url === 'string' && v.url.trim() !== '');
+          setExistingVideos(visible);
         }
         alert('Video deleted successfully!');
       }
