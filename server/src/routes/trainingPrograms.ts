@@ -10,6 +10,7 @@ import {
   updateVideoProgress,
   getVideoProgress,
   getVideoExercises,
+  deleteVideosWithoutUrl,
 } from '../controllers/trainingProgramController';
 import { authenticate, requireAdmin } from '../middleware/auth';
 
@@ -33,6 +34,8 @@ router.post('/:programId/videos/:videoId/progress', authenticate, updateVideoPro
 router.put('/:programId/videos/:videoId', authenticate, requireAdmin, updateProgramVideo);
 // Delete a video from a program (admin only)
 router.delete('/:programId/videos/:videoId', authenticate, requireAdmin, deleteProgramVideo);
+// Delete all videos without URLs (admin only)
+router.delete('/videos/cleanup', authenticate, requireAdmin, deleteVideosWithoutUrl);
 
 export default router;
 

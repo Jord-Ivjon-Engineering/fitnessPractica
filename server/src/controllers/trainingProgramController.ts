@@ -342,3 +342,22 @@ export const getVideoExercises = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+export const deleteVideosWithoutUrl = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Delete all ProgramVideo rows where url is empty (placeholder videos that were never completed)
+    const result = await (prisma as any).programVideo.deleteMany({
+      where: {
+        url: '',
+      },
+    });
+
+    res.json({ 
+      success: true, 
+      message: `Deleted ${result.count} video(s) without URL`,
+      data: { deletedCount: result.count }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

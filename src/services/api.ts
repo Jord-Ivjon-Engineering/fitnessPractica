@@ -152,6 +152,7 @@ export const trainingProgramApi = {
   updateVideoProgress: (programId: number, videoId: number, watchedPercentage: number) => api.post<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}/progress`, { watchedPercentage }),
   getVideoProgress: (programId: number) => api.get<{ success: boolean; data: any[] }>(`/training-programs/${programId}/progress`),
   getVideoExercises: (videoId: number) => api.get<{ success: boolean; data: VideoExercise[] }>(`/training-programs/videos/${videoId}/exercises`),
+  deleteVideosWithoutUrl: () => api.delete<{ success: boolean; message: string; data: { deletedCount: number } }>('/training-programs/videos/cleanup'),
 };
 
 // Payment API
