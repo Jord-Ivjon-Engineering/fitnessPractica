@@ -144,6 +144,31 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
       return;
     }
 
+    // Ensure video plays when modal opens (for first exercise after 00:00)
+    // The video should play continuously, not pause during countdown
+    const ensureVideoPlaying = async () => {
+      if (video.paused && video.readyState >= 2) {
+        try {
+          await video.play();
+        } catch (err) {
+          // Play failed (might need user interaction), ignore
+          console.log('Auto-play prevented, user interaction required');
+        }
+      }
+    };
+
+    // Try to play immediately if video is ready
+    if (video.readyState >= 2) {
+      ensureVideoPlaying();
+    } else {
+      // Wait for video to be ready
+      const handleCanPlay = () => {
+        ensureVideoPlaying();
+        video.removeEventListener('canplay', handleCanPlay);
+      };
+      video.addEventListener('canplay', handleCanPlay);
+    }
+
     // Calculate when to start showing countdown (5 seconds before first exercise)
     const countdownStartTime = Math.max(0, firstExerciseStartTime - 5);
 
@@ -156,6 +181,13 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, videoUrl, videoTitle, v
         const value = Math.min(5, Math.max(1, remaining));
         setCountdown(value);
         countdownRef.current = value;
+        
+        // Ensure video continues playing during countdown
+        if (video.paused) {
+          video.play().catch(() => {
+            // Play failed, ignore
+          });
+        }
       } else if (currentTime >= firstExerciseStartTime) {
         // Past the first exercise start, clear countdown
         if (countdownRef.current !== null) {
@@ -776,7 +808,13 @@ useEffect(() => {
             src={videoUrl}
             controls
             controlsList="nofullscreen"
-            autoPlay={countdown === null}
+            autoPlay={
+              // Allow autoplay if:
+              // 1. No countdown is shown, OR
+              // 2. Countdown is shown but first exercise starts after 00:00 (video should keep playing)
+              countdown === null || 
+              (countdown !== null && (exercisesData?.exercises?.[0]?.startTime ?? 0) > 0)
+            }
             className="w-full h-full object-contain"
             onClick={handleVideoClick}
           />
