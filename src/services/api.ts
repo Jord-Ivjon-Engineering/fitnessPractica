@@ -33,7 +33,7 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  signup: async (data: { email: string; password: string; name: string }) => {
+  signup: async (data: { email: string; password: string; name: string; phone?: string }) => {
     const response = await api.post('/auth/signup', data);
     return response.data;
   },
@@ -110,6 +110,10 @@ export const profileApi = {
   getUserPrograms: () => api.get<{ success: boolean; data: UserProgram[] }>('/profile/programs'),
   updateProfile: (data: { name?: string; phone?: string }) => 
     api.put<{ success: boolean; data: UserProfile }>('/profile', data),
+  updatePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.put<{ success: boolean; message: string }>('/profile/password', data),
+  updateEmail: (data: { newEmail: string; currentPassword: string }) =>
+    api.put<{ success: boolean; message: string; data: UserProfile }>('/profile/email', data),
   purchaseProgram: (data: { planId?: number; programId?: number }) =>
     api.post<{ success: boolean; data: UserProgram }>('/profile/purchase', data),
 };
