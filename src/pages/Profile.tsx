@@ -7,9 +7,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { profileApi, UserProfile, UserProgram, trainingProgramApi } from "@/services/api";
 import { Loader2 } from "lucide-react";
 import VideoModal from "@/components/VideoModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Profile = () => {
   const { user, logout, isLoading } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [programs, setPrograms] = useState<UserProgram[]>([]);
@@ -18,8 +20,19 @@ const Profile = () => {
   const [videoProgress, setVideoProgress] = useState<Record<number, Record<number, number>>>({});
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailSuccess, setEmailSuccess] = useState("");
   const [fullscreenVideoUrl, setFullscreenVideoUrl] = useState<string | null>(null);
   const [fullscreenVideoTitle, setFullscreenVideoTitle] = useState<string>('');
   const [fullscreenVideoId, setFullscreenVideoId] = useState<number | undefined>(undefined);
@@ -128,6 +141,97 @@ const Profile = () => {
     }
   };
 
+  const handleUpdatePassword = async () => {
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    // Validation
+    if (!currentPassword) {
+      setPasswordError(t('profile.currentPasswordRequired'));
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError(t('profile.passwordTooShort'));
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError(t('profile.passwordsNotMatch'));
+      return;
+    }
+
+    try {
+      const response = await profileApi.updatePassword({
+        currentPassword,
+        newPassword,
+      });
+      
+      if (response.data.success) {
+        setPasswordSuccess(t('profile.passwordUpdated'));
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setTimeout(() => {
+          setIsChangingPassword(false);
+          setPasswordSuccess("");
+        }, 2000);
+      }
+    } catch (error: any) {
+      setPasswordError(error.response?.data?.error?.message || t('profile.passwordUpdateFailed'));
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    setEmailError("");
+    setEmailSuccess("");
+
+    // Validation
+    if (!newEmail) {
+      setEmailError(t('profile.invalidEmail'));
+      return;
+    }
+
+    if (!emailPassword) {
+      setEmailError(t('profile.currentPasswordRequired'));
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      setEmailError(t('profile.invalidEmail'));
+      return;
+    }
+
+    try {
+      const response = await profileApi.updateEmail({
+        newEmail,
+        currentPassword: emailPassword,
+      });
+      
+      if (response.data.success && response.data.data) {
+        setEmailSuccess(t('profile.emailUpdated'));
+        setProfile(response.data.data);
+        setNewEmail("");
+        setEmailPassword("");
+        setTimeout(() => {
+          setIsChangingEmail(false);
+          setEmailSuccess("");
+        }, 2000);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error?.message;
+      if (errorMsg?.includes('already in use')) {
+        setEmailError(t('profile.emailAlreadyExists'));
+      } else if (errorMsg?.includes('Invalid email')) {
+        setEmailError(t('profile.invalidEmail'));
+      } else {
+        setEmailError(errorMsg || t('profile.emailUpdateFailed'));
+      }
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -184,9 +288,9 @@ const Profile = () => {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <User className="w-8 h-8 text-primary" />
-            <h1 className="text-4xl font-bold text-foreground">My Profile</h1>
+            <h1 className="text-4xl font-bold text-foreground">{t('profile.title')}</h1>
           </div>
-          <p className="text-muted-foreground">Manage your account and view your purchased programs</p>
+          <p className="text-muted-foreground">{t('profile.subtitle')}</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -194,7 +298,7 @@ const Profile = () => {
           <div className="md:col-span-1">
             <Card className="p-6 space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-foreground">Profile Information</h2>
+                <h2 className="text-2xl font-bold text-foreground">{t('profile.information')}</h2>
                 {!isEditing && (
                   <Button
                     variant="ghost"
@@ -210,7 +314,7 @@ const Profile = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">
-                      Name
+                      {t('profile.name')}
                     </label>
                     <input
                       type="text"
@@ -221,7 +325,7 @@ const Profile = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">
-                      Phone
+                      {t('profile.phone')}
                     </label>
                     <input
                       type="tel"
@@ -235,7 +339,7 @@ const Profile = () => {
                       onClick={handleUpdateProfile}
                       className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
                     >
-                      Save
+                      {t('common.save')}
                     </Button>
                     <Button
                       variant="outline"
@@ -245,7 +349,7 @@ const Profile = () => {
                         setEditPhone(profile?.phone || "");
                       }}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -254,14 +358,14 @@ const Profile = () => {
                   <div className="flex items-center gap-3">
                     <User className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Name</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.name')}</p>
                       <p className="text-foreground font-semibold">{profile?.name}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Mail className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.email')}</p>
                       <p className="text-foreground font-semibold">{profile?.email}</p>
                     </div>
                   </div>
@@ -269,7 +373,7 @@ const Profile = () => {
                     <div className="flex items-center gap-3">
                       <Phone className="w-5 h-5 text-muted-foreground" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Phone</p>
+                        <p className="text-sm text-muted-foreground">{t('profile.phone')}</p>
                         <p className="text-foreground font-semibold">{profile.phone}</p>
                       </div>
                     </div>
@@ -277,11 +381,167 @@ const Profile = () => {
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Member Since</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.memberSince')}</p>
                       <p className="text-foreground font-semibold">
                         {profile?.createdAt ? formatDate(profile.createdAt) : "N/A"}
                       </p>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsChangingEmail(!isChangingEmail)}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                {t('profile.changeEmail')}
+              </Button>
+
+              {isChangingEmail && (
+                <div className="space-y-4 pt-4 border-t border-border">
+                  {emailError && (
+                    <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
+                      {emailError}
+                    </div>
+                  )}
+                  {emailSuccess && (
+                    <div className="bg-green-100 text-green-800 p-3 rounded-md text-sm">
+                      {emailSuccess}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      {t('profile.newEmail')}
+                    </label>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={t('profile.newEmailPlaceholder')}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      {t('profile.currentPassword')}
+                    </label>
+                    <input
+                      type="password"
+                      value={emailPassword}
+                      onChange={(e) => setEmailPassword(e.target.value)}
+                      className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={t('profile.currentPasswordPlaceholder')}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleUpdateEmail}
+                      className="flex-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
+                    >
+                      {t('common.save')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsChangingEmail(false);
+                        setNewEmail("");
+                        setEmailPassword("");
+                        setEmailError("");
+                        setEmailSuccess("");
+                      }}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsChangingPassword(!isChangingPassword)}
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                {t('profile.changePassword')}
+              </Button>
+
+              {isChangingPassword && (
+                <div className="space-y-4 pt-4 border-t border-border">
+                  {passwordError && (
+                    <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
+                      {passwordError}
+                    </div>
+                  )}
+                  {passwordSuccess && (
+                    <div className="bg-green-100 text-green-800 p-3 rounded-md text-sm">
+                      {passwordSuccess}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      {t('profile.currentPassword')}
+                    </label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={t('profile.currentPasswordPlaceholder')}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      {t('profile.newPassword')}
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={t('profile.newPasswordPlaceholder')}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      {t('profile.confirmNewPassword')}
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={t('profile.confirmNewPasswordPlaceholder')}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleUpdatePassword}
+                      className="flex-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
+                    >
+                      {t('common.save')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsChangingPassword(false);
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmNewPassword("");
+                        setPasswordError("");
+                        setPasswordSuccess("");
+                      }}
+                    >
+                      {t('common.cancel')}
+                    </Button>
                   </div>
                 </div>
               )}
@@ -295,7 +555,7 @@ const Profile = () => {
                 }}
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Logout
+                {t('header.logout')}
               </Button>
             </Card>
           </div>
@@ -303,12 +563,12 @@ const Profile = () => {
           {/* Purchased Programs */}
           <div className="md:col-span-2">
             <Card className="p-6">
-              <h2 className="text-2xl font-bold text-foreground mb-6">My Programs</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-6">{t('profile.myPrograms')}</h2>
               
               {programs.length === 0 ? (
                 <div className="text-center py-12">
                   <Dumbbell className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground text-lg mb-2">No programs purchased yet</p>
+                  <p className="text-muted-foreground text-lg mb-2">{t('profile.noPrograms')}</p>
                   <p className="text-muted-foreground text-sm mb-4">
                     Browse our plans and training programs to get started!
                   </p>
@@ -318,7 +578,7 @@ const Profile = () => {
                     }}
                     className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
                   >
-                    Browse Programs
+                    {t('button.browsePrograms')}
                   </Button>
                 </div>
               ) : (
@@ -328,14 +588,14 @@ const Profile = () => {
                       key={userProgram.id}
                       className={`p-6 border-border hover:shadow-lg transition-shadow ${userProgram.program?.imageUrl ? 'cursor-pointer' : ''}`}
                         onClick={() => handleProgramClick(userProgram)}
-                        title={userProgram.program?.imageUrl ? 'Open attached media' : 'View program details'}
+                        title={userProgram.program?.imageUrl ? t('profile.openMedia') : t('profile.viewDetails')}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <Dumbbell className="w-6 h-6 text-primary" />
                             <h3 className="text-xl font-bold text-foreground">
-                              {userProgram.plan?.name || userProgram.program?.name || "Unknown Program"}
+                              {userProgram.plan?.name || userProgram.program?.name || t('profile.unknownProgram')}
                             </h3>
                             {userProgram.program && (() => {
                               const programStatus = getProgramStatus(userProgram.program.startDate, userProgram.program.endDate);
@@ -396,12 +656,12 @@ const Profile = () => {
                                 <div className="mt-2 text-sm text-muted-foreground">
                                   {userProgram.program.startDate && userProgram.program.endDate ? (
                                     <p>
-                                      Program Dates: {formatDate(userProgram.program.startDate)} - {formatDate(userProgram.program.endDate)}
+                                      {t('profile.programDates')}: {formatDate(userProgram.program.startDate)} - {formatDate(userProgram.program.endDate)}
                                     </p>
                                   ) : userProgram.program.startDate ? (
-                                    <p>Starts: {formatDate(userProgram.program.startDate)}</p>
+                                    <p>{t('index.starts')}: {formatDate(userProgram.program.startDate)}</p>
                                   ) : userProgram.program.endDate ? (
-                                    <p>Ends: {formatDate(userProgram.program.endDate)}</p>
+                                    <p>{t('index.ends')}: {formatDate(userProgram.program.endDate)}</p>
                                   ) : null}
                                 </div>
                               )}
@@ -411,13 +671,13 @@ const Profile = () => {
                           <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4" />
-                              <span>Purchased: {formatDate(userProgram.purchasedAt)}</span>
+                              <span>{t('profile.purchased')}: {formatDate(userProgram.purchasedAt)}</span>
                             </div>
                             {userProgram.expiresAt && (
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
                                 <span>
-                                  Expires: {formatDate(userProgram.expiresAt)}
+                                  {t('profile.expires')}: {formatDate(userProgram.expiresAt)}
                                 </span>
                               </div>
                             )}
@@ -468,7 +728,7 @@ const Profile = () => {
                                   setFullscreenProgramId(userProgram.program?.id);
                                   setFullscreenVideoInitialProgress(prog);
                                 }}
-                              >Start Program</Button>
+                              >{t('profile.startProgram')}</Button>
 
                               <div className="space-y-2">
                                 {(programVideos[userProgram.program?.id || 0] || []).map((v, index) => {
@@ -528,7 +788,7 @@ const Profile = () => {
                                           ></div>
                                         </div>
                                         <div className="text-[10px] mt-1 text-muted-foreground">
-                                          {!isUnlocked ? 'Locked - Complete previous video' : isCompleted ? 'Completed' : isStarted ? 'In Progress' : 'Not Started'}
+                                          {!isUnlocked ? t('profile.videoLocked') : isCompleted ? t('profile.videoCompleted') : isStarted ? t('profile.videoInProgress') : t('profile.videoNotStarted')}
                                         </div>
                                       </div>
                                       <div className="ml-3" onClick={(e) => e.stopPropagation()}>
@@ -543,14 +803,14 @@ const Profile = () => {
                                               setFullscreenProgramId(userProgram.program?.id);
                                               setFullscreenVideoInitialProgress(progress);
                                             }}
-                                          >Continue</Button>
+                                          >{t('profile.continue')}</Button>
                                         )}
                                       </div>
                                     </div>
                                   );
                                 })}
                                 {((programVideos[userProgram.program?.id || 0] || []).length === 0) && (
-                                  <p className="text-xs text-muted-foreground">No videos attached to this program yet.</p>
+                                  <p className="text-xs text-muted-foreground">{t('profile.noVideos')}</p>
                                 )}
                               </div>
                             </div>

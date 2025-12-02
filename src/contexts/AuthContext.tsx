@@ -12,7 +12,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  signup: (email: string, password: string, name: string, phone?: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -97,8 +97,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signup = async (email: string, password: string, name: string) => {
-    const response = await authApi.signup({ email, password, name });
+  const signup = async (email: string, password: string, name: string, phone?: string) => {
+    const response = await authApi.signup({ email, password, name, phone });
     if (response.success) {
       setToken(response.data.token);
       setUser(response.data.user);

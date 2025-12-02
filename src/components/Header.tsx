@@ -113,13 +113,6 @@ const Header = () => {
               >
                 {t('header.login')}
               </Button>
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 transition-opacity shadow-[0_10px_40px_-10px_hsl(14,90%,55%,0.3)]"
-                onClick={() => navigate('/signup')}
-              >
-                {t('header.signup')}
-              </Button>
             </>
           )}
         </div>
@@ -221,16 +214,6 @@ const Header = () => {
                     }}
                   >
                     {t('header.login')}
-                  </Button>
-                  <Button 
-                    size="lg" 
-                    className="w-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 transition-opacity shadow-[0_10px_40px_-10px_hsl(14,90%,55%,0.3)]"
-                    onClick={() => {
-                      navigate('/signup');
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    {t('header.signup')}
                   </Button>
                 </>
               )}
