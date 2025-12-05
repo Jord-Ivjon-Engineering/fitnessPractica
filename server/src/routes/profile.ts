@@ -4,6 +4,8 @@ import {
   getUserPrograms,
   updateProfile,
   purchaseProgram,
+  updatePassword,
+  updateEmail,
 } from '../controllers/profileController';
 import { authenticate } from '../middleware/auth';
 
@@ -16,6 +18,8 @@ router.get('/', getProfile);
 router.get('/programs', getUserPrograms);
 router.put('/', updateProfile);
 router.post('/purchase', purchaseProgram);
+router.put('/password', updatePassword);
+router.put('/email', updateEmail);
 
 export default router;
 

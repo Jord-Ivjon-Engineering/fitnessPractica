@@ -3,10 +3,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
 import { ApiError } from '../middleware/errorHandler';
+import { sendWelcomeEmail } from '../services/emailService';
 
 export const signup = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, phone } = req.body;
 
     // Validation
     if (!email || !password || !name) {
@@ -35,12 +36,14 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
         email,
         password: hashedPassword,
         name,
+        phone: phone || null,
         role: 'member',
       },
       select: {
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
         createdAt: true,
       },
@@ -56,6 +59,11 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
+
+    // Send welcome email asynchronously (don't block response)
+    sendWelcomeEmail(user.email, user.name).catch(err => {
+      console.error('Failed to send welcome email:', err);
+    });
 
     res.status(201).json({
       success: true,
@@ -118,6 +126,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
           id: user.id,
           email: user.email,
           name: user.name,
+          phone: user.phone,
           role: user.role,
         },
         token,
@@ -145,6 +154,7 @@ export const getCurrentUser = async (req: Request, res: Response, next: NextFunc
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
         createdAt: true,
       },

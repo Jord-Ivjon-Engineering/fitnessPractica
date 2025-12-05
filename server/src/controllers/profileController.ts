@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import prisma from '../config/database';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import { sendEmailChangeNotice } from '../services/emailChangeService';
 
 export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -184,6 +186,158 @@ export const purchaseProgram = async (req: Request, res: Response, next: NextFun
     res.status(201).json({
       success: true,
       data: userProgram,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    const userId = authReq.userId;
+
+    if (!userId) {
+      const error: ApiError = new Error('User not authenticated');
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    // Validation
+    if (!currentPassword || !newPassword) {
+      const error: ApiError = new Error('Current password and new password are required');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    if (newPassword.length < 6) {
+      const error: ApiError = new Error('New password must be at least 6 characters');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // Get user with password
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      const error: ApiError = new Error('User not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isPasswordValid) {
+      const error: ApiError = new Error('Current password is incorrect');
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEmail = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    const userId = authReq.userId;
+
+    if (!userId) {
+      const error: ApiError = new Error('User not authenticated');
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    const { newEmail, currentPassword } = req.body;
+
+    // Validation
+    if (!newEmail || !currentPassword) {
+      const error: ApiError = new Error('New email and current password are required');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      const error: ApiError = new Error('Invalid email format');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // Get user with password
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      const error: ApiError = new Error('User not found');
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isPasswordValid) {
+      const error: ApiError = new Error('Current password is incorrect');
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: newEmail },
+    });
+
+    if (existingUser && existingUser.id !== userId) {
+      const error: ApiError = new Error('Email already in use');
+      error.statusCode = 409;
+      return next(error);
+    }
+
+    // Update email
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { email: newEmail },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    // Notify user of email change (send to new email)
+    sendEmailChangeNotice(updatedUser.email, updatedUser.name).catch(err => {
+      console.error('Failed to send email change notice:', err);
+    });
+
+    res.json({
+      success: true,
+      message: 'Email updated successfully',
+      data: updatedUser,
     });
   } catch (error) {
     next(error);

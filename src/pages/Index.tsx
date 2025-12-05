@@ -210,7 +210,7 @@ const Index = () => {
                       ) : details?.intervals ? (
                         <div className="mt-4">
                           <div className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
-                            View Hours
+                            {t('index.viewHours')}
                             <svg 
                               className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
                               fill="none" 
@@ -313,9 +313,9 @@ const Index = () => {
                                     {new Date(program.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - {new Date(program.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                   </p>
                                 ) : program.startDate ? (
-                                  <p>Starts: {new Date(program.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                  <p>{t('index.starts')}: {new Date(program.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                                 ) : program.endDate ? (
-                                  <p>Ends: {new Date(program.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                  <p>{t('index.ends')}: {new Date(program.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                                 ) : null}
                               </div>
                             )}
@@ -360,7 +360,7 @@ const Index = () => {
             </Carousel>
           ) : (
             <div className="text-center py-24">
-              <p className="text-muted-foreground text-lg">No training programs available at the moment.</p>
+              <p className="text-muted-foreground text-lg">{t('index.noPrograms')}</p>
             </div>
           )}
         </div>
@@ -396,21 +396,11 @@ const Index = () => {
                 )}
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                At Fitness Practica, we believe fitness is more than just working out—it's a lifestyle. 
-                Our state-of-the-art facilities are equipped with the latest training equipment, 
-                expert trainers, and a supportive community to help you reach your peak performance.
+                {t('index.about.p1')}
               </p>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Whether you're a beginner starting your fitness journey or an experienced athlete 
-                pushing your limits, we provide personalized training programs, group classes, 
-                and nutritional guidance tailored to your unique goals.
+                {t('index.about.p2')}
               </p>
-              <Button 
-                size="lg"
-                className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 transition-opacity shadow-[0_10px_40px_-10px_hsl(14,90%,55%,0.3)]"
-              >
-                {t('button.learnMore')}
-              </Button>
             </div>
           </div>
         </div>

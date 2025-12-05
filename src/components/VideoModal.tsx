@@ -629,6 +629,11 @@ useEffect(() => {
   }, [currentBreak, showPreview, videoUrl]);
 
 
+  // Helper function to normalize title for comparison
+  const normalizeTitle = (title: string | null) => {
+    return (title || 'Untitled').trim().toLowerCase();
+  };
+
   // Calculate the day number based on video position in the program
   const getDayTitle = () => {
     if (!videoId || !allVideos || allVideos.length === 0) {
@@ -640,7 +645,19 @@ useEffect(() => {
       return videoTitle || 'Video';
     }
     
-    const dayNumber = videoIndex + 1;
+    // Group videos by normalized title to assign day numbers
+    const titleToDayMap: Record<string, number> = {};
+    let dayCounter = 1;
+    
+    allVideos.forEach((video) => {
+      const normalizedTitle = normalizeTitle(video.title);
+      if (!titleToDayMap[normalizedTitle]) {
+        titleToDayMap[normalizedTitle] = dayCounter++;
+      }
+    });
+    
+    const normalizedCurrentTitle = normalizeTitle(videoTitle || null);
+    const dayNumber = titleToDayMap[normalizedCurrentTitle] || 1;
     const title = videoTitle || `Exercises for Day ${dayNumber}`;
     
     return `Day ${dayNumber} - ${title}`;
@@ -906,34 +923,47 @@ useEffect(() => {
           <div className="flex-1 p-4 overflow-y-auto">
             <h3 className="font-bold text-foreground mb-3">Program Content</h3>
             <div className="space-y-2">
-              {(allVideos || []).map((v, index) => {
-                // Use live progress for current video, stored progress for others
-                const progress = v.id === videoId ? currentProgress : (videoProgress?.[v.id] || 0);
-                const isCurrentVideo = v.id === videoId;
-                const isCompleted = progress >= 90;
+              {(() => {
+                // Group videos by normalized title to assign day numbers
+                const titleToDayMap: Record<string, number> = {};
+                let dayCounter = 1;
                 
-                // Check if previous video is completed (for sequential unlock)
-                const isFirstVideo = index === 0;
-                const previousVideo = index > 0 ? (allVideos || [])[index - 1] : null;
-                // Use live progress for previous video if it's the current one
-                const previousProgress = previousVideo 
-                  ? (previousVideo.id === videoId ? currentProgress : (videoProgress?.[previousVideo.id] || 0))
-                  : 100;
-                const isPreviousCompleted = previousProgress >= 90;
-                const isUnlocked = isFirstVideo || isPreviousCompleted;
-
-                // Format day title
-                const dayNumber = index + 1;
-                const fullTitle = v.title 
-                  ? `Day ${dayNumber} - ${v.title}` 
-                  : `Day ${dayNumber}`;
+                (allVideos || []).forEach((video) => {
+                  const normalizedTitle = normalizeTitle(video.title);
+                  if (!titleToDayMap[normalizedTitle]) {
+                    titleToDayMap[normalizedTitle] = dayCounter++;
+                  }
+                });
                 
-                // Truncate title if longer than 40 characters
-                const displayTitle = fullTitle.length > 40 
-                  ? fullTitle.substring(0, 40) + '...' 
-                  : fullTitle;
+                return (allVideos || []).map((v, index) => {
+                  // Use live progress for current video, stored progress for others
+                  const progress = v.id === videoId ? currentProgress : (videoProgress?.[v.id] || 0);
+                  const isCurrentVideo = v.id === videoId;
+                  const isCompleted = progress >= 90;
+                  
+                  // Check if previous video is completed (for sequential unlock)
+                  const isFirstVideo = index === 0;
+                  const previousVideo = index > 0 ? (allVideos || [])[index - 1] : null;
+                  // Use live progress for previous video if it's the current one
+                  const previousProgress = previousVideo 
+                    ? (previousVideo.id === videoId ? currentProgress : (videoProgress?.[previousVideo.id] || 0))
+                    : 100;
+                  const isPreviousCompleted = previousProgress >= 90;
+                  const isUnlocked = isFirstVideo || isPreviousCompleted;
 
-                return (
+                  // Format day title using normalized title grouping
+                  const normalizedTitle = normalizeTitle(v.title);
+                  const dayNumber = titleToDayMap[normalizedTitle];
+                  const fullTitle = v.title 
+                    ? `Day ${dayNumber} - ${v.title}` 
+                    : `Day ${dayNumber}`;
+                  
+                  // Truncate title if longer than 40 characters
+                  const displayTitle = fullTitle.length > 40 
+                    ? fullTitle.substring(0, 40) + '...' 
+                    : fullTitle;
+
+                  return (
                   <div
                     key={v.id}
                     className={`p-3 rounded-lg border transition-all ${
@@ -1000,7 +1030,7 @@ useEffect(() => {
                     </div>
                   </div>
                 );
-              })}
+              });})()}
               {(!allVideos || allVideos.length === 0) && (
                 <p className="text-sm text-muted-foreground text-center py-8">No videos in this program</p>
               )}

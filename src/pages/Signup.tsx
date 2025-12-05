@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dumbbell, Mail, Lock, User, Loader2 } from "lucide-react";
+import { Dumbbell, Mail, Lock, User, Loader2, Phone as PhoneIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -11,6 +11,7 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signup } = useAuth();
@@ -34,7 +35,7 @@ const Signup = () => {
     setIsLoading(true);
 
     try {
-      await signup(email, password, name);
+      await signup(email, password, name, phone || undefined);
       navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.message || t('signup.failed'));
@@ -76,6 +77,23 @@ const Signup = () => {
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder={t('signup.namePlaceholder')}
                 required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="phone" className="text-sm font-medium text-foreground">
+              {t('signup.phone')}
+            </label>
+            <div className="relative">
+              <PhoneIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder={t('signup.phonePlaceholder')}
               />
             </div>
           </div>
