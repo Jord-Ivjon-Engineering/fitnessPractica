@@ -1,100 +1,77 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ShoppingCart, Trash2, ArrowLeft, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { ShoppingCart, Trash2, ArrowLeft, Loader2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { paymentApi } from "@/services/api";
+import { checkoutApi, trainingProgramApi, TrainingProgram } from "@/services/api";
 
 const Checkout = () => {
   const { cartItems, removeFromCart, clearCart, cartCount } = useCart();
   const { t } = useLanguage();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [programs, setPrograms] = useState<Record<number, TrainingProgram>>({});
 
-  // Check for payment success (Stripe redirect)
+  // Redirect to login if not authenticated
   useEffect(() => {
-    const sessionId = searchParams.get('session_id');
-    const canceled = searchParams.get('canceled');
-
-    // Wait for auth to finish loading before processing payment verification
     if (isLoading) {
       return;
     }
 
-    if (sessionId && !canceled) {
-      // Payment was successful, verify it
-      // Only verify if user is authenticated
-      if (isAuthenticated) {
-        verifyPayment(sessionId);
-      } else {
-        // User not authenticated but has session_id - redirect to login with return URL
-        const returnUrl = `/checkout?session_id=${sessionId}`;
-        navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
-      }
-    } else if (canceled) {
-      setPaymentStatus('error');
-    }
-  }, [searchParams, isLoading, isAuthenticated, navigate]);
-
-  const verifyPayment = async (sessionId: string) => {
-    try {
-      setLoading(true);
-      const response = await paymentApi.getPaymentStatus(sessionId);
-      if (response.data.success && response.data.data.status === 'completed') {
-        setPaymentStatus('success');
-        clearCart();
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
-      } else {
-        setPaymentStatus('error');
-      }
-    } catch (error: any) {
-      console.error('Error verifying payment:', error);
-      // If authentication failed, redirect to login with return URL
-      if (error.response?.status === 401) {
-        const returnUrl = `/checkout?session_id=${sessionId}`;
-        navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
-      } else {
-        setPaymentStatus('error');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Redirect to login if not authenticated (but only if not handling Stripe redirect)
-  useEffect(() => {
-    // Wait for auth to finish loading
-    if (isLoading) {
-      return;
-    }
-
-    const sessionId = searchParams.get('session_id');
-    // If we have a session_id, we're handling a Stripe redirect - don't redirect yet
-    // The payment verification effect will handle it
-    if (!isAuthenticated && !sessionId) {
+    if (!isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, isLoading, navigate, searchParams]);
+  }, [isAuthenticated, isLoading, navigate]);
+
+  // Fetch program details to get Polar Product IDs
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      if (cartItems.length === 0) return;
+
+      try {
+        const programIds = cartItems
+          .map(item => item.programId)
+          .filter((id): id is number => id !== undefined);
+
+        if (programIds.length === 0) return;
+
+        const response = await trainingProgramApi.getAll();
+        if (response.data.success) {
+          const programsMap: Record<number, TrainingProgram> = {};
+          response.data.data.forEach((program) => {
+            if (programIds.includes(program.id)) {
+              programsMap[program.id] = program;
+            }
+          });
+          setPrograms(programsMap);
+        }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+      }
+    };
+
+    if (isAuthenticated && cartItems.length > 0) {
+      fetchPrograms();
+    }
+  }, [cartItems, isAuthenticated]);
 
   // Show loading state while auth is initializing
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background pt-24 pb-12 px-4 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  // If not authenticated and no Stripe redirect, don't render (will redirect)
-  if (!isAuthenticated && !searchParams.get('session_id')) {
+  // If not authenticated, don't render (will redirect)
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -105,34 +82,42 @@ const Checkout = () => {
   };
 
   const handleCheckout = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    // Get Polar Product IDs from programs
+    const productIds = cartItems
+      .map(item => {
+        if (item.programId && programs[item.programId]) {
+          return programs[item.programId].polarProductId;
+        }
+        return null;
+      })
+      .filter((id): id is string => id !== null && id !== undefined);
+
+    if (productIds.length === 0) {
+      alert('No valid products found. Please ensure programs have Polar Product IDs configured.');
+      return;
+    }
+
+    setCheckoutLoading(true);
     try {
-      setLoading(true);
-      
-      // Get program IDs from cart items
-      const programIds = cartItems
-        .filter(item => item.programId)
-        .map(item => item.programId!);
-
-      if (programIds.length === 0) {
-        alert(t('checkout.noValidPrograms'));
-        setLoading(false);
-        return;
-      }
-
-      // Create Stripe checkout session
-      const response = await paymentApi.createCheckoutSession({ programIds });
+      const response = await checkoutApi.createCheckout({ productIds });
       
       if (response.data.success && response.data.data.url) {
-        // Redirect to Stripe Checkout
+        // Clear cart and redirect to Polar checkout
+        clearCart();
         window.location.href = response.data.data.url;
       } else {
-        alert(t('checkout.failedToCreateSession'));
-        setLoading(false);
+        alert('Failed to create checkout. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error creating checkout session:', error);
-      alert(error.response?.data?.error || t('checkout.failedToProcess'));
-      setLoading(false);
+      console.error('Checkout error:', error);
+      alert(error.response?.data?.error || 'Failed to create checkout. Please try again.');
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -180,7 +165,10 @@ const Checkout = () => {
                       </p>
                       {item.price !== undefined && (
                         <p className="text-lg font-semibold text-foreground">
-                          {item.price.toFixed(2)} ALL
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: (item.currency || 'all').toUpperCase(),
+                          }).format(item.price)}
                         </p>
                       )}
                     </div>
@@ -206,7 +194,14 @@ const Checkout = () => {
                     {t('checkout.total')}:
                   </span>
                   <span className="text-2xl font-bold text-foreground">
-                    {calculateTotal().toFixed(2)} ALL
+                    {cartItems.length > 0 && cartItems[0].currency ? (
+                      new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: cartItems[0].currency.toUpperCase(),
+                      }).format(calculateTotal())
+                    ) : (
+                      `${calculateTotal().toFixed(2)} ALL`
+                    )}
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -214,47 +209,27 @@ const Checkout = () => {
                 </div>
               </div>
 
-              {paymentStatus === 'success' && (
-                <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  <span className="text-green-800 dark:text-green-200">
-                    {t('checkout.paymentSuccess')}
-                  </span>
-                </div>
-              )}
-
-              {paymentStatus === 'error' && (
-                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center gap-2">
-                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                  <span className="text-red-800 dark:text-red-200">
-                    {t('checkout.paymentFailed')}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-4">
+                <Button
+                  onClick={handleCheckout}
+                  disabled={checkoutLoading || cartItems.length === 0}
+                  className="w-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {checkoutLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Proceed to Checkout'
+                  )}
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => navigate('/#programs')}
-                  className="flex-1"
-                  disabled={loading}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   {t('checkout.backToPrograms')}
-                </Button>
-                <Button
-                  onClick={handleCheckout}
-                  className="flex-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
-                  disabled={loading || paymentStatus === 'success'}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {t('checkout.processing')}
-                    </>
-                  ) : (
-                    t('checkout.proceedToPayment')
-                  )}
                 </Button>
               </div>
             </Card>
@@ -266,4 +241,3 @@ const Checkout = () => {
 };
 
 export default Checkout;
-

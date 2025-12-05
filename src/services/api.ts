@@ -123,6 +123,8 @@ export interface TrainingProgram {
   imageUrl: string | null;
   videoUrl: string | null;
   price: number | null;
+  currency: string;
+  polarProductId: string | null;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -170,8 +172,6 @@ export interface PaymentStatus {
   data: {
     id: number;
     userId: number;
-    stripeSessionId: string;
-    stripePaymentId: string | null;
     amount: number;
     currency: string;
     status: string;
@@ -184,10 +184,53 @@ export interface PaymentStatus {
 }
 
 export const paymentApi = {
-  createCheckoutSession: (data: { programIds: (string | number)[] }) =>
-    api.post<CheckoutSessionResponse>('/payment/create-checkout-session', data),
   getPaymentStatus: (sessionId: string) =>
     api.get<PaymentStatus>(`/payment/status/${sessionId}`),
+};
+
+// Checkout API
+export interface CheckoutRequest {
+  productIds: string[]; // Polar Product IDs
+}
+
+export interface CheckoutResponse {
+  success: boolean;
+  data: {
+    url: string;
+    checkoutId: string;
+    paymentId: number;
+  };
+}
+
+export interface VerifyCheckoutResponse {
+  success: boolean;
+  data: {
+    checkout: {
+      id: string;
+      status: string;
+      customerEmail: string;
+      customerName: string;
+    };
+    payment: {
+      id: number;
+      status: string;
+      amount: number;
+      currency: string;
+      program: {
+        id: number;
+        name: string;
+        category: string;
+        imageUrl: string | null;
+      } | null;
+    };
+  };
+}
+
+export const checkoutApi = {
+  createCheckout: (data: CheckoutRequest) =>
+    api.post<CheckoutResponse>('/checkout', data),
+  verifyCheckout: (checkoutId: string) =>
+    api.get<VerifyCheckoutResponse>(`/checkout/verify/${checkoutId}`),
 };
 
 // Admin API
@@ -216,8 +259,6 @@ export interface AdminTransaction {
   itemType: string;
   createdAt: string;
   updatedAt: string;
-  stripeSessionId: string;
-  stripePaymentId: string | null;
 }
 
 export interface DashboardStats {
@@ -243,6 +284,7 @@ export interface CreateProgramData {
   videoUrl?: string;
   price?: number;
   currency?: string;
+  polarProductId?: string;
   startDate?: string;
   endDate?: string;
 }

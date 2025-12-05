@@ -55,6 +55,8 @@ model TrainingProgram {
   imageUrl      String?         @db.Text
   videoUrl      String?         @db.Text
   price         Decimal?        @db.Decimal(10, 2)
+  currency      String          @default("all") @db.VarChar(10)
+  polarProductId String?        @unique @db.VarChar(255) @map("polar_product_id")
   startDate     DateTime?       @map("start_date")
   endDate       DateTime?       @map("end_date")
   createdAt     DateTime        @default(now()) @map("created_at")
@@ -134,13 +136,14 @@ model UserProgram {
 model Payment {
   id              Int              @id @default(autoincrement())
   userId          Int              @map("user_id")
-  stripeSessionId String           @unique @map("stripe_session_id") @db.VarChar(255)
-  stripePaymentId String?          @map("stripe_payment_id") @db.VarChar(255)
   amount          Decimal          @db.Decimal(10, 2)
-  currency        String           @default("usd") @db.VarChar(10)
+  currency        String           @default("ALL") @db.VarChar(10)
   status          String           @default("pending") @db.VarChar(50)
   programId       Int?             @map("program_id")
   planId          Int?             @map("plan_id")
+  polarOrderId    String?          @unique @db.VarChar(255) @map("polar_order_id")
+  polarCustomerId String?          @db.VarChar(255) @map("polar_customer_id")
+  polarCheckoutId String?          @db.VarChar(255) @map("polar_checkout_id")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)

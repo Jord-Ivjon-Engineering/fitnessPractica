@@ -320,7 +320,12 @@ const Index = () => {
                               </div>
                             )}
                             <p className="text-2xl font-semibold mb-4">
-                              {programPrice > 0 ? `${programPrice.toFixed(2)} ALL` : 'Free'}
+                              {programPrice > 0 ? (
+                                new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: (program.currency || 'all').toUpperCase(),
+                                }).format(programPrice)
+                              ) : 'Free'}
                             </p>
                             <Button 
                               size="lg"
@@ -334,6 +339,7 @@ const Index = () => {
                                     category: program.category,
                                     image: program.imageUrl || fallbackImage, // Use database imageUrl if available
                                     price: programPrice,
+                                    currency: program.currency || 'all',
                                   });
                                 } else {
                                   navigate('/login');

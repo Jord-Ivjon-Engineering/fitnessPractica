@@ -91,8 +91,6 @@ export const getAllTransactions = async (req: Request, res: Response, next: Next
         itemType: payment.program ? 'Program' : payment.plan ? 'Plan' : 'Unknown',
         createdAt: payment.createdAt,
         updatedAt: payment.updatedAt,
-        stripeSessionId: payment.stripeSessionId,
-        stripePaymentId: payment.stripePaymentId,
       };
     });
 
@@ -223,7 +221,7 @@ export const getAllPrograms = async (req: Request, res: Response, next: NextFunc
 // Create new training program (admin only)
 export const createProgram = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, category, description, imageUrl, videoUrl, price, startDate, endDate } = req.body;
+    const { name, category, description, imageUrl, videoUrl, price, currency, polarProductId, startDate, endDate } = req.body;
 
     // Validation
     if (!name || !category) {
@@ -252,6 +250,8 @@ export const createProgram = async (req: Request, res: Response, next: NextFunct
         imageUrl: imageUrl || null,
         videoUrl: videoUrl || null,
         price: price ? parseFloat(price) : null,
+        currency: currency || 'all',
+        polarProductId: polarProductId || null,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
       },
@@ -270,7 +270,7 @@ export const createProgram = async (req: Request, res: Response, next: NextFunct
 export const updateProgram = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { name, category, description, imageUrl, price, startDate, endDate } = req.body;
+    const { name, category, description, imageUrl, price, currency, polarProductId, startDate, endDate } = req.body;
 
     const programId = parseInt(id, 10);
     if (isNaN(programId)) {
@@ -323,6 +323,8 @@ export const updateProgram = async (req: Request, res: Response, next: NextFunct
         ...(description !== undefined && { description: description || null }),
         ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
         ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+        ...(currency !== undefined && { currency: currency || 'all' }),
+        ...(polarProductId !== undefined && { polarProductId: polarProductId || null }),
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
       },
