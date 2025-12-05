@@ -55,8 +55,8 @@ app.use(cors({
 // because it needs the raw body for signature verification
 app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '5gb' }));
+app.use(express.urlencoded({ extended: true, limit: '5gb' }));
 
 // serve uploads so edited files are accessible
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

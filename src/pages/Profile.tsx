@@ -683,138 +683,156 @@ const Profile = () => {
                             )}
                           </div>
                           {/* Program videos list with progress and conditional Continue buttons */}
-                          {expandedProgramId === userProgram.program?.id && (
-                            <div className="mt-4 space-y-4">
-                              <Button
-                                className="w-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 text-white font-semibold py-2"
-                                onClick={() => {
-                                  const videos = programVideos[userProgram.program?.id || 0] || [];
-                                  const progresses = videoProgress[userProgram.program?.id || 0] || {};
-                                  if (videos.length === 0) return;
-                                  
-                                  // Find the first unlocked video that's not completed
-                                  let target = null;
-                                  let targetIndex = -1;
-                                  for (let i = 0; i < videos.length; i++) {
-                                    const currentProgress = progresses[videos[i].id] || 0;
-                                    const isCompleted = currentProgress >= 90;
+                          {expandedProgramId === userProgram.program?.id && (() => {
+                            const videos = programVideos[userProgram.program?.id || 0] || [];
+                            
+                            // Helper function to normalize title for comparison
+                            const normalizeTitle = (title: string | null) => {
+                              return (title || 'Untitled').trim().toLowerCase();
+                            };
+                            
+                            // Group videos by normalized title to assign day numbers
+                            const titleToDayMap: Record<string, number> = {};
+                            let dayCounter = 1;
+                            
+                            videos.forEach((video) => {
+                              const normalizedTitle = normalizeTitle(video.title);
+                              if (!titleToDayMap[normalizedTitle]) {
+                                titleToDayMap[normalizedTitle] = dayCounter++;
+                              }
+                            });
+                            
+                            return (
+                              <div className="mt-4 space-y-4">
+                                <Button
+                                  className="w-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 text-white font-semibold py-2"
+                                  onClick={() => {
+                                    const progresses = videoProgress[userProgram.program?.id || 0] || {};
+                                    if (videos.length === 0) return;
                                     
-                                    // Check if this video is unlocked (first video or previous is completed)
-                                    const isFirstVideo = i === 0;
-                                    const previousProgress = i > 0 ? (progresses[videos[i - 1].id] || 0) : 100;
+                                    // Find the first unlocked video that's not completed
+                                    let target = null;
+                                    for (let i = 0; i < videos.length; i++) {
+                                      const currentProgress = progresses[videos[i].id] || 0;
+                                      const isCompleted = currentProgress >= 90;
+                                      
+                                      // Check if this video is unlocked (first video or previous is completed)
+                                      const isFirstVideo = i === 0;
+                                      const previousProgress = i > 0 ? (progresses[videos[i - 1].id] || 0) : 100;
+                                      const isPreviousCompleted = previousProgress >= 90;
+                                      const isUnlocked = isFirstVideo || isPreviousCompleted;
+                                      
+                                      if (isUnlocked && !isCompleted) {
+                                        target = videos[i];
+                                        break;
+                                      }
+                                    }
+                                    
+                                    // If all unlocked videos are completed, show the first video
+                                    if (!target) {
+                                      target = videos[0];
+                                    }
+                                    
+                                    const full = target.url.startsWith('http') ? target.url : `${API_URL}${target.url.startsWith('/') ? '' : '/'}${target.url}`;
+                                    const prog = progresses[target.id] || 0;
+                                    const normalizedTargetTitle = normalizeTitle(target.title);
+                                    const dayNumber = titleToDayMap[normalizedTargetTitle];
+                                    const titleText = target.title || `Exercises for Day ${dayNumber}`;
+                                    setFullscreenVideoUrl(full);
+                                    setFullscreenVideoTitle(titleText);
+                                    setFullscreenVideoId(target.id);
+                                    setFullscreenProgramId(userProgram.program?.id);
+                                    setFullscreenVideoInitialProgress(prog);
+                                  }}
+                                >{t('profile.startProgram')}</Button>
+
+                                <div className="space-y-2">
+                                  {videos.map((v, index) => {
+                                    const progress = videoProgress[userProgram.program?.id || 0]?.[v.id] || 0;
+                                    const isStarted = progress > 0 && progress < 90;
+                                    const isCompleted = progress >= 90;
+                                    
+                                    // Check if previous video is completed (for sequential unlock)
+                                    const isFirstVideo = index === 0;
+                                    const previousVideo = index > 0 ? videos[index - 1] : null;
+                                    const previousProgress = previousVideo ? (videoProgress[userProgram.program?.id || 0]?.[previousVideo.id] || 0) : 100;
                                     const isPreviousCompleted = previousProgress >= 90;
                                     const isUnlocked = isFirstVideo || isPreviousCompleted;
                                     
-                                    if (isUnlocked && !isCompleted) {
-                                      target = videos[i];
-                                      targetIndex = i;
-                                      break;
-                                    }
-                                  }
-                                  
-                                  // If all unlocked videos are completed, show the first video
-                                  if (!target) {
-                                    target = videos[0];
-                                    targetIndex = 0;
-                                  }
-                                  
-                                  const full = target.url.startsWith('http') ? target.url : `${API_URL}${target.url.startsWith('/') ? '' : '/'}${target.url}`;
-                                  const prog = progresses[target.id] || 0;
-                                  const dayNumber = targetIndex + 1;
-                                  const titleText = target.title || `Exercises for Day ${dayNumber}`;
-                                  setFullscreenVideoUrl(full);
-                                  setFullscreenVideoTitle(titleText);
-                                  setFullscreenVideoId(target.id);
-                                  setFullscreenProgramId(userProgram.program?.id);
-                                  setFullscreenVideoInitialProgress(prog);
-                                }}
-                              >{t('profile.startProgram')}</Button>
-
-                              <div className="space-y-2">
-                                {(programVideos[userProgram.program?.id || 0] || []).map((v, index) => {
-                                  const progress = videoProgress[userProgram.program?.id || 0]?.[v.id] || 0;
-                                  const isStarted = progress > 0 && progress < 90;
-                                  const isCompleted = progress >= 90;
-                                  
-                                  // Check if previous video is completed (for sequential unlock)
-                                  const isFirstVideo = index === 0;
-                                  const previousVideo = index > 0 ? (programVideos[userProgram.program?.id || 0] || [])[index - 1] : null;
-                                  const previousProgress = previousVideo ? (videoProgress[userProgram.program?.id || 0]?.[previousVideo.id] || 0) : 100;
-                                  const isPreviousCompleted = previousProgress >= 90;
-                                  const isUnlocked = isFirstVideo || isPreviousCompleted;
-                                  
-                                  // Format day title
-                                  const dayNumber = index + 1;
-                                  const fullTitle = v.title 
-                                    ? `Day ${dayNumber} - ${v.title}` 
-                                    : `Day ${dayNumber}`;
-                                  
-                                  // Truncate title if longer than 40 characters
-                                  const displayTitle = fullTitle.length > 70 
-                                    ? fullTitle.substring(0, 70) + '...' 
-                                    : fullTitle;
-                                  
-                                  return (
-                                    <div 
-                                      key={v.id} 
-                                      className={`p-3 bg-muted rounded flex items-center justify-between ${isUnlocked ? 'cursor-pointer hover:bg-muted/80' : 'opacity-60 cursor-not-allowed'} transition-colors`}
-                                      onClick={() => {
-                                        if (!isUnlocked) return;
-                                        const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
-                                        setFullscreenVideoUrl(full);
-                                        setFullscreenVideoTitle(v.title || `Exercises for Day ${dayNumber}`);
-                                        setFullscreenVideoId(v.id);
-                                        setFullscreenProgramId(userProgram.program?.id);
-                                        setFullscreenVideoInitialProgress(progress);
-                                      }}
-                                    >
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2">
-                                            {!isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
-                                            <span 
-                                              className="font-semibold truncate text-sm"
-                                              title={fullTitle.length > 40 ? fullTitle : undefined}
-                                            >
-                                              {displayTitle}
-                                            </span>
+                                    // Get day number from grouped titles using normalized comparison
+                                    const normalizedTitle = normalizeTitle(v.title);
+                                    const dayNumber = titleToDayMap[normalizedTitle];
+                                    const fullTitle = v.title 
+                                      ? `Day ${dayNumber} - ${v.title}` 
+                                      : `Day ${dayNumber}`;
+                                    
+                                    // Truncate title if longer than 70 characters
+                                    const displayTitle = fullTitle.length > 70 
+                                      ? fullTitle.substring(0, 70) + '...' 
+                                      : fullTitle;
+                                    
+                                    return (
+                                      <div 
+                                        key={v.id} 
+                                        className={`p-3 bg-muted rounded flex items-center justify-between ${isUnlocked ? 'cursor-pointer hover:bg-muted/80' : 'opacity-60 cursor-not-allowed'} transition-colors`}
+                                        onClick={() => {
+                                          if (!isUnlocked) return;
+                                          const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
+                                          setFullscreenVideoUrl(full);
+                                          setFullscreenVideoTitle(v.title || `Exercises for Day ${dayNumber}`);
+                                          setFullscreenVideoId(v.id);
+                                          setFullscreenProgramId(userProgram.program?.id);
+                                          setFullscreenVideoInitialProgress(progress);
+                                        }}
+                                      >
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              {!isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
+                                              <span 
+                                                className="font-semibold truncate text-sm"
+                                                title={fullTitle.length > 40 ? fullTitle : undefined}
+                                              >
+                                                {displayTitle}
+                                              </span>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground ml-2">{Math.round(progress)}%</span>
                                           </div>
-                                          <span className="text-xs text-muted-foreground ml-2">{Math.round(progress)}%</span>
+                                          <div className="w-full bg-gray-300 dark:bg-gray-700 h-2 rounded mt-2 overflow-hidden">
+                                            <div
+                                              className={`${isCompleted ? 'bg-green-500' : 'bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)]'} h-full transition-all`}
+                                              style={{ width: `${Math.min(100, Math.round(progress))}%` }}
+                                            ></div>
+                                          </div>
+                                          <div className="text-[10px] mt-1 text-muted-foreground">
+                                            {!isUnlocked ? t('profile.videoLocked') : isCompleted ? t('profile.videoCompleted') : isStarted ? t('profile.videoInProgress') : t('profile.videoNotStarted')}
+                                          </div>
                                         </div>
-                                        <div className="w-full bg-gray-300 dark:bg-gray-700 h-2 rounded mt-2 overflow-hidden">
-                                          <div
-                                            className={`${isCompleted ? 'bg-green-500' : 'bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)]'} h-full transition-all`}
-                                            style={{ width: `${Math.min(100, Math.round(progress))}%` }}
-                                          ></div>
-                                        </div>
-                                        <div className="text-[10px] mt-1 text-muted-foreground">
-                                          {!isUnlocked ? t('profile.videoLocked') : isCompleted ? t('profile.videoCompleted') : isStarted ? t('profile.videoInProgress') : t('profile.videoNotStarted')}
+                                        <div className="ml-3" onClick={(e) => e.stopPropagation()}>
+                                          {isStarted && isUnlocked && (
+                                            <Button
+                                              size="sm"
+                                              onClick={() => {
+                                                const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
+                                                setFullscreenVideoUrl(full);
+                                                setFullscreenVideoTitle(v.title || `Exercises for Day ${dayNumber}`);
+                                                setFullscreenVideoId(v.id);
+                                                setFullscreenProgramId(userProgram.program?.id);
+                                                setFullscreenVideoInitialProgress(progress);
+                                              }}
+                                            >{t('profile.continue')}</Button>
+                                          )}
                                         </div>
                                       </div>
-                                      <div className="ml-3" onClick={(e) => e.stopPropagation()}>
-                                        {isStarted && isUnlocked && (
-                                          <Button
-                                            size="sm"
-                                            onClick={() => {
-                                              const full = v.url.startsWith('http') ? v.url : `${API_URL}${v.url.startsWith('/') ? '' : '/'}${v.url}`;
-                                              setFullscreenVideoUrl(full);
-                                              setFullscreenVideoTitle(v.title || `Exercises for Day ${dayNumber}`);
-                                              setFullscreenVideoId(v.id);
-                                              setFullscreenProgramId(userProgram.program?.id);
-                                              setFullscreenVideoInitialProgress(progress);
-                                            }}
-                                          >{t('profile.continue')}</Button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                                {((programVideos[userProgram.program?.id || 0] || []).length === 0) && (
-                                  <p className="text-xs text-muted-foreground">{t('profile.noVideos')}</p>
-                                )}
+                                    );
+                                  })}
+                                  {(videos.length === 0) && (
+                                    <p className="text-xs text-muted-foreground">{t('profile.noVideos')}</p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       </div>
                     </Card>
