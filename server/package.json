@@ -14,9 +14,8 @@
     "prisma:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@polar-sh/sdk": "^0.41.5",
     "@prisma/client": "^5.7.1",
-    "@stripe/stripe-js": "^8.4.0",
-    "@types/nodemailer": "^7.0.4",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "canvas": "^3.2.0",
@@ -30,8 +29,7 @@
     "nodemailer": "^7.0.11",
     "react-router-dom": "^7.9.5",
     "socket.io": "^4.8.1",
-    "stripe": "^19.3.0",
-    "webhook": "^0.0.2",
+    "webhook": "^0.0.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -42,7 +40,6 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.10.5",
     "@types/react-router-dom": "^5.3.3",
-    "@types/stripe": "^8.0.416",
     "nodemon": "^3.0.2",
     "prisma": "^5.7.1",
     "ts-node": "^10.9.2",

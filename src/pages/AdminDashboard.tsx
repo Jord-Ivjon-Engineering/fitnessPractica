@@ -43,6 +43,7 @@ const AdminDashboard = () => {
     videoUrl: '',
     price: undefined,
     currency: 'all',
+    polarProductId: '',
     startDate: '',
     endDate: '',
   });
@@ -580,6 +581,7 @@ const AdminDashboard = () => {
           videoUrl: '',
           price: undefined,
           currency: 'all',
+          polarProductId: '',
           startDate: '',
           endDate: '',
         });
@@ -658,7 +660,8 @@ const AdminDashboard = () => {
         imageUrl: program.imageUrl || '',
         videoUrl: '',
         price: program.price ? Number(program.price) : undefined,
-        currency: 'all',
+        currency: program.currency || 'all',
+        polarProductId: program.polarProductId || '',
         startDate: program.startDate ? new Date(program.startDate).toISOString().split('T')[0] : '',
         endDate: program.endDate ? new Date(program.endDate).toISOString().split('T')[0] : '',
       });
@@ -796,6 +799,7 @@ const AdminDashboard = () => {
           videoUrl: '',
           price: undefined,
           currency: 'all',
+          polarProductId: '',
           startDate: '',
           endDate: '',
         });
@@ -1111,7 +1115,7 @@ const AdminDashboard = () => {
                       <td>{program.name}</td>
                       <td>{program.category}</td>
                       <td>{program.description || 'N/A'}</td>
-                      <td>{program.price ? formatCurrency(program.price) : 'Free'}</td>
+                      <td>{program.price ? formatCurrency(program.price, program.currency || 'all') : 'Free'}</td>
                       <td>{program.startDate ? formatDate(program.startDate) : 'N/A'}</td>
                       <td>{program.endDate ? formatDate(program.endDate) : 'N/A'}</td>
                       <td>
@@ -1351,6 +1355,18 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 <div className="form-group">
+                  <label htmlFor="polarProductId">Polar Product ID</label>
+                  <input
+                    id="polarProductId"
+                    type="text"
+                    value={newProgram.polarProductId || ''}
+                    onChange={(e) => setNewProgram({ ...newProgram, polarProductId: e.target.value })}
+                    disabled={creatingProgram || uploadingImage}
+                    placeholder="prod_xxxxx"
+                  />
+                  <p className="form-hint">Enter the Polar Product ID from your Polar.sh dashboard (e.g., prod_xxxxx)</p>
+                </div>
+                <div className="form-group">
                   <label htmlFor="startDate">Start Date</label>
                   <input
                     id="startDate"
@@ -1408,6 +1424,7 @@ const AdminDashboard = () => {
                           videoUrl: '',
                           price: undefined,
                           currency: 'all',
+                          polarProductId: '',
                           startDate: '',
                           endDate: '',
                         });

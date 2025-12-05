@@ -13,7 +13,8 @@ import videoRoutes, { setSocketIO } from './routes/video';
 import paymentRoutes from './routes/payment';
 import trainingProgramRoutes from './routes/trainingPrograms';
 import adminRoutes from './routes/admin';
-import { handleWebhook } from './controllers/paymentController';
+import checkoutRoutes from './routes/checkout';
+import webhookRoutes from './routes/webhooks';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
 dotenv.config();
@@ -51,9 +52,10 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true
 }));
-// Stripe webhook must be before express.json() middleware
-// because it needs the raw body for signature verification
-app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+
+// Webhook routes (commented out - not using webhooks for now)
+// Uncomment if you want to use webhooks in the future
+// app.use('/api/webhooks', webhookRoutes);
 
 app.use(express.json({ limit: '5gb' }));
 app.use(express.urlencoded({ extended: true, limit: '5gb' }));
@@ -71,6 +73,7 @@ app.use('/video', videoRoutes); // new
 app.use('/api/training-programs', trainingProgramRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/checkout', checkoutRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
