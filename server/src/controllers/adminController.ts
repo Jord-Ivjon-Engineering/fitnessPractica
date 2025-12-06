@@ -6,6 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { uploadToSpaces, isSpacesConfigured } from '../services/spaces';
 
 // Get all users (admin only)
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
@@ -386,8 +387,30 @@ export const uploadProgramImage = async (req: Request, res: Response, next: Next
       return next(error);
     }
 
-    // Return the URL to access the uploaded image
-    const imageUrl = `/uploads/images/${multerReq.file.filename}`;
+    // Upload to DigitalOcean Spaces if configured, otherwise use local path
+    let imageUrl: string;
+    
+    if (isSpacesConfigured()) {
+      try {
+        const spacesPath = `uploads/images/${multerReq.file.filename}`;
+        imageUrl = await uploadToSpaces(multerReq.file.path, spacesPath);
+        console.log(`Image uploaded to Spaces: ${imageUrl}`);
+        
+        // Delete local file after successful upload
+        try {
+          await fs.promises.unlink(multerReq.file.path);
+        } catch (err) {
+          console.warn('Failed to delete local file after Spaces upload:', err);
+        }
+      } catch (spacesError) {
+        console.error('Failed to upload to Spaces, using local file:', spacesError);
+        // Fallback to local path if Spaces upload fails
+        imageUrl = `/uploads/images/${multerReq.file.filename}`;
+      }
+    } else {
+      // Use local path if Spaces is not configured
+      imageUrl = `/uploads/images/${multerReq.file.filename}`;
+    }
     
     res.json({
       success: true,

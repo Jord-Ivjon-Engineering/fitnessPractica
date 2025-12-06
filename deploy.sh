@@ -37,7 +37,7 @@ git pull origin main || {
 # Backend deployment
 echo -e "${YELLOW}🔧 Building backend...${NC}"
 cd $BACKEND_DIR
-npm install --production
+npm install  # Install all dependencies (including devDependencies for TypeScript build)
 npm run build
 
 # Run database migrations
@@ -50,7 +50,7 @@ npm run prisma:migrate deploy || {
 # Frontend deployment
 echo -e "${YELLOW}🎨 Building frontend...${NC}"
 cd $FRONTEND_DIR
-npm install --production
+npm install  # Install all dependencies (including devDependencies for build)
 npm run build
 
 # Set permissions

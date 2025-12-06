@@ -119,16 +119,32 @@ df -h  # Disk space
 
 ### If deployment script fails:
 
+**If you get "Your local changes would be overwritten by merge" error:**
+
 ```bash
-# Check Git status
+# Check what files have local changes
 cd /var/www/fitness-practica
 git status
 
-# Check for uncommitted changes (you may need to stash them)
+# Option 1: Stash local changes (saves them temporarily)
 git stash
-
-# Try pulling again
 git pull origin main
+# If you need the stashed changes later: git stash pop
+
+# Option 2: Discard local changes (use remote version - recommended for production)
+git reset --hard origin/main
+git pull origin main
+
+# Option 3: See what the differences are first
+git diff
+# Then decide whether to stash or reset
+```
+
+**For the current error, use Option 2 (reset) since you just pushed the optimizations:**
+```bash
+cd /var/www/fitness-practica
+git reset --hard origin/main
+sudo ./deploy.sh
 ```
 
 ### If PM2 restart fails:

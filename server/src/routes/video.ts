@@ -8,6 +8,7 @@ import { authenticate, requireAdmin } from '../middleware/auth';
 import { createCanvas } from 'canvas';
 import { Server as SocketIOServer } from 'socket.io';
 import { execSync } from 'child_process';
+import { uploadToSpaces, isSpacesConfigured } from '../services/spaces';
 
 (ffmpeg as any).setFfmpegPath(ffmpegStatic);
 
@@ -772,6 +773,10 @@ router.post(
       const outputPath = path.join(editedDir, outputName);
 
       req.setTimeout(3600000);
+      res.setTimeout(3600000);
+
+      // Note: Keep-alive is handled by nginx timeout settings (3600s = 1 hour)
+      // The increased timeout should be sufficient for most video processing tasks
 
       // Detect hardware acceleration
       const hwAccel = await detectHardwareAcceleration();
@@ -889,7 +894,30 @@ router.post(
         };
       }
 
-      const fileUrl = `/uploads/edited/${outputName}`;
+      // Upload to DigitalOcean Spaces if configured, otherwise use local path
+      let fileUrl: string;
+      if (isSpacesConfigured()) {
+        try {
+          const spacesPath = `uploads/edited/${outputName}`;
+          fileUrl = await uploadToSpaces(outputPath, spacesPath, 'video/mp4');
+          console.log(`Video uploaded to Spaces: ${fileUrl}`);
+          
+          // Delete local file after successful upload
+          try {
+            await fs.promises.unlink(outputPath);
+          } catch (err) {
+            console.warn('Failed to delete local file after Spaces upload:', err);
+          }
+        } catch (spacesError) {
+          console.error('Failed to upload to Spaces, using local file:', spacesError);
+          // Fallback to local path if Spaces upload fails
+          fileUrl = `/uploads/edited/${outputName}`;
+        }
+      } else {
+        // Use local path if Spaces is not configured
+        fileUrl = `/uploads/edited/${outputName}`;
+      }
+
       res.json({ 
         success: true, 
         message: doPassThrough ? 'Video re-encoded' : 'Video edited successfully', 
