@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -120,10 +121,32 @@ async function main() {
     console.log(`Upserted Program Video with ID ${video.id}`);
   }
 
-  // 3. Placeholder for other tables
+  // 3. Seed admin user
+  const adminEmail = 'admin@example.com';
+  const adminPassword = 'admin123'; // Change this password in production!
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      email: adminEmail,
+      password: hashedPassword,
+      name: 'Admin User',
+      role: 'admin',
+    },
+    create: {
+      email: adminEmail,
+      password: hashedPassword,
+      name: 'Admin User',
+      role: 'admin',
+    },
+  });
+  console.log(`Upserted Admin User with email ${adminEmail}`);
+
+  // 4. Placeholder for other tables
   // Note: The SQL dump did not contain INSERT statements for the following tables.
   console.log('\n--- Other Tables (No Seed Data Provided in SQL) ---');
-  console.log('Skipping seed for: users, plans, members, locations, payments, user_programs, video_progress.');
+  console.log('Skipping seed for: plans, members, locations, payments, user_programs, video_progress.');
   console.log('If you wish to seed these tables, please provide their respective INSERT statements.');
 
   console.log('\nSeeding finished.');
