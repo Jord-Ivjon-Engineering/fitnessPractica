@@ -168,14 +168,28 @@ const VideoEditor = () => {
       if (contentType.includes('application/json')) {
         const data = await response.json();
         if (data && data.fileUrl) {
-          const fileUrl = `${API_URL}${data.fileUrl}`;
+          // Check if it's already a full URL (Spaces CDN) or a relative path
+          let fileUrl: string;
+          let relativeUrl: string;
+          
+          if (data.fileUrl.startsWith('http://') || data.fileUrl.startsWith('https://')) {
+            // Already a full URL from Spaces CDN, use it directly
+            fileUrl = data.fileUrl;
+            // For attachVideo, use the full URL as-is
+            relativeUrl = data.fileUrl;
+          } else {
+            // Relative path, prepend API base URL
+            fileUrl = `${API_URL}${data.fileUrl}`;
+            relativeUrl = data.fileUrl.replace(/^\//, '');
+          }
+          
           setError('');
           // Auto-attach to selected program if one is chosen
-          const relativeUrl = data.fileUrl.replace(/^\//, '');
           if (selectedProgramId) {
             try {
               setAttachStatus('Attaching to program...');
-              await trainingProgramApi.attachVideo(selectedProgramId, `/${relativeUrl}`);
+              // Use the original fileUrl format (full URL or relative path)
+              await trainingProgramApi.attachVideo(selectedProgramId, data.fileUrl.startsWith('http') ? data.fileUrl : `/${relativeUrl}`);
               setAttachStatus('Attached successfully!');
             } catch (attachErr) {
               console.error('Auto-attach error', attachErr);

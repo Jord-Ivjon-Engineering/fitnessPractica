@@ -470,11 +470,15 @@ const ProgramVideoEditor = () => {
               <>
                 <video 
                   controls 
-                  src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
+                  src={processedVideoUrl.startsWith('http://') || processedVideoUrl.startsWith('https://')
+                    ? processedVideoUrl
+                    : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
                   className="processed-video" 
                 />
                 <a 
-                  href={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
+                  href={processedVideoUrl.startsWith('http://') || processedVideoUrl.startsWith('https://')
+                    ? processedVideoUrl
+                    : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${processedVideoUrl}`} 
                   download 
                   className="btn-download"
                 >

@@ -526,12 +526,17 @@ const AdminDashboard = () => {
           const uploadResponse = await adminApi.uploadProgramImage(selectedImage);
           
           if (uploadResponse.data.success) {
-            // Use the uploaded image URL (it's already a full path from server)
-            // The server returns /uploads/images/filename, which is served statically
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-            // Remove /api from the base URL if present, since /uploads is at root level
-            const baseUrl = API_BASE.replace('/api', '');
-            imageUrl = `${baseUrl}${uploadResponse.data.data.imageUrl}`;
+            const returnedUrl = uploadResponse.data.data.imageUrl;
+            // Check if it's already a full URL (Spaces CDN) or a relative path
+            if (returnedUrl.startsWith('http://') || returnedUrl.startsWith('https://')) {
+              // Already a full URL from Spaces CDN, use it directly
+              imageUrl = returnedUrl;
+            } else {
+              // Relative path, prepend API base URL
+              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+              const baseUrl = API_BASE.replace('/api', '');
+              imageUrl = `${baseUrl}${returnedUrl}`;
+            }
           }
         } catch (uploadErr: any) {
           console.error('Error uploading image:', uploadErr);
@@ -756,9 +761,17 @@ const AdminDashboard = () => {
           const uploadResponse = await adminApi.uploadProgramImage(selectedImage);
           
           if (uploadResponse.data.success) {
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-            const baseUrl = API_BASE.replace('/api', '');
-            imageUrl = `${baseUrl}${uploadResponse.data.data.imageUrl}`;
+            const returnedUrl = uploadResponse.data.data.imageUrl;
+            // Check if it's already a full URL (Spaces CDN) or a relative path
+            if (returnedUrl.startsWith('http://') || returnedUrl.startsWith('https://')) {
+              // Already a full URL from Spaces CDN, use it directly
+              imageUrl = returnedUrl;
+            } else {
+              // Relative path, prepend API base URL
+              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+              const baseUrl = API_BASE.replace('/api', '');
+              imageUrl = `${baseUrl}${returnedUrl}`;
+            }
           }
         } catch (uploadErr: any) {
           console.error('Error uploading image:', uploadErr);
@@ -1475,7 +1488,9 @@ const AdminDashboard = () => {
                       <div key={video.id} className={`video-item ${selectedExistingVideo?.id === video.id ? 'selected' : ''}`}>
                         <video 
                           controls 
-                          src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`}
+                          src={video.url.startsWith('http://') || video.url.startsWith('https://') 
+                            ? video.url 
+                            : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'}${video.url}`}
                           className="existing-video"
                         />
                         <div className="video-info">
