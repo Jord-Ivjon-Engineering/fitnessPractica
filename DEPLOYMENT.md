@@ -5,8 +5,28 @@ This guide will help you deploy your Fitness Practica application to a DigitalOc
 ## Prerequisites
 
 1. A DigitalOcean account (sign up at https://www.digitalocean.com)
-2. A domain name (optional but recommended)
+2. A domain name (optional but recommended) - **You can deploy using just the IP address if you don't have a domain**
 3. SSH access to your local machine
+
+## Important: Domain vs IP Address
+
+**If you don't have a domain name**, you can still deploy your application using the droplet's IP address. However, there are some limitations:
+
+- ✅ **Works**: You can access your app via `http://YOUR_IP_ADDRESS`
+- ❌ **No HTTPS**: Let's Encrypt SSL certificates require a domain name, so you'll only have HTTP (not HTTPS)
+- ⚠️ **Security**: Without HTTPS, data is transmitted in plain text (not recommended for production with sensitive data)
+- ⚠️ **CORS**: You'll need to use `http://YOUR_IP_ADDRESS` in your environment variables
+
+**Recommendation**: For production, consider getting a domain name (can be as cheap as $10-15/year from providers like Namecheap, Google Domains, or Cloudflare). For testing/development, using the IP address is fine.
+
+### Quick Reference: What to Replace
+
+When you see `YOUR_DROPLET_IP` in this guide, replace it with your actual droplet IP address (e.g., `157.230.45.123`). You can find your IP address in the DigitalOcean dashboard after creating the droplet.
+
+**Example**: If your IP is `157.230.45.123`, then:
+- `CORS_ORIGIN=http://157.230.45.123`
+- `VITE_API_URL=http://157.230.45.123/api`
+- Access your app at `http://157.230.45.123`
 
 ## Step 1: Create a DigitalOcean Droplet
 
@@ -67,6 +87,24 @@ apt install -y ffmpeg
 apt install -y build-essential
 ```
 
+## Step 3.5: Run Server Optimization (Recommended for 4GB RAM / 2 vCPU)
+
+After installing all packages, run the optimization script to configure your server for video processing:
+
+```bash
+cd /var/www/fitness-practica
+chmod +x scripts/optimize-server.sh
+sudo bash scripts/optimize-server.sh
+```
+
+This script will:
+- Create a 2GB swap file (critical for 4GB RAM systems)
+- Optimize memory settings (swappiness, cache pressure)
+- Set up automatic cleanup of old video files
+- Verify system resources
+
+**Note**: If you haven't cloned your repository yet, you can run this script after Step 5 (Clone Your Repository).
+
 ## Step 4: Set Up MySQL Database
 
 ```bash
@@ -80,7 +118,7 @@ mysql -u root -p
 In MySQL prompt:
 ```sql
 CREATE DATABASE fitness_practica;
-CREATE USER 'fitness_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';
+CREATE USER 'fitness_user'@'localhost' IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON fitness_practica.* TO 'fitness_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
@@ -102,6 +140,8 @@ git clone https://github.com/yourusername/fitness-practica.git .
 
 ## Step 6: Set Up Environment Variables
 
+**Important**: Replace `YOUR_DROPLET_IP` with your actual droplet IP address (e.g., `157.230.45.123`). If you have a domain, replace it with your domain name instead.
+
 ### Backend Environment Variables
 
 ```bash
@@ -112,6 +152,7 @@ nano .env
 
 Update the `.env` file with production values:
 
+**Option A: Using IP Address (No Domain)**
 ```env
 # Database
 DATABASE_URL="mysql://fitness_user:your_secure_password_here@localhost:3306/fitness_practica?schema=public"
@@ -123,7 +164,35 @@ NODE_ENV=production
 # JWT
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-use-long-random-string
 
-# CORS - Update with your domain
+# CORS - Using IP address (replace with your actual IP)
+CORS_ORIGIN=http://YOUR_DROPLET_IP
+CLIENT_URL=http://YOUR_DROPLET_IP
+
+# Frontend URL
+FRONTEND_URL=http://YOUR_DROPLET_IP
+
+# Stripe (Production keys)
+STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+
+# Polar.sh
+POLAR_ACCESS_TOKEN=polar_at_xxxxxxxxxxxxx
+POLAR_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
+```
+
+**Option B: Using Domain Name (Recommended for Production)**
+```env
+# Database
+DATABASE_URL="mysql://fitness_user:your_secure_password_here@localhost:3306/fitness_practica?schema=public"
+
+# Server
+PORT=3001
+NODE_ENV=production
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-use-long-random-string
+
+# CORS - Using domain name
 CORS_ORIGIN=https://yourdomain.com
 CLIENT_URL=https://yourdomain.com
 
@@ -148,6 +217,12 @@ cd /var/www/fitness-practica
 nano .env.production
 ```
 
+**Option A: Using IP Address (No Domain)**
+```env
+VITE_API_URL=http://YOUR_DROPLET_IP/api
+```
+
+**Option B: Using Domain Name**
 ```env
 VITE_API_URL=https://yourdomain.com/api
 ```
@@ -202,13 +277,23 @@ ln -s /etc/nginx/sites-available/fitness-practica /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default  # Remove default site
 ```
 
-Edit the configuration file to match your domain:
+Edit the configuration file:
 
 ```bash
 nano /etc/nginx/sites-available/fitness-practica
 ```
 
-Update the `server_name` and any paths if needed.
+**If using IP address**: Update `server_name` to `_` (catch-all) or your IP address:
+```nginx
+server_name _;
+# or
+server_name YOUR_DROPLET_IP;
+```
+
+**If using domain name**: Update `server_name` to your domain:
+```nginx
+server_name yourdomain.com www.yourdomain.com;
+```
 
 Test and reload Nginx:
 
@@ -219,7 +304,9 @@ systemctl reload nginx
 
 ## Step 10: Set Up SSL Certificate (Let's Encrypt)
 
-For HTTPS, install Certbot:
+**Note**: SSL certificates require a domain name. If you're using only an IP address, skip this step (you'll be using HTTP instead of HTTPS).
+
+For HTTPS with a domain name, install Certbot:
 
 ```bash
 apt install -y certbot python3-certbot-nginx
@@ -227,6 +314,8 @@ certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
 
 Follow the prompts. Certbot will automatically configure Nginx for HTTPS.
+
+**If you skipped SSL**: Your application will be accessible via `http://YOUR_DROPLET_IP` (not HTTPS). Make sure your environment variables use `http://` instead of `https://`.
 
 ## Step 11: Configure Firewall
 
@@ -253,6 +342,16 @@ chmod -R 775 /var/www/fitness-practica/server/uploads
 
 ## Step 13: Verify Deployment
 
+**If using IP address:**
+1. **Check backend health**: Visit `http://161.35.64.67/api/health`
+2. **Check frontend**: Visit `http://161.35.64.67`
+3. **Check PM2 status**: `pm2 status`
+4. **Check Nginx status**: `systemctl status nginx`
+5. **Check logs**: 
+   - Backend: `pm2 logs fitness-practica-api`
+   - Nginx: `tail -f /var/log/nginx/error.log`
+
+**If using domain name:**
 1. **Check backend health**: Visit `https://yourdomain.com/api/health`
 2. **Check frontend**: Visit `https://yourdomain.com`
 3. **Check PM2 status**: `pm2 status`

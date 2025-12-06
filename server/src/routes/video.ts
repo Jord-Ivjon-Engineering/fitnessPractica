@@ -176,16 +176,17 @@ function getEncoderOptions(hwAccel: HardwareAccel): string[] {
       '-movflags', '+faststart'
     );
   } else {
-    // CPU encoding - optimized settings
+    // CPU encoding - optimized for 2 vCPU / 4GB RAM (single user)
     options.push(
       '-c:v', 'libx264',
       '-preset', 'veryfast',
       '-tune', 'zerolatency',
-      '-threads', '0',
+      '-threads', '2',  // Use both vCPUs
       '-crf', '23',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'copy',
-      '-movflags', '+faststart'
+      '-movflags', '+faststart',
+      '-x264-params', 'thread-input=1:thread-lookahead=1'  // Minimal lookahead to save memory
     );
   }
 
@@ -386,7 +387,7 @@ async function processVideoSinglePass(
       console.log(`Single-pass processing with ${overlays.length} overlays (filter length: ${filterString.length} chars)`);
       
       const encoderOpts = getEncoderOptions(hwAccel);
-      const filterThreads = hwAccel.available ? '4' : '0';
+      const filterThreads = hwAccel.available ? '2' : '1';  // Optimized for 2 vCPU / 4GB RAM
       
       // Use filter file if filter string is too long (Windows command line limit)
       if (useFilterFile) {
@@ -504,7 +505,7 @@ async function processVideoInBatches(
   overlays: any[],
   socketId: string,
   hwAccel: HardwareAccel,
-  batchSize: number = 32  // Increased from 8 to reduce number of passes
+  batchSize: number = 24  // Optimized for 4GB RAM - balance between passes and memory
 ): Promise<void> {
   let currentInput = inputPath;
   const tempFiles: string[] = [];
@@ -598,7 +599,7 @@ function processBatch(
       console.log(`Processing batch ${currentBatch}/${totalBatches} with ${overlays.length} overlays (filter length: ${filterString.length} chars)`);
       
       const encoderOpts = getEncoderOptions(hwAccel);
-      const filterThreads = hwAccel.available ? '4' : '0'; // Fewer threads for GPU, all for CPU
+      const filterThreads = hwAccel.available ? '2' : '1';  // Optimized for 2 vCPU / 4GB RAM // Fewer threads for GPU, all for CPU
       
       // Use filter file if filter string is too long (Windows command line limit)
       if (useFilterFile) {
@@ -713,6 +714,13 @@ router.post(
   },
   async (req: MulterRequest, res: Response, next: NextFunction) => {
     try {
+      // Simple memory check for 4GB RAM system
+      const os = require('os');
+      const freeMemMB = os.freemem() / (1024 * 1024);
+      if (freeMemMB < 500) {
+        console.warn(`Low memory warning: ${Math.round(freeMemMB)}MB free before video processing`);
+      }
+      
       const rawExercises = req.body.exercises;
       let exercises: Array<{ name: string; start: number; duration: number }> = [];
       if (typeof rawExercises === 'string') {

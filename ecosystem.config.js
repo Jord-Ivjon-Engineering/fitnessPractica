@@ -11,14 +11,15 @@ module.exports = {
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001
+        PORT: 3001,
+        UV_THREADPOOL_SIZE: 4  // 2x vCPUs for optimal performance
       },
       error_file: './logs/api-error.log',
       out_file: './logs/api-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       autorestart: true,
-      max_memory_restart: '1G',
+      max_memory_restart: '1.8G',  // Optimized for 4GB RAM system (single user)
       watch: false,
       ignore_watch: ['node_modules', 'logs', 'uploads']
     }
