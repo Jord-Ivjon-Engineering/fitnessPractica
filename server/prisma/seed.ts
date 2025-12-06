@@ -16,8 +16,8 @@ const trainingProgramData = {
   endDate: new Date('2026-01-15T00:00:00.000Z'),
   startDate: new Date('2025-12-05T00:00:00.000Z'),
   videoUrl: null,
-  currency: null, // Explicitly NULL as per SQL INSERT
-  polarProductId: null,
+  currency: 'eur', 
+  polarProductId: '25ef87cd-b0a0-42d4-bdff-c2c5db32e6b4',
 };
 
 // Data for ProgramVideo (id: 86-92)
