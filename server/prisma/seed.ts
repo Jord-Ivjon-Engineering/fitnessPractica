@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -88,7 +88,7 @@ async function main() {
   // 1. Seed 'training_programs' table
   const upsertProgramData = {
     ...trainingProgramData,
-    price: new prisma.Decimal(trainingProgramData.price),
+    price: new Prisma.Decimal(trainingProgramData.price),
   };
   
   await prisma.trainingProgram.upsert({
