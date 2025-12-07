@@ -279,7 +279,10 @@ const Index = () => {
                   // Use database imageUrl if available, otherwise use fallback
                   const fallbackImage = getFallbackImage(program.category);
                   // Ensure price is a number (handle Decimal types from database)
-                  const programPrice = program.price ? Number(program.price) : 0;
+                  const originalPrice = program.price ? Number(program.price) : 0;
+                  // Apply 40% discount for program ID 10 (frontend only)
+                  const isDiscounted = program.id === 10;
+                  const programPrice = isDiscounted ? 30 : originalPrice;
 
                   return (
                     <CarouselItem key={program.id}>
@@ -299,6 +302,11 @@ const Index = () => {
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
                           <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                            {isDiscounted && (
+                              <div className="inline-block px-4 py-1 mb-3 rounded-full bg-red-600 text-white text-sm font-bold mr-2">
+                                40% OFF
+                              </div>
+                            )}
                             <div className="inline-block px-4 py-1 mb-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] text-sm font-semibold">
                               {program.category}
                             </div>
@@ -319,14 +327,24 @@ const Index = () => {
                                 ) : null}
                               </div>
                             )}
-                            <p className="text-2xl font-semibold mb-4">
-                              {programPrice > 0 ? (
-                                new Intl.NumberFormat('en-US', {
-                                  style: 'currency',
-                                  currency: (program.currency || 'all').toUpperCase(),
-                                }).format(programPrice)
-                              ) : 'Free'}
-                            </p>
+                            <div className="mb-4">
+                              {isDiscounted && originalPrice > 0 && (
+                                <p className="text-sm text-white/70 line-through mb-1">
+                                  {new Intl.NumberFormat('en-US', {
+                                    style: 'currency',
+                                    currency: (program.currency || 'all').toUpperCase(),
+                                  }).format(originalPrice)}
+                                </p>
+                              )}
+                              <p className="text-2xl font-semibold">
+                                {programPrice > 0 ? (
+                                  new Intl.NumberFormat('en-US', {
+                                    style: 'currency',
+                                    currency: (program.currency || 'all').toUpperCase(),
+                                  }).format(programPrice)
+                                ) : 'Free'}
+                              </p>
+                            </div>
                             <Button 
                               size="lg"
                               className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"

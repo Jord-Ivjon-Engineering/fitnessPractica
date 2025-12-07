@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, User, LogOut, Languages, ShoppingCart, LayoutDashboard, Menu, X } from "lucide-react";
+import { User, LogOut, Languages, ShoppingCart, LayoutDashboard, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -45,7 +45,11 @@ const Header = () => {
           className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => navigate('/')}
         >
-          <Dumbbell className="w-8 h-8 text-primary" />
+          <img 
+            src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/program_1764986739884-572851476.jpg"
+            alt="Fitness Practica Logo"
+            className="w-8 h-8 object-cover rounded"
+          />
           <span className="text-2xl font-bold text-foreground">Fitness Practica</span>
         </div>
         

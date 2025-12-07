@@ -75,9 +75,17 @@ const Checkout = () => {
     return null;
   }
 
+  // Apply 40% discount for program ID 10 (frontend only)
+  const getDisplayPrice = (item: typeof cartItems[0]) => {
+    if (item.programId === 10) {
+      return 30;
+    }
+    return item.price || 0;
+  };
+
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => {
-      return total + (item.price || 0);
+      return total + getDisplayPrice(item);
     }, 0);
   };
 
@@ -159,17 +167,34 @@ const Checkout = () => {
                       />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-foreground mb-1">{item.name}</h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-xl font-bold text-foreground">{item.name}</h3>
+                        {item.programId === 10 && (
+                          <span className="px-2 py-1 rounded-full bg-red-600 text-white text-xs font-bold">
+                            40% OFF
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground mb-2">
                         <span className="font-semibold">{t('checkout.category')}:</span> {item.category}
                       </p>
                       {item.price !== undefined && (
-                        <p className="text-lg font-semibold text-foreground">
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: (item.currency || 'all').toUpperCase(),
-                          }).format(item.price)}
-                        </p>
+                        <div>
+                          {item.programId === 10 && programs[item.programId] && programs[item.programId].price && Number(programs[item.programId].price) > 30 && (
+                            <p className="text-sm text-muted-foreground line-through mb-1">
+                              {new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency: (item.currency || 'all').toUpperCase(),
+                              }).format(Number(programs[item.programId].price))}
+                            </p>
+                          )}
+                          <p className="text-lg font-semibold text-foreground">
+                            {new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: (item.currency || 'all').toUpperCase(),
+                            }).format(getDisplayPrice(item))}
+                          </p>
+                        </div>
                       )}
                     </div>
                     <Button
