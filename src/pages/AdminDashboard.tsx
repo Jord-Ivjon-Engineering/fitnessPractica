@@ -1040,7 +1040,9 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {users
+                    .filter((user) => user.email !== 'jord.thanasi@gmail.com')
+                    .map((user) => (
                     <tr key={user.id}>
                       <td>{user.id}</td>
                       <td>{user.name}</td>
@@ -1058,7 +1060,7 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {users.length === 0 && (
+              {users.filter((user) => user.email !== 'jord.thanasi@gmail.com').length === 0 && (
                 <p className="empty-message">No users found</p>
               )}
             </div>

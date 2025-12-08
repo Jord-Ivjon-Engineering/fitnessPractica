@@ -2,9 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dumbbell, Mail, Lock, Loader2 } from "lucide-react";
+import { Dumbbell, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -84,11 +92,6 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
-              {error}
-            </div>
-          )}
 
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-foreground">
@@ -149,6 +152,31 @@ const Login = () => {
           </Link>
         </div>
       </Card>
+
+      {/* Error Popup Dialog */}
+      <Dialog open={!!error} onOpenChange={(open) => !open && setError("")}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-destructive" />
+              </div>
+              <DialogTitle className="text-xl">Login Failed</DialogTitle>
+            </div>
+            <DialogDescription className="pt-4 text-base text-foreground">
+              {error}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setError("")}
+              className="w-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 transition-opacity"
+            >
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
