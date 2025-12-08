@@ -17,7 +17,10 @@ import checkoutRoutes from './routes/checkout';
 import webhookRoutes from './routes/webhooks';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
-dotenv.config();
+// Load environment variables from server/.env file
+// This ensures it works whether running from server/ or root directory
+const envPath = path.resolve(__dirname, '../.env');
+dotenv.config({ path: envPath });
 
 const app = express();
 const server = http.createServer(app);
