@@ -56,16 +56,74 @@ export const createCheckout = async (req: Request, res: Response, next: NextFunc
     // Create Polar checkout session
     const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173';
     
-    const checkout = await polar.checkouts.create({
-      products: productIds,
-      customerEmail: user.email,
-      externalCustomerId: userId.toString(),
-      successUrl: `${frontendUrl}/checkout/success?checkout_id={CHECKOUT_ID}`,
-      metadata: {
-        userId: userId.toString(),
-        source: 'fitness-practica',
-      },
-    });
+    let checkout;
+    try {
+      checkout = await polar.checkouts.create({
+        products: productIds,
+        customerEmail: user.email,
+        externalCustomerId: userId.toString(),
+        successUrl: `${frontendUrl}/checkout/success?checkout_id={CHECKOUT_ID}`,
+        metadata: {
+          userId: userId.toString(),
+          source: 'fitness-practica',
+        },
+      });
+    } catch (polarError: any) {
+      // Handle Polar API 401 errors (invalid/expired token)
+      if (polarError.statusCode === 401 || polarError.status === 401) {
+        const errorBody = typeof polarError.body === 'string' 
+          ? JSON.parse(polarError.body) 
+          : polarError.body;
+        
+        const errorMessage = errorBody?.error_description || errorBody?.error || 'Invalid or expired access token';
+        
+        console.error('❌ Polar API Authentication Error:', {
+          status: 401,
+          error: errorBody?.error || 'invalid_token',
+          description: errorMessage,
+          message: 'POLAR_ACCESS_TOKEN is invalid, expired, or revoked. Please generate a new token from https://polar.sh/settings/tokens and update the POLAR_ACCESS_TOKEN environment variable.'
+        });
+        
+        const error: ApiError = new Error(
+          'Polar API authentication failed. The access token is invalid, expired, or revoked. ' +
+          'Please contact the administrator to update the POLAR_ACCESS_TOKEN in the server configuration.'
+        );
+        error.statusCode = 503; // Service Unavailable - indicates server configuration issue
+        return next(error);
+      }
+      
+      // Handle Polar API errors specifically
+      if (polarError.statusCode === 422 || polarError.body) {
+        const errorBody = typeof polarError.body === 'string' 
+          ? JSON.parse(polarError.body) 
+          : polarError.body;
+        
+        if (errorBody?.detail && Array.isArray(errorBody.detail)) {
+          const productErrors = errorBody.detail.filter((d: any) => 
+            d.loc && d.loc.includes('products') && d.msg && d.msg.includes('does not exist')
+          );
+          
+          if (productErrors.length > 0) {
+            const missingProducts = productErrors.map((e: any) => e.input).join(', ');
+            const programNames = programs
+              .filter((p: any) => productIds.includes(p.polarProductId || ''))
+              .map((p: any) => p.name)
+              .join(', ');
+            
+            const error: ApiError = new Error(
+              `Product(s) do not exist in Polar: ${missingProducts}. ` +
+              `Affected programs: ${programNames}. ` +
+              `Please verify the Polar Product IDs in your database match products in your Polar dashboard.`
+            );
+            error.statusCode = 400;
+            return next(error);
+          }
+        }
+      }
+      
+      // Re-throw to be caught by outer catch
+      throw polarError;
+    }
 
     // Create payment record in database
     const payment = await prisma.payment.create({
@@ -90,7 +148,7 @@ export const createCheckout = async (req: Request, res: Response, next: NextFunc
   } catch (error: any) {
     console.error('Checkout creation error:', error);
     const apiError: ApiError = new Error(error.message || 'Failed to create checkout');
-    apiError.statusCode = 500;
+    apiError.statusCode = error.statusCode || 500;
     next(apiError);
   }
 };
@@ -116,7 +174,32 @@ export const verifyCheckout = async (req: Request, res: Response, next: NextFunc
     }
 
     // Get checkout from Polar
-    const checkout = await polar.checkouts.get({ id: checkoutId });
+    let checkout;
+    try {
+      checkout = await polar.checkouts.get({ id: checkoutId });
+    } catch (polarError: any) {
+      // Handle Polar API 401 errors (invalid/expired token)
+      if (polarError.statusCode === 401 || polarError.status === 401) {
+        const errorBody = typeof polarError.body === 'string' 
+          ? JSON.parse(polarError.body) 
+          : polarError.body;
+        
+        console.error('❌ Polar API Authentication Error:', {
+          status: 401,
+          error: errorBody?.error || 'invalid_token',
+          description: errorBody?.error_description || 'Invalid or expired access token',
+          message: 'POLAR_ACCESS_TOKEN is invalid, expired, or revoked. Please generate a new token from https://polar.sh/settings/tokens and update the POLAR_ACCESS_TOKEN environment variable.'
+        });
+        
+        const error: ApiError = new Error(
+          'Polar API authentication failed. The access token is invalid, expired, or revoked. ' +
+          'Please contact the administrator to update the POLAR_ACCESS_TOKEN in the server configuration.'
+        );
+        error.statusCode = 503; // Service Unavailable - indicates server configuration issue
+        return next(error);
+      }
+      throw polarError;
+    }
 
     // Find payment record
     const payment = await prisma.payment.findFirst({
