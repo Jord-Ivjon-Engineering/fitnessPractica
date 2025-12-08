@@ -27,6 +27,10 @@ fi
 # Navigate to application directory
 cd $APP_DIR
 
+# Stash any local changes before pulling
+echo -e "${YELLOW}💾 Stashing local changes (if any)...${NC}"
+git stash || true  # Stash changes, or do nothing if there are none
+
 # Pull latest changes
 echo -e "${YELLOW}📥 Pulling latest changes from Git...${NC}"
 git pull origin main || {
