@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MapPin, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -78,39 +78,53 @@ const Index = () => {
     }
   }, [location.hash]);
 
-  const planDetails: Record<string, { intervals?: string[]; message?: string }> = {
-    Individual: { 
+  const planDetails: Record<string, { intervals?: string[]; ageGroups?: Array<{ ageRange: string; intervals: string[] }>; message?: string }> = {
+    CrossFit: { 
       intervals: [
-        "Monday: 5:00 AM - 11:00 PM",
-        "Tuesday: 5:00 AM - 11:00 PM",
-        "Wednesday: 5:00 AM - 11:00 PM",
-        "Thursday: 5:00 AM - 11:00 PM",
-        "Friday: 5:00 AM - 11:00 PM",
-        "Saturday: 7:00 AM - 9:00 PM",
-        "Sunday: 7:00 AM - 9:00 PM"
+        "Monday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Tuesday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Wednesday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Thursday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Friday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Saturday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Sunday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM"
       ] 
     },
-    Instructor: { message: "Contact our gym" },
+    Aerobics: { intervals: [
+        "Monday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Tuesday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Wednesday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Thursday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Friday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Saturday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Sunday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM "
+      ]
+    },
     Children: { 
-      intervals: [
-        "Monday: 5:00 AM - 11:00 PM",
-        "Tuesday: 5:00 AM - 11:00 PM",
-        "Wednesday: 5:00 AM - 11:00 PM",
-        "Thursday: 5:00 AM - 11:00 PM",
-        "Friday: 5:00 AM - 11:00 PM",
-        "Saturday: 7:00 AM - 9:00 PM",
-        "Sunday: 7:00 AM - 9:00 PM"
-      ] 
+      ageGroups: [
+        {
+          ageRange: "Ages 4-8",
+          intervals: [
+            "Tuesday: 17:00 PM - 18:00 PM",
+            "Thursday: 17:00 PM - 18:00 PM",
+            "Saturday: 10:00 AM - 11:00 AM",
+          ]
+        },
+        {
+          ageRange: "Ages 9-12",
+          intervals: [
+            "Tuesday: 18:00 PM - 19:00 PM",
+            "Thursday: 18:00 PM - 19:00 PM",
+            "Saturday: 11:00 AM - 12:00 AM",
+          ]
+        }
+      ]
     },
     Pilates: { 
       intervals: [
-        "Monday: 5:00 AM - 11:00 PM",
-        "Tuesday: 5:00 AM - 11:00 PM",
-        "Wednesday: 5:00 AM - 11:00 PM",
-        "Thursday: 5:00 AM - 11:00 PM",
-        "Friday: 5:00 AM - 11:00 PM",
-        "Saturday: 7:00 AM - 9:00 PM",
-        "Sunday: 7:00 AM - 9:00 PM"
+        "Monday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM",
+        "Wednesday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM",
+        "Friday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM"
       ] 
     },
   };
@@ -181,8 +195,8 @@ const Index = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[
-              { name: "Individual", icon: "💪" },
-              { name: "Instructor", icon: "🏋️" },
+              { name: "CrossFit", icon: "💪" },
+              { name: "Aerobics", icon: "🏃" },
               { name: "Children", icon: "👶" },
               { name: "Pilates", icon: "🧘" }
             ].map((plan) => {
@@ -196,7 +210,7 @@ const Index = () => {
                     <div 
                       className="cursor-pointer"
                       onClick={() => {
-                        if (details?.intervals) {
+                        if (details?.intervals || details?.ageGroups) {
                           setOpenPlan(isOpen ? null : plan.name);
                         }
                       }}
@@ -207,7 +221,7 @@ const Index = () => {
                       
                       {details?.message ? (
                         <p className="text-sm text-muted-foreground mt-4">{details.message}</p>
-                      ) : details?.intervals ? (
+                      ) : (details?.intervals || details?.ageGroups) ? (
                         <div className="mt-4">
                           <div className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
                             {t('index.viewHours')}
@@ -225,15 +239,32 @@ const Index = () => {
                     </div>
                   </Card>
                   
-                  {details?.intervals && isOpen && (
+                  {isOpen && (details?.intervals || details?.ageGroups) && (
                     <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-card border border-border shadow-lg rounded-lg z-10">
-                      <div className="space-y-2">
-                        {details.intervals.map((interval, index) => (
-                          <p key={index} className="text-sm text-muted-foreground text-left">
-                            {interval}
-                          </p>
-                        ))}
-                      </div>
+                      {details?.ageGroups ? (
+                        <div className="space-y-4">
+                          {details.ageGroups.map((group, groupIndex) => (
+                            <div key={groupIndex} className="space-y-2">
+                              <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
+                                {group.ageRange}
+                              </h4>
+                              {group.intervals.map((interval, index) => (
+                                <p key={index} className="text-sm text-muted-foreground text-left pl-2">
+                                  {interval}
+                                </p>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      ) : details?.intervals ? (
+                        <div className="space-y-2">
+                          {details.intervals.map((interval, index) => (
+                            <p key={index} className="text-sm text-muted-foreground text-left">
+                              {interval}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -436,8 +467,12 @@ const Index = () => {
             {/* Location 1 */}
             <Card className="p-8 space-y-6 hover:shadow-xl transition-shadow bg-card border-border">
               <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)]">
-                  <MapPin className="w-6 h-6 text-white" />
+                <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden">
+                  <img 
+                    src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202025-12-10%20at%2021.30.13.jpeg" 
+                    alt="Fitness Practica Location" 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-foreground mb-2">Fitness Practica</h3>
@@ -460,8 +495,12 @@ const Index = () => {
             {/* Location 2 */}
             <Card className="p-8 space-y-6 hover:shadow-xl transition-shadow bg-card border-border">
               <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)]">
-                  <MapPin className="w-6 h-6 text-white" />
+                <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden">
+                  <img 
+                    src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/program_1764986739884-572851476.jpg" 
+                    alt="Fitness Practica 2 Location" 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-foreground mb-2">Fitness Practica 2</h3>

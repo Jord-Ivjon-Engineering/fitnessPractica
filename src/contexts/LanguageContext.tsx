@@ -46,8 +46,8 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.tagline': 'Transform your life through fitness',
     'footer.contact': 'Contact Us',
     'footer.hours': 'Hours',
-    'footer.hours.weekdays': 'Monday - Friday: 5:00 AM - 11:00 PM',
-    'footer.hours.weekend': 'Saturday - Sunday: 7:00 AM - 9:00 PM',
+    'footer.hours.weekdays': 'Monday - Saturday: 06:00 - 23:00',
+    'footer.hours.weekend': 'Sunday: 10:00 - 20:00',
     'footer.copyright': '© 2025 Fitness Practica. All rights reserved.',
     
     // Checkout
@@ -334,8 +334,8 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.tagline': 'Transformo jetën përmes fitnesit',
     'footer.contact': 'Kontakto',
     'footer.hours': 'Orët',
-    'footer.hours.weekdays': 'E Hënë - E Premte: 5:00 - 23:00',
-    'footer.hours.weekend': 'E Shtunë - E Dielë: 7:00 - 21:00',
+    'footer.hours.weekdays': 'E Hënë - E Shtunë: 06:00 - 23:00',
+    'footer.hours.weekend': 'E Dielë: 10:00 - 20:00',
     'footer.copyright': '© 2025 Fitness Practica. Të gjitha të drejtat e rezervuara.',
     
     // Checkout

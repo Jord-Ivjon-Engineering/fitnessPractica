@@ -41,6 +41,7 @@ const Footer = () => {
         
         <div className="mt-12 pt-8 border-t border-background/20 text-center text-background/70">
           <p>{t('footer.copyright')}</p>
+          <p>Powered By: IJ Technologies</p>
         </div>
       </div>
     </footer>
