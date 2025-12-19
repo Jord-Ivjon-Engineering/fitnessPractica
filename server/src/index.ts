@@ -26,36 +26,41 @@ const app = express();
 const server = http.createServer(app);
 
 // CORS origin validation function
-// Allows both with and without www subdomain
+// Hardcoded allowed domains: fitnesspractica.com and www.fitnesspractica.com
 const allowedOrigins = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
   // Allow requests with no origin (like mobile apps or curl requests)
   if (!origin) {
     return callback(null, true);
   }
 
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  
+  // Hardcoded allowed domains
+  const allowedDomains = [
+    'https://fitnesspractica.com',
+    'https://www.fitnesspractica.com',
+    'http://fitnesspractica.com',
+    'http://www.fitnesspractica.com',
+  ];
+
   // In development, allow localhost
   if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
     return callback(null, true);
   }
 
-  // Extract domain from CLIENT_URL (remove protocol and www if present)
-  const clientUrlObj = new URL(clientUrl);
-  const baseDomain = clientUrlObj.hostname.replace(/^www\./, '');
-  
-  // Check if origin matches the base domain with or without www
-  const originUrl = new URL(origin);
-  const originDomain = originUrl.hostname.replace(/^www\./, '');
-  
-  // Allow if domains match (with or without www)
-  if (originDomain === baseDomain) {
+  // Check if origin matches any allowed domain
+  if (allowedDomains.includes(origin)) {
     return callback(null, true);
   }
 
-  // Also check if origin exactly matches CLIENT_URL
-  if (origin === clientUrl) {
-    return callback(null, true);
+  // Also check domain match (in case protocol differs)
+  try {
+    const originUrl = new URL(origin);
+    const originHostname = originUrl.hostname.toLowerCase();
+    
+    if (originHostname === 'fitnesspractica.com' || originHostname === 'www.fitnesspractica.com') {
+      return callback(null, true);
+    }
+  } catch (error) {
+    // Invalid URL, reject
   }
 
   callback(new Error('Not allowed by CORS'));
