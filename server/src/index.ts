@@ -25,10 +25,50 @@ dotenv.config({ path: envPath });
 const app = express();
 const server = http.createServer(app);
 
+// CORS origin validation function
+// Allows both with and without www subdomain
+const allowedOrigins = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  // Allow requests with no origin (like mobile apps or curl requests)
+  if (!origin) {
+    return callback(null, true);
+  }
+
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  
+  // In development, allow localhost
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    return callback(null, true);
+  }
+
+  // Extract domain from CLIENT_URL (remove protocol and www if present)
+  const clientUrlObj = new URL(clientUrl);
+  const baseDomain = clientUrlObj.hostname.replace(/^www\./, '');
+  
+  // Check if origin matches the base domain with or without www
+  const originUrl = new URL(origin);
+  const originDomain = originUrl.hostname.replace(/^www\./, '');
+  
+  // Allow if domains match (with or without www)
+  if (originDomain === baseDomain) {
+    return callback(null, true);
+  }
+
+  // Also check if origin exactly matches CLIENT_URL
+  if (origin === clientUrl) {
+    return callback(null, true);
+  }
+
+  callback(new Error('Not allowed by CORS'));
+};
+
 // Configure Socket.IO with CORS
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      allowedOrigins(origin, (err, allow) => {
+        callback(err, allow === true);
+      });
+    },
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -52,7 +92,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true
 }));
 
