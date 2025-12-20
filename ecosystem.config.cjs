@@ -19,7 +19,7 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       autorestart: true,
-      max_memory_restart: '1.8G',  // Optimized for 4GB RAM system (single user)
+      max_memory_restart: '1800M',  // Optimized for 4GB RAM system (1.8GB = 1800MB)
       watch: false,
       ignore_watch: ['node_modules', 'logs', 'uploads']
     }
