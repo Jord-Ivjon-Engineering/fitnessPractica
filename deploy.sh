@@ -47,7 +47,7 @@ npm run build
 # Run database migrations
 echo -e "${YELLOW}🗄️  Running database migrations...${NC}"
 npm run prisma:generate
-npm run prisma:migrate deploy || {
+npm run prisma:migrate:deploy || {
     echo -e "${YELLOW}⚠️  Migration failed, but continuing...${NC}"
 }
 
