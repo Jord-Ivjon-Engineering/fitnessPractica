@@ -3,6 +3,7 @@ import prisma from '../config/database';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { polar } from '../lib/polar';
+import { getFrontendUrl } from '../utils/url';
 
 // Create Polar checkout session
 export const createCheckout = async (req: Request, res: Response, next: NextFunction) => {
@@ -54,7 +55,8 @@ export const createCheckout = async (req: Request, res: Response, next: NextFunc
     }, 0);
 
     // Create Polar checkout session
-    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173';
+    // Get frontend URL from request origin to handle both www and non-www versions
+    const frontendUrl = getFrontendUrl(req);
     
     let checkout;
     try {
