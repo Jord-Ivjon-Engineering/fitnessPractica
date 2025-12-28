@@ -29,6 +29,8 @@ const Index = () => {
   const [openPlan, setOpenPlan] = useState<string | null>(null);
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
+  const [currentSubtitlePair, setCurrentSubtitlePair] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { language, t } = useLanguage();
   const location = useLocation();
@@ -77,6 +79,37 @@ const Index = () => {
       }, 300); // Give time for page to load
     }
   }, [location.hash]);
+
+  // Rotate subtitles every 15 seconds
+  // Structure: 0 = subtitle 1 alone, 1 = subtitles 2&3, 2 = subtitles 4&5, 3 = subtitles 6&7, 4 = subtitles 8&9
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentSubtitlePair((prev) => (prev + 1) % 5); // 5 groups total (1 alone + 4 pairs)
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 50); // Small delay to ensure new content is rendered
+      }, 500); // Half of animation duration
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Get the subtitles for the current group
+  const getSubtitlePair = () => {
+    if (currentSubtitlePair === 0) {
+      // First one appears alone
+      return [t('hero.subtitle.1')];
+    } else {
+      // Rest appear in pairs
+      const baseIndex = (currentSubtitlePair - 1) * 2 + 2; // Start from subtitle 2
+      return [
+        t(`hero.subtitle.${baseIndex}`),
+        t(`hero.subtitle.${baseIndex + 1}`)
+      ];
+    }
+  };
 
   const planDetails: Record<string, { intervals?: string[]; ageGroups?: Array<{ ageRange: string; intervals: string[] }>; message?: string }> = {
     CrossFit: { 
@@ -160,9 +193,21 @@ const Index = () => {
           <h1 className="text-7xl md:text-8xl font-bold text-white mb-6 tracking-tight">
             {t('hero.title')}
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
-            {t('hero.subtitle')}
-          </p>
+          <div className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto space-y-2 overflow-hidden min-h-[120px] md:min-h-[140px] flex flex-col justify-center">
+            {getSubtitlePair().map((subtitle, index) => (
+              <p 
+                key={`${currentSubtitlePair}-${index}`}
+                className={`transition-all duration-1000 ease-in-out transform ${
+                  isAnimating 
+                    ? 'opacity-0 -translate-y-8 scale-95' 
+                    : 'opacity-100 translate-y-0 scale-100'
+                }`}
+                style={{ transitionDelay: `${index * 100}ms` }}
+              >
+                {subtitle}
+              </p>
+            ))}
+          </div>
           <Button 
             size="lg" 
             className="bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"

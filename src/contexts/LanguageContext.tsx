@@ -29,7 +29,15 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Hero
     'hero.title': 'Fitness Practica',
-    'hero.subtitle': 'Transform your body, elevate your mind, achieve your goals',
+    'hero.subtitle.1': 'Transform your body, focus your mind, reach the peaks.',
+    'hero.subtitle.2': "Don't dream of transformation. Make it reality.",
+    'hero.subtitle.3': 'Shape is not the end — it\'s your new beginning.',
+    'hero.subtitle.4': 'Strength is within you. We help you unleash it.',
+    'hero.subtitle.5': 'The gym doesn\'t just change the body. It changes life.',
+    'hero.subtitle.6': 'Build the body, feed the mind, unleash the potential.',
+    'hero.subtitle.7': 'Work hard, think clearly, achieve everything.',
+    'hero.subtitle.8': 'Transform yourself – physically, mentally, completely.',
+    'hero.subtitle.9': 'Build the body, clarify the mind, achieve goals.',
     'hero.button': 'Start Your Journey',
     
     // Sections
@@ -134,8 +142,6 @@ const translations: Record<Language, Record<string, string>> = {
     'checkout.processing': 'Processing...',
     'checkout.paymentSuccess': 'Payment successful! Redirecting to profile...',
     'checkout.paymentFailed': 'Payment failed or was canceled. Please try again.',
-    'checkout.program': 'program',
-    'checkout.programs': 'programs',
     'checkout.noValidPrograms': 'No valid programs in cart',
     'checkout.failedToCreateSession': 'Failed to create checkout session',
     'checkout.failedToProcess': 'Failed to process payment',
@@ -317,7 +323,15 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Hero
     'hero.title': 'Fitness Practica',
-    'hero.subtitle': 'Transformo trupin, ngritë mendjen, arritë qëllimet',
+    'hero.subtitle.1': 'Transformo trupin, fokuso mendjen, arri majat.',
+    'hero.subtitle.2': 'Mos ëndërro transformimin. Bëje realitet.',
+    'hero.subtitle.3': 'Forma nuk është fundi — është fillimi yt i ri.',
+    'hero.subtitle.4': 'Fuqia është brenda teje. Ne ndihmojmë ta nxjerrësh.',
+    'hero.subtitle.5': 'Palestra nuk ndryshon vetëm trupin. Ndryshon jetën.',
+    'hero.subtitle.6': 'Ndërto formën, ushqe mendjen, çliro potencialin.',
+    'hero.subtitle.7': 'Puno fort, mendo qartë, arrij gjithçka.',
+    'hero.subtitle.8': 'Transformo veten – fizikisht, mendërisht, plotësisht.',
+    'hero.subtitle.9': 'Rrit trupin, qartëso mendjen, arri qëllimet.',
     'hero.button': 'Fillo Udhëtimin Tënd',
     
     // Sections
@@ -422,8 +436,6 @@ const translations: Record<Language, Record<string, string>> = {
     'checkout.processing': 'Duke përpunuar...',
     'checkout.paymentSuccess': 'Pagesa u krye me sukses! Po ridrejtohet te profili...',
     'checkout.paymentFailed': 'Pagesa dështoi ose u anulua. Ju lutemi provoni përsëri.',
-    'checkout.program': 'program',
-    'checkout.programs': 'programe',
     'checkout.noValidPrograms': 'Nuk ka programe të vlefshme në shportë',
     'checkout.failedToCreateSession': 'Dështoi krijimi i sesionit të blerjes',
     'checkout.failedToProcess': 'Dështoi përpunimi i pagesës',
@@ -526,10 +538,6 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.switchLanguage': 'Kalo në Shqip',
     'admin.switchToEnglish': 'Switch to English',
     'admin.cart': 'Shporta',
-    'admin.member': 'Anëtar',
-    'admin.admin': 'Administrator',
-    'admin.member': 'Member',
-    'admin.admin': 'Admin',
     
     // Common
     'common.loading': 'Duke ngarkuar...',
