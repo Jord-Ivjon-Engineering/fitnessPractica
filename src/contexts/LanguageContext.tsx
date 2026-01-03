@@ -336,6 +336,39 @@ const translations: Record<Language, Record<string, string>> = {
     'about.story.paragraph1': 'Fitness Practica was founded with a simple yet powerful vision: to make professional fitness training accessible to everyone. We understand that each person\'s fitness journey is unique, and we\'re here to provide the tools, guidance, and support needed to succeed.',
     'about.story.paragraph2': 'Our team of experienced trainers and fitness experts work tirelessly to create comprehensive programs that cater to various fitness levels and goals. Whether you\'re looking to lose weight, build muscle, improve flexibility, or enhance your overall health, we have a program designed for you.',
     'about.story.paragraph3': 'Join thousands of satisfied members who have transformed their lives through our programs. Your fitness journey starts here, and we\'re excited to be part of it.',
+    // Plan Days/Times for Boxing and Spining
+    'plan.boxing.tuesday': 'Tuesday 19:00-20:00',
+    'plan.boxing.thursday': 'Thursday 20:00-21:00',
+    'plan.spining.monday': 'Monday 19:00-20:00',
+    'plan.spining.wednesday': 'Wednesday 19:00-20:00',
+    'plan.spining.friday': 'Friday 19:00-20:00',
+    // Plan Days/Times for CrossFit
+    'plan.crossfit.monday': 'Monday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM',
+    'plan.crossfit.tuesday': 'Tuesday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM',
+    'plan.crossfit.wednesday': 'Wednesday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM',
+    'plan.crossfit.thursday': 'Thursday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM',
+    'plan.crossfit.friday': 'Friday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM',
+    'plan.crossfit.saturday': 'Saturday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM',
+    'plan.crossfit.sunday': 'Sunday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM',
+    // Plan Days/Times for Aerobics
+    'plan.aerobics.monday': 'Monday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM',
+    'plan.aerobics.tuesday': 'Tuesday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM',
+    'plan.aerobics.wednesday': 'Wednesday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM',
+    'plan.aerobics.thursday': 'Thursday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM',
+    'plan.aerobics.friday': 'Friday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM',
+    'plan.aerobics.saturday': 'Saturday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM',
+    'plan.aerobics.sunday': 'Sunday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM',
+    // Plan Days/Times for Children
+    'plan.children.4-8.tuesday': 'Tuesday: 17:00 PM - 18:00 PM',
+    'plan.children.4-8.thursday': 'Thursday: 17:00 PM - 18:00 PM',
+    'plan.children.4-8.saturday': 'Saturday: 10:00 AM - 11:00 AM',
+    'plan.children.9-12.tuesday': 'Tuesday: 18:00 PM - 19:00 PM',
+    'plan.children.9-12.thursday': 'Thursday: 18:00 PM - 19:00 PM',
+    'plan.children.9-12.saturday': 'Saturday: 11:00 AM - 12:00 AM',
+    // Plan Days/Times for Pilates
+    'plan.pilates.monday': 'Monday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM',
+    'plan.pilates.wednesday': 'Wednesday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM',
+    'plan.pilates.friday': 'Friday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM',
   },
   al: {
     // Header
@@ -537,7 +570,7 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.back': 'Mbrapa',
     'admin.uploadVideo': 'Ngarko Video',
     'admin.selectExistingVideo': 'Zgjidh Video Ekzistuese',
-    'admin.nameCategoryRequired': 'Emri dhe kategoria janë të detyrueshëm',
+    'admin.nameCategoryRequired': 'Emri dhe kategoria janë të detyrueshme',
     'admin.programCreated': 'Programi u krijua me sukses!',
     'admin.programUpdated': 'Programi u përditësua me sukses!',
     'admin.programDeleted': 'Programi u fshi me sukses!',
@@ -654,6 +687,39 @@ const translations: Record<Language, Record<string, string>> = {
     'about.story.paragraph1': 'Fitness Practica u themelua me një vizion të thjeshtë por të fuqishëm: të bëjë trajnimin profesional të fitnesit të arritshëm për të gjithë. Ne kuptojmë se udhëtimi i fitnesit i çdo personi është unik, dhe ne jemi këtu për të ofruar mjetet, udhëzimet dhe mbështetjen e nevojshme për sukses.',
     'about.story.paragraph2': 'Ekipi ynë i trajnerëve me përvojë dhe ekspertëve të fitnesit punon pa u lodhur për të krijuar programe gjithëpërfshirëse që përmbushin nivele dhe qëllime të ndryshme fitnesi. Pavarësisht nëse po kërkoni të humbni peshë, të ndërtoni muskuj, të përmirësoni fleksibilitetin, ose të përmirësoni shëndetin tuaj të përgjithshëm, ne kemi një program të dizajnuar për ju.',
     'about.story.paragraph3': 'Bashkohuni me mijëra anëtarë të kënaqur që kanë transformuar jetën e tyre përmes programeve tona. Udhëtimi juaj i fitnesit fillon këtu, dhe ne jemi të ngazëllyer të jemi pjesë e tij.',
+    // Plan Days/Times for Boxing and Spining
+    'plan.boxing.tuesday': 'E martë 19:00-20:00',
+    'plan.boxing.thursday': 'E enjte 20:00-21:00',
+    'plan.spining.monday': 'E hënë 19:00-20:00',
+    'plan.spining.wednesday': 'E mërkurë 19:00-20:00',
+    'plan.spining.friday': 'E premte 19:00-20:00',
+    // Plan Days/Times for CrossFit
+    'plan.crossfit.monday': 'E hënë: 10:00 - 11:00 & 17:00 - 18:00 & 20:00 - 21:00',
+    'plan.crossfit.tuesday': 'E martë: 10:00 - 11:00 & 17:00 - 18:00 & 20:00 - 21:00',
+    'plan.crossfit.wednesday': 'E mërkurë: 10:00 - 11:00 & 17:00 - 18:00 & 20:00 - 21:00',
+    'plan.crossfit.thursday': 'E enjte: 10:00 - 11:00 & 17:00 - 18:00 & 20:00 - 21:00',
+    'plan.crossfit.friday': 'E premte: 10:00 - 11:00 & 17:00 - 18:00 & 20:00 - 21:00',
+    'plan.crossfit.saturday': 'E shtunë: 10:00 - 11:00 & 17:00 - 18:00 & 20:00 - 21:00',
+    'plan.crossfit.sunday': 'E diel: 10:00 - 11:00 & 17:00 - 18:00 & 20:00 - 21:00',
+    // Plan Days/Times for Aerobics
+    'plan.aerobics.monday': 'E hënë: 8:00 - 9:00 & 18:00 - 19:00',
+    'plan.aerobics.tuesday': 'E martë: 8:00 - 9:00 & 18:00 - 19:00',
+    'plan.aerobics.wednesday': 'E mërkurë: 8:00 - 9:00 & 18:00 - 19:00',
+    'plan.aerobics.thursday': 'E enjte: 8:00 - 9:00 & 18:00 - 19:00',
+    'plan.aerobics.friday': 'E premte: 8:00 - 9:00 & 18:00 - 19:00',
+    'plan.aerobics.saturday': 'E shtunë: 8:00 - 9:00 & 18:00 - 19:00',
+    'plan.aerobics.sunday': 'E diel: 8:00 - 9:00 & 18:00 - 19:00',
+    // Plan Days/Times for Children
+    'plan.children.4-8.tuesday': 'E martë: 17:00 - 18:00',
+    'plan.children.4-8.thursday': 'E enjte: 17:00 - 18:00',
+    'plan.children.4-8.saturday': 'E shtunë: 10:00 - 11:00',
+    'plan.children.9-12.tuesday': 'E martë: 18:00 - 19:00',
+    'plan.children.9-12.thursday': 'E enjte: 18:00 - 19:00',
+    'plan.children.9-12.saturday': 'E shtunë: 11:00 - 12:00',
+    // Plan Days/Times for Pilates
+    'plan.pilates.monday': 'E hënë: 8:30 - 9:30 & 18:00 - 19:00',
+    'plan.pilates.wednesday': 'E mërkurë: 8:30 - 9:30 & 18:00 - 19:00',
+    'plan.pilates.friday': 'E premte: 8:30 - 9:30 & 18:00 - 19:00',
   },
 };
 

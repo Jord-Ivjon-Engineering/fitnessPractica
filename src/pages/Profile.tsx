@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import CountryCodeSelector from "@/components/CountryCodeSelector";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,47 @@ const Profile = () => {
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editCountryCode, setEditCountryCode] = useState("+355"); // Default to Albania
+    // Country codes (copy from Signup)
+    const countryCodes = [
+      { code: "+355", country: "Albania", flag: "🇦🇱", isoCode: "AL" },
+      { code: "+213", country: "Algeria", flag: "🇩🇿", isoCode: "DZ" },
+      { code: "+374", country: "Armenia", flag: "🇦🇲", isoCode: "AM" },
+      { code: "+54", country: "Argentina", flag: "🇦🇷", isoCode: "AR" },
+      { code: "+61", country: "Australia", flag: "🇦🇺", isoCode: "AU" },
+      { code: "+43", country: "Austria", flag: "🇦🇹", isoCode: "AT" },
+      { code: "+994", country: "Azerbaijan", flag: "🇦🇿", isoCode: "AZ" },
+      { code: "+973", country: "Bahrain", flag: "🇧🇭", isoCode: "BH" },
+      { code: "+880", country: "Bangladesh", flag: "🇧🇩", isoCode: "BD" },
+      { code: "+375", country: "Belarus", flag: "🇧🇾", isoCode: "BY" },
+      { code: "+32", country: "Belgium", flag: "🇧🇪", isoCode: "BE" },
+      { code: "+591", country: "Bolivia", flag: "🇧🇴", isoCode: "BO" },
+      { code: "+387", country: "Bosnia", flag: "🇧🇦", isoCode: "BA" },
+      { code: "+55", country: "Brazil", flag: "🇧🇷", isoCode: "BR" },
+      { code: "+673", country: "Brunei", flag: "🇧🇳", isoCode: "BN" },
+      { code: "+359", country: "Bulgaria", flag: "🇧🇬", isoCode: "BG" },
+      { code: "+855", country: "Cambodia", flag: "🇰🇭", isoCode: "KH" },
+      { code: "+1", country: "Canada", flag: "🇨🇦", isoCode: "CA" },
+      { code: "+56", country: "Chile", flag: "🇨🇱", isoCode: "CL" },
+      { code: "+86", country: "China", flag: "🇨🇳", isoCode: "CN" },
+      { code: "+57", country: "Colombia", flag: "🇨🇴", isoCode: "CO" },
+      { code: "+506", country: "Costa Rica", flag: "🇨🇷", isoCode: "CR" },
+      { code: "+385", country: "Croatia", flag: "🇭🇷", isoCode: "HR" },
+      { code: "+357", country: "Cyprus", flag: "🇨🇾", isoCode: "CY" },
+      { code: "+420", country: "Czech Republic", flag: "🇨🇿", isoCode: "CZ" },
+      { code: "+45", country: "Denmark", flag: "🇩🇰", isoCode: "DK" },
+      { code: "+593", country: "Ecuador", flag: "🇪🇨", isoCode: "EC" },
+      { code: "+20", country: "Egypt", flag: "🇪🇬", isoCode: "EG" },
+      { code: "+503", country: "El Salvador", flag: "🇸🇻", isoCode: "SV" },
+      { code: "+372", country: "Estonia", flag: "🇪🇪", isoCode: "EE" },
+      { code: "+358", country: "Finland", flag: "🇫🇮", isoCode: "FI" },
+      { code: "+33", country: "France", flag: "🇫🇷", isoCode: "FR" },
+      { code: "+995", country: "Georgia", flag: "🇬🇪", isoCode: "GE" },
+      { code: "+49", country: "Germany", flag: "🇩🇪", isoCode: "DE" },
+      { code: "+233", country: "Ghana", flag: "🇬🇭", isoCode: "GH" },
+      { code: "+30", country: "Greece", flag: "🇬🇷", isoCode: "GR" },
+      // ... (add more as needed)
+    ];
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -102,7 +144,16 @@ const Profile = () => {
       if (response.data.success) {
         setProfile(response.data.data);
         setEditName(response.data.data.name);
-        setEditPhone(response.data.data.phone || "");
+        // Split phone into country code and number if possible
+        const phone = response.data.data.phone || "";
+        const found = countryCodes.find(c => phone.startsWith(c.code));
+        if (found) {
+          setEditCountryCode(found.code);
+          setEditPhone(phone.slice(found.code.length));
+        } else {
+          setEditCountryCode("+355");
+          setEditPhone(phone);
+        }
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -130,7 +181,7 @@ const Profile = () => {
     try {
       const response = await profileApi.updateProfile({
         name: editName,
-        phone: editPhone || undefined,
+        phone: editCountryCode + editPhone || undefined,
       });
       if (response.data.success) {
         setProfile(response.data.data);
@@ -327,12 +378,20 @@ const Profile = () => {
                     <label className="text-sm font-medium text-foreground mb-2 block">
                       {t('profile.phone')}
                     </label>
-                    <input
-                      type="tel"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                    <div className="flex gap-2">
+                      <CountryCodeSelector
+                        countries={countryCodes}
+                        value={editCountryCode}
+                        onChange={setEditCountryCode}
+                      />
+                      <input
+                        type="tel"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder={t('signup.phonePlaceholder')}
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -346,7 +405,20 @@ const Profile = () => {
                       onClick={() => {
                         setIsEditing(false);
                         setEditName(profile?.name || "");
-                        setEditPhone(profile?.phone || "");
+                        // Reset country code and phone
+                        if (profile?.phone) {
+                          const found = countryCodes.find(c => profile.phone.startsWith(c.code));
+                          if (found) {
+                            setEditCountryCode(found.code);
+                            setEditPhone(profile.phone.slice(found.code.length));
+                          } else {
+                            setEditCountryCode("+355");
+                            setEditPhone(profile.phone);
+                          }
+                        } else {
+                          setEditCountryCode("+355");
+                          setEditPhone("");
+                        }
                       }}
                     >
                       {t('common.cancel')}

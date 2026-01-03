@@ -91,7 +91,7 @@ const Index = () => {
           setIsAnimating(false);
         }, 50); // Small delay to ensure new content is rendered
       }, 500); // Half of animation duration
-    }, 15000);
+    }, 3000); // Rotate every 3 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -112,6 +112,19 @@ const Index = () => {
   };
 
   const planDetails: Record<string, { intervals?: string[]; ageGroups?: Array<{ ageRange: string; intervals: string[] }>; message?: string }> = {
+        Boxing: {
+          intervals: [
+            t('plan.boxing.tuesday'),
+            t('plan.boxing.thursday')
+          ]
+        },
+        Spining: {
+          intervals: [
+            t('plan.spining.monday'),
+            t('plan.spining.wednesday'),
+            t('plan.spining.friday')
+          ]
+        },
     CrossFit: { 
       intervals: [
         "Monday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
@@ -238,12 +251,14 @@ const Index = () => {
             <p className="text-xl text-muted-foreground">{t('section.plans.subtitle')}</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {[
               { name: "CrossFit", icon: "💪" },
               { name: "Aerobics", icon: "🏃" },
               { name: "Children", icon: "👶" },
-              { name: "Pilates", icon: "🧘" }
+              { name: "Boxing", icon: "🥊" },
+              { name: "Pilates", icon: "🧘" },
+              { name: "Spining", icon: "🚴‍♂️" }
             ].map((plan) => {
               const details = planDetails[plan.name];
               const isOpen = openPlan === plan.name;
@@ -303,11 +318,14 @@ const Index = () => {
                         </div>
                       ) : details?.intervals ? (
                         <div className="space-y-2">
-                          {details.intervals.map((interval, index) => (
-                            <p key={index} className="text-sm text-muted-foreground text-left">
-                              {interval}
-                            </p>
-                          ))}
+                          {details.intervals.map((interval, index) => {
+                            // Split by comma and render each part on its own line
+                            return interval.split(',').map((part, subIndex) => (
+                              <p key={index + '-' + subIndex} className="text-sm text-muted-foreground text-left">
+                                {part.trim()}
+                              </p>
+                            ));
+                          })}
                         </div>
                       ) : null}
                     </div>
@@ -362,8 +380,8 @@ const Index = () => {
 
                   return (
                     <CarouselItem key={program.id}>
-                      <Card className="overflow-hidden border-border">
-                        <div className="relative h-96">
+                      <Card className="overflow-hidden border-border min-h-[520px]">
+                        <div className="relative h-[520px]">
                           <img 
                             src={program.imageUrl || fallbackImage} 
                             alt={program.name}
@@ -388,7 +406,7 @@ const Index = () => {
                             </div>
                             <h3 className="text-4xl font-bold mb-2">{program.name}</h3>
                             {program.description && (
-                              <p className="text-sm text-white/90 mb-2 line-clamp-2">{program.description}</p>
+                              <p className="text-sm text-white/90 mb-2">{program.description}</p>
                             )}
                             {(program.startDate || program.endDate) && (
                               <div className="text-sm text-white/80 mb-2">
