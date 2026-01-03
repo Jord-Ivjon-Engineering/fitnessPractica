@@ -42,8 +42,8 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.button': 'Start Your Journey',
     
     // Sections
-    'section.plans.title': 'Choose Your Plan',
-    'section.plans.subtitle': 'Find the perfect fit for your fitness journey',
+    'section.plans.title': 'Choose Your Plan At The Gym',
+    'section.plans.subtitle': 'Find The Perfect Fit For Your Fitness Journey At The Gym',
     'section.programs.title': 'Training Programs',
     'section.programs.subtitle': 'Specialized programs designed for your goals',
     'section.about.title': 'Your Fitness',
@@ -392,8 +392,8 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.button': 'Fillo Udhëtimin Tënd',
     
     // Sections
-    'section.plans.title': 'Zgjidh Planin Tënd',
-    'section.plans.subtitle': 'Gjej përshtatjen e përsosur për udhëtimin tënd të fitnesit',
+    'section.plans.title': 'Zgjidh Planin Tënd Në Palestër',
+    'section.plans.subtitle': 'Gjej përshtatjen e përsosur për udhëtimin tënd të fitnesit në palestër',
     'section.programs.title': 'Programe Trajnimi',
     'section.programs.subtitle': 'Programe të specializuara të dizajnuara për qëllimet e tua',
     'section.about.title': 'Transformimi',
