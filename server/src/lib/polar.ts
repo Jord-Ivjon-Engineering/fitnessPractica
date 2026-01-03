@@ -57,6 +57,11 @@ if (serverEnv === 'sandbox') {
 
 export const polar = new Polar(polarConfig);
 
+// Export the server environment for use in other parts of the application
+export const getPolarEnvironment = (): 'sandbox' | 'production' => {
+  return serverEnv === 'sandbox' ? 'sandbox' : 'production';
+};
+
 // Helper function to check if error is authentication-related
 export function isPolarAuthError(error: any): boolean {
   return error?.statusCode === 401 || 

@@ -3,11 +3,13 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 export interface CartItem {
   id: string;
   programId?: number; // Database ID for the program
+  polarProductId?: string; // Direct Polar Product ID (for products not in database)
   name: string;
   category: string;
   image: string;
   price?: number;
   currency?: string;
+  months?: number; // Duration in months (for live streams)
 }
 
 interface CartContextType {

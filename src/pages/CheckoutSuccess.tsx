@@ -13,6 +13,7 @@ const CheckoutSuccess = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
+  const { cartItems } = useCart();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<"success" | "error" | "pending">("pending");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -33,7 +34,14 @@ const CheckoutSuccess = () => {
     // Verify checkout status with retry logic
     const verifyCheckout = async (retryCount = 0) => {
       try {
-        const response = await checkoutApi.verifyCheckout(checkoutId);
+        // Pass cart items for live stream months information
+        const cartItemsData = cartItems.map(item => ({
+          id: item.id,
+          polarProductId: item.polarProductId,
+          programId: item.programId,
+          months: item.months,
+        }));
+        const response = await checkoutApi.verifyCheckout(checkoutId, { cartItems: cartItemsData });
         
         if (response.data.success) {
           const checkoutStatus = response.data.data.checkout.status;
@@ -42,6 +50,10 @@ const CheckoutSuccess = () => {
           if (checkoutStatus === "completed" || checkoutStatus === "paid" || paymentStatus === "completed") {
             setStatus("success");
             setLoading(false);
+            // Automatically redirect to profile after successful payment
+            setTimeout(() => {
+              navigate("/profile");
+            }, 2000); // 2 second delay to show success message
           } else if (checkoutStatus === "open" || checkoutStatus === "pending") {
             // Retry up to 5 times with increasing delays
             if (retryCount < 5) {
@@ -80,7 +92,7 @@ const CheckoutSuccess = () => {
     };
 
     verifyCheckout();
-  }, [checkoutId, isAuthenticated, navigate]);
+  }, [checkoutId, isAuthenticated, navigate, cartItems]);
 
   if (loading) {
     return (
@@ -103,22 +115,9 @@ const CheckoutSuccess = () => {
               <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
               <h1 className="text-4xl font-bold text-foreground mb-4">Payment Successful!</h1>
               <p className="text-lg text-muted-foreground mb-6">
-                Thank you for your purchase. Your programs are now available in your profile.
+                Thank you for your purchase. Redirecting you to your profile...
               </p>
-              <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-                <Button
-                  onClick={() => navigate("/profile")}
-                  className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90"
-                >
-                  View My Programs
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/#programs")}
-                >
-                  Browse More Programs
-                </Button>
-              </div>
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
             </>
           )}
 

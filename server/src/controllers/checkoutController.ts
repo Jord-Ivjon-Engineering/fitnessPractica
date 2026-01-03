@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/database';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
-import { polar } from '../lib/polar';
+import { polar, getPolarEnvironment } from '../lib/polar';
 import { getFrontendUrl } from '../utils/url';
 
 // Create Polar checkout session
@@ -17,7 +17,7 @@ export const createCheckout = async (req: Request, res: Response, next: NextFunc
       return next(error);
     }
 
-    const { productIds } = req.body;
+    const { productIds, cartItems } = req.body;
 
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
       const error: ApiError = new Error('productIds array is required');
@@ -37,22 +37,21 @@ export const createCheckout = async (req: Request, res: Response, next: NextFunc
     }
 
     // Validate products exist and get their Polar Product IDs
+    // Some products (like live streams) may have direct polarProductId without being in database
     const programs = await prisma.trainingProgram.findMany({
       where: {
         polarProductId: { in: productIds },
       },
     });
 
-    if (programs.length !== productIds.length) {
-      const error: ApiError = new Error('One or more products not found');
-      error.statusCode = 400;
-      return next(error);
-    }
-
-    // Calculate total amount
-    const totalAmount = programs.reduce((sum, program) => {
+    // Calculate total amount from programs found in database
+    // For products not in database (like live streams), Polar will handle validation and pricing
+    let totalAmount = programs.reduce((sum, program) => {
       return sum + (program.price ? Number(program.price) : 0);
     }, 0);
+
+    // Note: If productIds.length > programs.length, some products are direct Polar products
+    // (not in database). Polar will handle validation and pricing for those.
 
     // Create Polar checkout session
     // Get frontend URL from request origin to handle both www and non-www versions
@@ -168,6 +167,7 @@ export const verifyCheckout = async (req: Request, res: Response, next: NextFunc
     }
 
     const { checkoutId } = req.params;
+    const { cartItems } = req.body || {}; // Get cart items from request body (for live streams with months)
 
     if (!checkoutId) {
       const error: ApiError = new Error('checkoutId is required');
@@ -302,17 +302,114 @@ export const verifyCheckout = async (req: Request, res: Response, next: NextFunc
               });
             }
           } else {
-            console.warn(`Program not found for Polar Product ID: ${productId}`);
+            // This is a live stream or product not in database
+            // Check if we have cart item data with months for live streams
+            const cartItem = cartItems?.find((item: any) => 
+              item.polarProductId === productId
+            );
+            
+            if (cartItem?.months) {
+              // Find or create "Live Stream" program entry
+              let liveStreamProgram = await prisma.trainingProgram.findFirst({
+                where: {
+                  name: 'Live Stream',
+                },
+              });
+              
+              if (!liveStreamProgram) {
+                // Create the Live Stream program if it doesn't exist
+                liveStreamProgram = await prisma.trainingProgram.create({
+                  data: {
+                    name: 'Live Stream',
+                    category: 'Live Training',
+                    description: 'Live streaming access',
+                    price: null,
+                    currency: 'eur',
+                  },
+                });
+                console.log(`Created Live Stream program with ID: ${liveStreamProgram.id}`);
+              }
+              
+              // Create UserProgram for live stream with expiration date
+              const expiresAt = new Date();
+              expiresAt.setMonth(expiresAt.getMonth() + cartItem.months);
+              
+              // Check if user already has this live stream
+              const existingUserProgram = await prisma.userProgram.findFirst({
+                where: {
+                  userId: userId,
+                  programId: liveStreamProgram.id,
+                  status: 'active',
+                },
+              });
+              
+              if (existingUserProgram) {
+                // Update existing live stream subscription
+                await prisma.userProgram.update({
+                  where: {
+                    id: existingUserProgram.id,
+                  },
+                  data: {
+                    status: 'active',
+                    expiresAt: expiresAt,
+                    paymentId: payment.id,
+                  },
+                });
+                console.log(`Updated live stream subscription for user ${userId}, expires at ${expiresAt}`);
+              } else {
+                // Create new live stream subscription
+                await prisma.userProgram.create({
+                  data: {
+                    userId: userId,
+                    programId: liveStreamProgram.id, // Use Live Stream program ID
+                    status: 'active',
+                    expiresAt: expiresAt,
+                    paymentId: payment.id,
+                  },
+                });
+                console.log(`Granted live stream access to user ${userId} for ${cartItem.months} months, expires at ${expiresAt}`);
+              }
+            } else {
+              console.warn(`Program not found for Polar Product ID: ${productId}`);
+            }
           }
         }
 
-        // Update payment record
+        // Update payment record with actual amount from Polar
+        // Get the actual amount from checkout or order (for live streams not in database)
+        let actualAmount = Number(payment.amount);
+        let actualCurrency = payment.currency;
+        
+        // Try to get amount from order if available
+        if (orderId) {
+          try {
+            const order = await (polar as any).orders?.get?.({ id: orderId });
+            if (order && order.amount) {
+              // Polar amounts are in cents, convert to decimal
+              actualAmount = order.amount / 100;
+              actualCurrency = order.currency?.toUpperCase() || actualCurrency;
+            }
+          } catch (err) {
+            // If order not available, try checkout
+            if (checkoutAny.amount) {
+              actualAmount = checkoutAny.amount / 100;
+              actualCurrency = checkoutAny.currency?.toUpperCase() || actualCurrency;
+            }
+          }
+        } else if (checkoutAny.amount) {
+          // Fallback to checkout amount
+          actualAmount = checkoutAny.amount / 100;
+          actualCurrency = checkoutAny.currency?.toUpperCase() || actualCurrency;
+        }
+        
         await prisma.payment.update({
           where: {
             id: payment.id,
           },
           data: {
             status: 'completed',
+            amount: actualAmount,
+            currency: actualCurrency,
             polarOrderId: orderId,
             polarCustomerId: customerId || checkoutAny.customer?.id || null,
           },
@@ -369,6 +466,21 @@ export const verifyCheckout = async (req: Request, res: Response, next: NextFunc
     const apiError: ApiError = new Error(error.message || 'Failed to verify checkout');
     apiError.statusCode = 500;
     next(apiError);
+  }
+};
+
+// Get Polar environment (sandbox or production)
+export const getPolarEnv = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const environment = getPolarEnvironment();
+    res.json({
+      success: true,
+      data: {
+        environment,
+      },
+    });
+  } catch (error) {
+    next(error);
   }
 };
 

@@ -95,9 +95,14 @@ const Checkout = () => {
       return;
     }
 
-    // Get Polar Product IDs from programs
+    // Get Polar Product IDs from programs or direct polarProductId
     const productIds = cartItems
       .map(item => {
+        // If item has direct polarProductId, use it
+        if (item.polarProductId) {
+          return item.polarProductId;
+        }
+        // Otherwise, look up from program
         if (item.programId && programs[item.programId]) {
           return programs[item.programId].polarProductId;
         }
@@ -112,7 +117,15 @@ const Checkout = () => {
 
     setCheckoutLoading(true);
     try {
-      const response = await checkoutApi.createCheckout({ productIds });
+      const response = await checkoutApi.createCheckout({ 
+        productIds,
+        cartItems: cartItems.map(item => ({
+          id: item.id,
+          polarProductId: item.polarProductId,
+          programId: item.programId,
+          months: item.months,
+        }))
+      });
       
       if (response.data.success && response.data.data.url) {
         // Clear cart and redirect to Polar checkout

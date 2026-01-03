@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Target, Video } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { trainingProgramApi, TrainingProgram } from "@/services/api";
+import { trainingProgramApi, checkoutApi, TrainingProgram } from "@/services/api";
 import {
   Carousel,
   CarouselContent,
@@ -31,7 +31,33 @@ const Index = () => {
   const [programsLoading, setProgramsLoading] = useState(true);
   const [currentSubtitlePair, setCurrentSubtitlePair] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [polarEnvironment, setPolarEnvironment] = useState<'sandbox' | 'production' | null>(null);
+  const [selectedMonths, setSelectedMonths] = useState<number>(1);
   const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Price mapping for live stream months
+  const liveStreamPrices: Record<number, number> = {
+    1: 20,
+    2: 35,
+    6: 100,
+    12: 170,
+  };
+  
+  // Polar Product ID mapping for live streams
+  const liveStreamProductIds = {
+    sandbox: {
+      1: '7a9fadf7-43ea-4141-8432-964aec8f0f9c',
+      2: 'c801b8ca-32a6-4a99-90ad-0deab9837fa8',
+      6: 'c8f17a0d-2360-47ab-846a-9cd87c608833',
+      12: 'deaf9337-3439-4782-ae7d-f091fb376693',
+    },
+    production: {
+      1: 'ec5c52ce-ddfb-4735-bbb8-4a9060a959f6',
+      2: '2d5a7c85-1eba-42f9-adc0-2227e2270d9f',
+      6: 'a2e10122-44aa-43fd-a400-3be0afde7499',
+      12: '54dd41a7-6d02-4ac0-a189-6a0415559f1f',
+    },
+  };
   const { language, t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,6 +65,24 @@ const Index = () => {
   const { addToCart } = useCart();
 
   const videoUrl = heroVideo;
+
+  // Fetch Polar environment
+  useEffect(() => {
+    const fetchPolarEnvironment = async () => {
+      try {
+        const response = await checkoutApi.getEnvironment();
+        if (response.data.success) {
+          setPolarEnvironment(response.data.data.environment);
+        }
+      } catch (error) {
+        console.error('Error fetching Polar environment:', error);
+        // Default to production if fetch fails
+        setPolarEnvironment('production');
+      }
+    };
+
+    fetchPolarEnvironment();
+  }, []);
 
   // Fetch training programs from database
   useEffect(() => {
@@ -319,6 +363,96 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Live Streams Section */}
+      <section id="livestreams" className="py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Video className="w-8 h-8 text-primary" />
+              <h2 className="text-5xl font-bold text-foreground">{t('section.livestreams.title')}</h2>
+            </div>
+            <p className="text-xl text-muted-foreground">{t('section.livestreams.subtitle')}</p>
+          </div>
+          
+          <div className="w-full max-w-5xl mx-auto">
+            <Card className="overflow-hidden border-border">
+              <div className="relative h-96">
+                <div className="w-full h-full bg-gradient-to-br from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <Video className="w-24 h-24 mx-auto mb-4 opacity-80" />
+                    <p className="text-lg font-semibold">Live Stream</p>
+                  </div>
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                  <div className="inline-block px-4 py-1 mb-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] text-sm font-semibold">
+                    Live Training
+                  </div>
+                  <h3 className="text-4xl font-bold mb-2">Fitness Practica Live</h3>
+                  <p className="text-sm text-white/90 mb-2">Join our live training sessions and train with us in real-time from anywhere</p>
+                  
+                  {/* Month Selection */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold mb-2 text-white/90">Select Duration:</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1, 2, 6, 12].map((months) => (
+                        <button
+                          key={months}
+                          onClick={() => setSelectedMonths(months)}
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                            selectedMonths === months
+                              ? 'bg-white text-[hsl(14,90%,55%)]'
+                              : 'bg-white/20 text-white hover:bg-white/30'
+                          }`}
+                        >
+                          {months} {months === 1 ? 'Month' : 'Months'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <p className="text-2xl font-semibold">
+                      {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'eur',
+                      }).format(liveStreamPrices[selectedMonths])}
+                    </p>
+                  </div>
+                  <Button 
+                    size="lg"
+                    className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"
+                    onClick={() => {
+                      if (isAuthenticated) {
+                        // Use the correct Polar Product ID based on environment and months
+                        const env = polarEnvironment === 'sandbox' ? 'sandbox' : 'production';
+                        const polarProductId = liveStreamProductIds[env][selectedMonths as keyof typeof liveStreamProductIds.sandbox];
+                        
+                        addToCart({
+                          id: `fitness-practica-live-${selectedMonths}`,
+                          name: `Fitness Practica Live (${selectedMonths} ${selectedMonths === 1 ? 'Month' : 'Months'})`,
+                          category: 'Live Training',
+                          image: '',
+                          price: liveStreamPrices[selectedMonths],
+                          currency: 'eur',
+                          polarProductId: polarProductId,
+                          months: selectedMonths,
+                        });
+                      } else {
+                        navigate('/login');
+                      }
+                    }}
+                    disabled={polarEnvironment === null}
+                  >
+                    {isAuthenticated ? t('button.addToCart') : t('button.loginToPurchase')}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Training Programs Slideshow */}
       <section id="programs" className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
@@ -495,6 +629,16 @@ const Index = () => {
               <p className="text-lg text-muted-foreground leading-relaxed">
                 {t('index.about.p2')}
               </p>
+              <Button
+                onClick={() => {
+                  navigate('/about');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="mt-6"
+                size="lg"
+              >
+                {t('header.about')}
+              </Button>
             </div>
           </div>
         </div>
