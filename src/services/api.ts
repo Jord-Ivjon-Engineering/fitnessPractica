@@ -195,6 +195,12 @@ export const paymentApi = {
 // Checkout API
 export interface CheckoutRequest {
   productIds: string[]; // Polar Product IDs
+  cartItems?: Array<{
+    id: string;
+    polarProductId?: string;
+    programId?: number;
+    months?: number;
+  }>; // Cart items with metadata (for live streams with months)
 }
 
 export interface CheckoutResponse {
@@ -204,6 +210,15 @@ export interface CheckoutResponse {
     checkoutId: string;
     paymentId: number;
   };
+}
+
+export interface VerifyCheckoutRequest {
+  cartItems?: Array<{
+    id: string;
+    polarProductId?: string;
+    programId?: number;
+    months?: number;
+  }>;
 }
 
 export interface VerifyCheckoutResponse {
@@ -231,6 +246,7 @@ export interface VerifyCheckoutResponse {
 }
 
 export const checkoutApi = {
+  getEnvironment: () => api.get<{ success: boolean; data: { environment: 'sandbox' | 'production' } }>('/checkout/environment'),
   createCheckout: (data: CheckoutRequest) =>
     api.post<CheckoutResponse>('/checkout', data),
   verifyCheckout: (checkoutId: string) =>

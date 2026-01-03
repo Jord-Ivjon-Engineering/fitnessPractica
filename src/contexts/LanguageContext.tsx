@@ -50,6 +50,8 @@ const translations: Record<Language, Record<string, string>> = {
     'section.about.title2': 'Transformation',
     'section.locations.title': 'Our Locations',
     'section.locations.subtitle': 'Find us at one of our convenient locations',
+    'section.livestreams.title': 'Live Streams',
+    'section.livestreams.subtitle': 'Join our live training sessions from anywhere',
     
     // Footer
     'footer.tagline': 'Transform your life through fitness',
@@ -58,6 +60,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.hours.weekdays': 'Monday - Saturday: 06:00 - 23:00',
     'footer.hours.weekend': 'Sunday: 10:00 - 20:00',
     'footer.copyright': '© 2025 Fitness Practica. All rights reserved.',
+    'footer.socials': 'Socials',
     
     // Checkout
     'checkout.title': 'Checkout',
@@ -369,6 +372,10 @@ const translations: Record<Language, Record<string, string>> = {
     'plan.pilates.monday': 'Monday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM',
     'plan.pilates.wednesday': 'Wednesday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM',
     'plan.pilates.friday': 'Friday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM',
+    'about.box1.title': 'Our Commitment',
+    'about.box1.description': '<p style="margin-bottom: 1rem;">🔹 <strong>Position:</strong> Fitness Instructor, Aerobics, Pilates, Tabata Insanity</p><p style="margin-bottom: 1rem;">🔹 <strong>Experience:</strong> Over 25 years in the field of physical activity</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Specializations:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Functional fitness</li><li style="margin-bottom: 0.25rem;">▪ Aerobic training, Pilates, Tabata Insanity, Full Body workout</li><li style="margin-bottom: 0.25rem;">▪ Physical conditioning for all ages</li><li style="margin-bottom: 0.25rem;">▪ Athletic and physical preparation</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Training Style:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Structured, clear and motivating</li><li style="margin-bottom: 0.25rem;">▪ Adapted for all levels – from beginners to advanced</li><li style="margin-bottom: 0.25rem;">▪ Focus on correct technique and gradual progress</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Benefits of working with him:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Deep and proven experience of 25 years</li><li style="margin-bottom: 0.25rem;">▪ Positive approach and inspiring energy</li><li style="margin-bottom: 0.25rem;">▪ Individual attention for each client</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>His Mission:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 1rem;">To help every individual reach their maximum potential – physically and mentally.</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Motto:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 0;">"Discipline builds the body, dedication strengthens character."</p>',
+    'about.box2.title': 'Your Success',
+    'about.box2.description': '<p style="margin-bottom: 1rem;">🔹 <strong>Position:</strong> Fitness Instructor & Pilates</p><p style="margin-bottom: 1rem;">🔹 <strong>Experience:</strong> 8 years in the field of personal and group training</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Specializations:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Functional fitness and strength</li><li style="margin-bottom: 0.25rem;">▪ Pilates for stability, flexibility and balance</li><li style="margin-bottom: 0.25rem;">▪ Training for toning and physical performance</li><li style="margin-bottom: 0.25rem;">▪ Athletic and physical preparation</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Training Style:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Dynamic, contemporary and adapted to individual needs</li><li style="margin-bottom: 0.25rem;">▪ Combines modern Pilates techniques with basic fitness principles</li><li style="margin-bottom: 0.25rem;">▪ Focus on mind-body connection and long-term progress</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Benefits of working with him:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Professional and friendly approach</li><li style="margin-bottom: 0.25rem;">▪ Organized and effective sessions</li><li style="margin-bottom: 0.25rem;">▪ Continuous support for motivation and improvement</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>His Mission:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 1rem;">To help every client feel stronger, more stable and more confident in their own body.</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Motto:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 0;">"The body is your tool – learn to use it with control and awareness."</p>',
   },
   al: {
     // Header
@@ -400,6 +407,8 @@ const translations: Record<Language, Record<string, string>> = {
     'section.about.title2': 'i Fitnesit Tënd',
     'section.locations.title': 'Lokacionet Tona',
     'section.locations.subtitle': 'Na gjej në një nga lokacionet tona të përshtatshme',
+    'section.livestreams.title': 'Transmetime Live',
+    'section.livestreams.subtitle': 'Bashkohu me seancat tona të trajnimit live nga kudo',
     
     // Footer
     'footer.tagline': 'Transformo jetën përmes fitnesit',
@@ -408,6 +417,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.hours.weekdays': 'E Hënë - E Shtunë: 06:00 - 23:00',
     'footer.hours.weekend': 'E Dielë: 10:00 - 20:00',
     'footer.copyright': '© 2025 Fitness Practica. Të gjitha të drejtat e rezervuara.',
+    'footer.socials': 'Rrjetet Sociale',
     
     // Checkout
     'checkout.title': 'Blerje',
@@ -720,6 +730,10 @@ const translations: Record<Language, Record<string, string>> = {
     'plan.pilates.monday': 'E hënë: 8:30 - 9:30 & 18:00 - 19:00',
     'plan.pilates.wednesday': 'E mërkurë: 8:30 - 9:30 & 18:00 - 19:00',
     'plan.pilates.friday': 'E premte: 8:30 - 9:30 & 18:00 - 19:00',
+    'about.box1.title': 'Përkushtimi Ynë',
+    'about.box1.description': '<p style="margin-bottom: 1rem;">🔹 <strong>Pozicioni:</strong> Instruktor Fitnesi, Aerobie, Pilates, Tabata Insanity</p><p style="margin-bottom: 1rem;">🔹 <strong>Eksperiencë:</strong> Mbi 25 vite në fushën e aktivitetit fizik</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Specializimet:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Fitnes funksional</li><li style="margin-bottom: 0.25rem;">▪ Trajnim aerobik, pilates, Tabata Insanity, Full Body workout</li><li style="margin-bottom: 0.25rem;">▪ Kondicion fizik për të gjitha moshat</li><li style="margin-bottom: 0.25rem;">▪ Përgatitës Atletik dhe fizik</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Stili i trajnimit:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ I strukturuar, i qartë dhe motivues</li><li style="margin-bottom: 0.25rem;">▪ I përshtatur për të gjitha nivelet – nga fillestarët te të avancuarit</li><li style="margin-bottom: 0.25rem;">▪ Fokus te teknika e saktë dhe progresi gradual</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Përparësitë e punës me të:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Eksperiencë e thellë dhe e provuar në 25 vite</li><li style="margin-bottom: 0.25rem;">▪ Qasje pozitive dhe energji frymëzuese</li><li style="margin-bottom: 0.25rem;">▪ Vëmendje individuale për çdo klient</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Misioni i tij:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 1rem;">Të ndihmojë çdo individ të arrijë potencialin maksimal – fizikisht dhe mendërisht.</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Motto:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 0;">"Disiplina ndërton trupin, përkushtimi forcon karakterin."</p>',
+    'about.box2.title': 'Suksesi Juaj',
+    'about.box2.description': '<p style="margin-bottom: 1rem;">🔹 <strong>Pozicioni:</strong> Instruktor Fitnesi & Pilates</p><p style="margin-bottom: 1rem;">🔹 <strong>Eksperiencë:</strong> 8 vite në fushën e trajnimit personal dhe grupor</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Specializimet:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Fitnes funksional dhe forcë</li><li style="margin-bottom: 0.25rem;">▪ Pilates për qëndrueshmëri, fleksibilitet dhe balancë</li><li style="margin-bottom: 0.25rem;">▪ Trajnime për tonifikim dhe performancë fizike</li><li style="margin-bottom: 0.25rem;">▪ Përgatitës Atletik dhe fizik</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Stili i trajnimit:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Dinamik, bashkëkohor dhe i përshtatur sipas nevojave individuale</li><li style="margin-bottom: 0.25rem;">▪ Kombinon teknikat moderne të Pilates me principet bazë të fitnesit</li><li style="margin-bottom: 0.25rem;">▪ Fokus te lidhja trup-mendje dhe progresi afatgjatë</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Përparësitë e punës me të:</strong></p><ul style="list-style: none; padding-left: 1.5rem; margin-bottom: 1rem;"><li style="margin-bottom: 0.25rem;">▪ Qasje profesionale dhe miqësore</li><li style="margin-bottom: 0.25rem;">▪ Seanca të organizuara dhe efektive</li><li style="margin-bottom: 0.25rem;">▪ Mbështetje e vazhdueshme për motivim dhe përmirësim</li></ul><p style="margin-bottom: 0.5rem;">🔹 <strong>Misioni i tij:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 1rem;">Të ndihmojë çdo klient të ndjehet më i fortë, më i qëndrueshëm dhe më i sigurt në trupin e vet.</p><p style="margin-bottom: 0.5rem;">🔹 <strong>Motto:</strong></p><p style="padding-left: 1.5rem; margin-bottom: 0;">"Trupi është mjeti yt – mëso ta përdorësh me kontroll dhe vetëdije."</p>',
   },
 };
 
