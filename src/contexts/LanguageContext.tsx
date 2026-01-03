@@ -102,13 +102,14 @@ const translations: Record<Language, Record<string, string>> = {
     'signup.emailPlaceholder': 'Enter your email',
     'signup.passwordPlaceholder': 'Create a password',
     'signup.confirmPasswordPlaceholder': 'Confirm your password',
-    'signup.phonePlaceholder': 'Enter your phone (optional)',
+    'signup.phonePlaceholder': 'Enter your phone number',
     'signup.createAccount': 'Sign Up',
     'signup.creating': 'Creating account...',
     'signup.hasAccount': 'Already have an account?',
     'signup.signIn': 'Sign in',
     'signup.passwordsNotMatch': 'Passwords do not match',
     'signup.passwordTooShort': 'Password must be at least 6 characters',
+    'signup.phoneRequired': 'Phone number is required',
     'signup.failed': 'Signup failed. Please try again.',
     
     // Profile
@@ -396,13 +397,14 @@ const translations: Record<Language, Record<string, string>> = {
     'signup.emailPlaceholder': 'Shkruani email-in tuaj',
     'signup.passwordPlaceholder': 'Krijoni një fjalëkalim',
     'signup.confirmPasswordPlaceholder': 'Konfirmoni fjalëkalimin tuaj',
-    'signup.phonePlaceholder': 'Shkruani telefonin (opsionale)',
+    'signup.phonePlaceholder': 'Shkruani numrin e telefonit',
     'signup.createAccount': 'Regjistrohu',
     'signup.creating': 'Duke krijuar llogarinë...',
     'signup.hasAccount': 'Keni tashmë një llogari?',
     'signup.signIn': 'Hyr',
     'signup.passwordsNotMatch': 'Fjalëkalimet nuk përputhen',
     'signup.passwordTooShort': 'Fjalëkalimi duhet të jetë të paktën 6 karaktere',
+    'signup.phoneRequired': 'Numri i telefonit është i detyrueshëm',
     'signup.failed': 'Regjistrimi dështoi. Ju lutemi provoni përsëri.',
     
     // Profile
