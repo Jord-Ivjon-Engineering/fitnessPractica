@@ -26,6 +26,7 @@ const translations: Record<Language, Record<string, string>> = {
     'header.signup': 'Sign Up',
     'header.logout': 'Logout',
     'header.profile': 'Profile',
+    'header.about': 'About Us',
     
     // Hero
     'hero.title': 'Fitness Practica',
@@ -314,6 +315,27 @@ const translations: Record<Language, Record<string, string>> = {
     'profile.emailUpdateFailed': 'Failed to update email',
     'profile.emailAlreadyExists': 'Email already in use',
     'profile.invalidEmail': 'Invalid email format',
+    
+    // About Us
+    'about.title': 'About Us',
+    'about.subtitle': 'Your trusted partner in fitness and wellness',
+    'about.mission.title': 'Our Mission',
+    'about.mission.description': 'At Fitness Practica, we are dedicated to helping individuals achieve their fitness goals through personalized training programs, expert guidance, and a supportive community. We believe that everyone deserves access to quality fitness resources that can transform their lives.',
+    'about.values.title': 'Our Values',
+    'about.values.excellence.title': 'Excellence',
+    'about.values.excellence.description': 'We strive for excellence in every program we offer, ensuring the highest quality training experiences.',
+    'about.values.community.title': 'Community',
+    'about.values.community.description': 'We build a supportive community where members can share their journey and motivate each other.',
+    'about.values.dedication.title': 'Dedication',
+    'about.values.dedication.description': 'We are committed to your success and dedicated to helping you reach your fitness goals.',
+    'about.values.quality.title': 'Quality',
+    'about.values.quality.description': 'Every program is carefully crafted by fitness experts to ensure the best results.',
+    'about.values.progress.title': 'Progress',
+    'about.values.progress.description': 'We track and celebrate your progress, helping you stay motivated and achieve continuous improvement.',
+    'about.story.title': 'Our Story',
+    'about.story.paragraph1': 'Fitness Practica was founded with a simple yet powerful vision: to make professional fitness training accessible to everyone. We understand that each person\'s fitness journey is unique, and we\'re here to provide the tools, guidance, and support needed to succeed.',
+    'about.story.paragraph2': 'Our team of experienced trainers and fitness experts work tirelessly to create comprehensive programs that cater to various fitness levels and goals. Whether you\'re looking to lose weight, build muscle, improve flexibility, or enhance your overall health, we have a program designed for you.',
+    'about.story.paragraph3': 'Join thousands of satisfied members who have transformed their lives through our programs. Your fitness journey starts here, and we\'re excited to be part of it.',
   },
   al: {
     // Header
@@ -321,6 +343,7 @@ const translations: Record<Language, Record<string, string>> = {
     'header.signup': 'Regjistrohu',
     'header.logout': 'Dil',
     'header.profile': 'Profili',
+    'header.about': 'Rreth Nesh',
     
     // Hero
     'hero.title': 'Fitness Practica',
@@ -610,6 +633,27 @@ const translations: Record<Language, Record<string, string>> = {
     'profile.emailUpdateFailed': 'Dështoi përditësimi i email-it',
     'profile.emailAlreadyExists': 'Email-i është në përdorim',
     'profile.invalidEmail': 'Format email-i i pavlefshëm',
+    
+    // About Us
+    'about.title': 'Rreth Nesh',
+    'about.subtitle': 'Partneri juaj i besuar në fitnes dhe mirëqenie',
+    'about.mission.title': 'Misioni Ynë',
+    'about.mission.description': 'Në Fitness Practica, jemi të përkushtuar për të ndihmuar individët të arrijnë qëllimet e tyre të fitnesit përmes programeve të personalizuara të trajnimit, udhëzimeve eksperte dhe një komuniteti mbështetës. Ne besojmë se çdokush meriton qasje në burime cilësore të fitnesit që mund të transformojnë jetën e tyre.',
+    'about.values.title': 'Vlerat Tona',
+    'about.values.excellence.title': 'Ekselenca',
+    'about.values.excellence.description': 'Ne përpiqemi për ekselencë në çdo program që ofrojmë, duke siguruar përvojat më cilësore të trajnimit.',
+    'about.values.community.title': 'Komuniteti',
+    'about.values.community.description': 'Ne ndërtojmë një komunitet mbështetës ku anëtarët mund të ndajnë udhëtimin e tyre dhe të motivojnë njëri-tjetrin.',
+    'about.values.dedication.title': 'Përkushtimi',
+    'about.values.dedication.description': 'Jemi të përkushtuar për suksesin tuaj dhe të dedikuar për t\'ju ndihmuar të arrini qëllimet tuaja të fitnesit.',
+    'about.values.quality.title': 'Cilësia',
+    'about.values.quality.description': 'Çdo program është krijuar me kujdes nga ekspertët e fitnesit për të siguruar rezultatet më të mira.',
+    'about.values.progress.title': 'Progresi',
+    'about.values.progress.description': 'Ne gjurmojmë dhe festojmë progresin tuaj, duke ju ndihmuar të qëndroni të motivuar dhe të arrini përmirësim të vazhdueshëm.',
+    'about.story.title': 'Historia Jonë',
+    'about.story.paragraph1': 'Fitness Practica u themelua me një vizion të thjeshtë por të fuqishëm: të bëjë trajnimin profesional të fitnesit të arritshëm për të gjithë. Ne kuptojmë se udhëtimi i fitnesit i çdo personi është unik, dhe ne jemi këtu për të ofruar mjetet, udhëzimet dhe mbështetjen e nevojshme për sukses.',
+    'about.story.paragraph2': 'Ekipi ynë i trajnerëve me përvojë dhe ekspertëve të fitnesit punon pa u lodhur për të krijuar programe gjithëpërfshirëse që përmbushin nivele dhe qëllime të ndryshme fitnesi. Pavarësisht nëse po kërkoni të humbni peshë, të ndërtoni muskuj, të përmirësoni fleksibilitetin, ose të përmirësoni shëndetin tuaj të përgjithshëm, ne kemi një program të dizajnuar për ju.',
+    'about.story.paragraph3': 'Bashkohuni me mijëra anëtarë të kënaqur që kanë transformuar jetën e tyre përmes programeve tona. Udhëtimi juaj i fitnesit fillon këtu, dhe ne jemi të ngazëllyer të jemi pjesë e tij.',
   },
 };
 

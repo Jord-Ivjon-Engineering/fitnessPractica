@@ -58,6 +58,13 @@ const Header = () => {
           <Button
             variant="ghost"
             size="lg"
+            onClick={() => navigate('/about')}
+          >
+            {t('header.about')}
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
             onClick={() => setLanguage(language === 'en' ? 'al' : 'en')}
             title={language === 'en' ? t('admin.switchLanguage') : t('admin.switchToEnglish')}
           >
@@ -139,6 +146,17 @@ const Header = () => {
         {isMobileMenuOpen && (
           <div className="absolute top-full left-0 right-0 bg-background border-b border-border shadow-lg md:hidden">
             <div className="container mx-auto px-4 py-4 flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                size="lg"
+                className="w-full justify-start"
+                onClick={() => {
+                  navigate('/about');
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                {t('header.about')}
+              </Button>
               <Button
                 variant="ghost"
                 size="lg"
