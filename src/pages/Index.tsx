@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, Target, Video } from "lucide-react";
+import { Loader2, Video } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -17,7 +17,7 @@ import {
 
 // Import images from assets
 import heroImage from "@/assets/gym-hero.jpg";
-import aboutImage from "@/assets/gym-about.jpg";
+// import aboutImage from "@/assets/gym-about.jpg";
 import planWeightLoss from "@/assets/plan-weight-loss.jpg";
 import planMuscleGrow from "@/assets/plan-muscle-grow.jpg";
 import planCardio from "@/assets/plan-cardio.jpg";
@@ -25,6 +25,38 @@ import planFlexibility from "@/assets/plan-flexibility.jpg";
 import planFunctional from "@/assets/plan-functional.jpg";
 import heroVideo from "@/assets/viedo.mp4";
 const Index = () => {
+    // Client comments for the new section (12 total)
+    const clientComments = [
+      "Sot mbarova javën e parë të programit dhe ndihem e jashtëzakonshme! Kam humbur disa centimetra në bel dhe kofshë, dhe energjia ime është rritur dukshëm. Falenderoj trajnerët për motivimin dhe mbështetjen 🥰",
+      "Programi është fantastik! Ushtrimet nga shtëpia janë të qarta dhe të efektshme, dhe këshillat ushqimore kanë bërë diferencën. Ndihem më e fortë dhe më energjike çdo ditë 😍",
+      "Kam përfunduar javën e katërt dhe ndryshimi është i dukshëm. Belin e kam ngushtuar dukshëm dhe muskujt janë më të tonifikuar. Ndjej kënaqësi çdo herë që përfundoj stërvitjen.",
+      "Sot mbarova programin 1 dhe ndihem shumë e lumtur! Pesha ime ka rënë dhe shoh rezultate goxha të mira. Por më shumë se kaq, kam fituar besim në vetvete. Faleminderit për trajnerët fantastikë dhe për gjithë mbështetjen 🥰",
+      "Fillova programin pa shumë pritshmëri, por tani nuk e besoj ndryshimin. Trupi im është më i fortë, më i tonifikuar dhe ndihem më energjik gjatë gjithë ditës. Ushtrimet nga shtëpia janë praktike dhe efektive, ndërsa këshillat ushqimore kanë bërë diferencën.",
+      "Sot përfundova javën e gjashtë dhe ndihem e transformuar! Kam humbur centimetra dhe kilogramë, por më e rëndësishme është besimi që kam fituar. Çdo ushtrim më bën të ndihem më e fortë dhe më e motivuar. Trajnerët janë gjithmonë aty për t’u kujdesur që çdo lëvizje të bëhet saktë.",
+      "Kam arritur rezultate që nuk i prisja! Përveç humbjes së peshës, ndihem më energjik, më i motivuar dhe më i qetë psikologjikisht. Programi më ka ndryshuar totalisht rutinën dhe mendësinë për fitnesin.",
+      "Jam e lumtur pa masë që fillova këtë program. Ndryshimet nuk janë vetëm në trup, por edhe në mënyrën si ndihem. Jam më e qetë, më e fortë dhe më energjike gjatë gjithë ditës.",
+      "Vetëm duke ndjekur stërvitjet live dhe regjimin ushqimor kam arritur rezultate të mahnitshme. Ndihem më e fortë dhe më e motivuar për të vazhduar. Programi është perfekt për ata që nuk mund të shkojnë rregullisht në palestër.",
+      "Programi më ka ndihmuar të krijoj një rutinë të shëndetshme dhe të disiplinuar. Ushtrimet janë sfiduese, por shumë të këndshme. Çdo seancë më bën të ndihem krenare dhe të përparoj çdo ditë.",
+      "Sot mbarova 8 javët e para dhe nuk mund ta besoj ndryshimin! Kam humbur kilogramë dhe centimetra, por më e rëndësishme është energjia dhe besimi që kam fituar. Do vazhdoj pa dyshim me programin tjetër për tonifikim.",
+      "Falë këtij programi kam fituar besim, energji dhe motivim çdo ditë. Ushtrimet live nga shtëpia janë fantastike, dhe trajnerët gjithmonë të ndihmojnë. Ndihem më e lumtur dhe më e fuqishme se kurrë! 🥰"
+    ];
+
+    // State for cycling overlay window (cycle through all 12 comments, 3 at a time)
+    const [windowIndex, setWindowIndex] = useState(0); // which label is focused (0,1,2)
+    const [startIndex, setStartIndex] = useState(0); // which comment is the first label
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setWindowIndex((prev) => {
+          if (prev === 2) {
+            // After last label, shift all labels by 1 (cycle through all 12)
+            setStartIndex((s) => (s + 1) % clientComments.length);
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 8000);
+      return () => clearInterval(interval);
+    }, [clientComments.length]);
   const [videoError, setVideoError] = useState(false);
   const [openPlan, setOpenPlan] = useState<string | null>(null);
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
@@ -287,96 +319,87 @@ const Index = () => {
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent"></div>
       </section>
 
-      {/* Plans Section */}
-      <section id="plans" className="py-24 px-4 bg-background">
+        {/* About Section */}
+      <section className="py-24 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.plans.title')}</h2>
-            <p className="text-xl text-muted-foreground">{t('section.plans.subtitle')}</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            {[
-              { name: "CrossFit", icon: "💪" },
-              { name: "Aerobics", icon: "🏃" },
-              { name: "Children", icon: "👶" },
-              { name: "Boxing", icon: "🥊" },
-              { name: "Pilates", icon: "🧘" },
-              { name: "Spining", icon: "🚴‍♂️" }
-            ].map((plan) => {
-              const details = planDetails[plan.name];
-              const isOpen = openPlan === plan.name;
-              return (
-                <div key={plan.name} className="relative">
-                  <Card 
-                    className="p-6 text-center hover:shadow-xl transition-all bg-card border-border group"
-                  >
-                    <div 
-                      className="cursor-pointer"
-                      onClick={() => {
-                        if (details?.intervals || details?.ageGroups) {
-                          setOpenPlan(isOpen ? null : plan.name);
-                        }
-                      }}
-                    >
-                      <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">{plan.icon}</div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
-                      <div className="w-12 h-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] mx-auto rounded-full mb-4"></div>
-                      
-                      {details?.message ? (
-                        <p className="text-sm text-muted-foreground mt-4">{details.message}</p>
-                      ) : (details?.intervals || details?.ageGroups) ? (
-                        <div className="mt-4">
-                          <div className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
-                            {t('index.viewHours')}
-                            <svg 
-                              className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-                              fill="none" 
-                              stroke="currentColor" 
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
-                      ) : null}
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+              <div className="flex flex-col gap-4">
+                <img 
+                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.22%20AM%20(1).jpeg" 
+                  alt="Modern gym facility 2" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+                <img 
+                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(2).jpeg" 
+                  alt="Modern gym facility 3" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+                <img 
+                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(1).jpeg" 
+                  alt="Modern gym facility 4" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+                <img 
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM.jpeg" 
+                  alt="Modern gym facility" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+              </div>
+            </div>
+            <div className="space-y-6">
+              <h2 className="text-5xl font-bold text-foreground">
+                {language === 'en' ? (
+                  <>
+                    Your Fitness Transformation <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Starts Here</span>
+                    <div className="mt-6 text-lg text-muted-foreground font-normal text-left whitespace-pre-line">
+                      At Fitness Practica, fitness is not just a workout—it’s a way of life. Our mission is to empower you to become the strongest, healthiest, and most confident version of yourself—wherever you are.
+
+                      Train in our state-of-the-art facility or join us from home through live-streamed workouts, guided in real time by our expert coaches. Whether you’re starting your fitness journey or pushing toward your next breakthrough, we deliver personalized training programs, high-energy group classes, and goal-driven nutritional guidance tailored to your lifestyle.
+
+                      Our results are powered by dedication and expertise. Led by professional trainers Vullnet Manushi and Marlind Manushi, every session—both in-gym and live online—is designed to motivate, challenge, and transform. You’re not just following a workout; you’re training live with coaches who push you, correct you, and keep you accountable.
+
+                      At Fitness Practica, you’re part of a powerful community that supports you every step of the way—whether you train beside us or from your own home.
+
+                      Train anywhere. Stay connected. Transform your body and mindset.
+                      Your journey starts now. 💪🔥
                     </div>
-                  </Card>
-                  
-                  {isOpen && (details?.intervals || details?.ageGroups) && (
-                    <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-card border border-border shadow-lg rounded-lg z-10">
-                      {details?.ageGroups ? (
-                        <div className="space-y-4">
-                          {details.ageGroups.map((group, groupIndex) => (
-                            <div key={groupIndex} className="space-y-2">
-                              <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                                {group.ageRange}
-                              </h4>
-                              {group.intervals.map((interval, index) => (
-                                <p key={index} className="text-sm text-muted-foreground text-left pl-2">
-                                  {interval}
-                                </p>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                      ) : details?.intervals ? (
-                        <div className="space-y-2">
-                          {details.intervals.map((interval, index) => {
-                            // Split by comma and render each part on its own line
-                            return interval.split(',').map((part, subIndex) => (
-                              <p key={index + '-' + subIndex} className="text-sm text-muted-foreground text-left">
-                                {part.trim()}
-                              </p>
-                            ));
-                          })}
-                        </div>
-                      ) : null}
+                  </>
+                ) : (
+                  <>
+                    Transformimi Yt i Fitnesit <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Fillon Këtu</span>
+                    <div className="mt-6 text-lg text-muted-foreground font-normal text-left whitespace-pre-line">
+                      Te Fitness Practica, fitnesi nuk është thjesht një stërvitje — është një mënyrë jetese. Misioni ynë është të të fuqizojmë që të bëhesh versioni më i fortë, më i shëndetshëm dhe më i sigurt i vetes, kudo që të ndodhesh.
+
+                      Stërvitu në ambientet tona moderne, të pajisura me teknologjinë më të fundit, ose bashkohu nga shtëpia përmes stërvitjeve live (transmetim të drejtpërdrejtë), të udhëhequra në kohë reale nga trajnerët tanë profesionistë. Pavarësisht nëse je në fillim të rrugëtimit tënd në fitnes apo po synon të kalosh në nivelin tjetër, ne ofrojmë programe stërvitjeje të personalizuara, klasa dinamike në grup dhe udhëzime ushqimore të orientuara drejt qëllimeve të tua.
+
+                      Rezultatet tona ndërtohen mbi përkushtim dhe ekspertizë. Të udhëhequr nga trajnerët profesionistë Vullnet Manushi dhe Marlind Manushi, çdo seancë — si në palestër ashtu edhe online live — është krijuar për të të motivuar, sfiduar dhe transformuar. Nuk po ndjek thjesht një stërvitje; po stërvitesh drejtpërdrejt me trajnerë që të korrigjojnë, të motivojnë dhe të mbajnë të përgjegjshëm.
+
+                      Te Fitness Practica, je pjesë e një komuniteti të fortë që të mbështet në çdo hap — qoftë duke u stërvitur pranë nesh apo nga komoditeti i shtëpisë tënde.
+
+                      Stërvitu kudo. Qëndro i lidhur. Transformo trupin dhe mendjen.
+                      Udhëtimi yt fillon tani. 💪🔥
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </>
+                )}
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {t('index.about.p1')}
+              </p>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {t('index.about.p2')}
+              </p>
+              <Button
+                onClick={() => {
+                  navigate('/about');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="mt-6"
+                size="lg"
+              >
+                {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -612,51 +635,141 @@ const Index = () => {
         </div>
       </section>
 
-      {/* About Section */}
-      <section className="py-24 px-4 bg-background">
+        {/* Plans Section */}
+      <section id="plans" className="py-24 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-              <img 
-                src={aboutImage} 
-                alt="Modern gym facility" 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="space-y-6">
-              <h2 className="text-5xl font-bold text-foreground">
-                {language === 'en' ? (
-                  <>
-                    Your Fitness
-                    <span className="block bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">
-                      Transformation
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="block bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">
-                      {t('section.about.title')}
-                    </span>
-                    {t('section.about.title2')}
-                  </>
-                )}
-              </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed">
-                {t('index.about.p1')}
-              </p>
-              <p className="text-lg text-muted-foreground leading-relaxed">
-                {t('index.about.p2')}
-              </p>
-              <Button
-                onClick={() => {
-                  navigate('/about');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="mt-6"
-                size="lg"
-              >
-                {t('header.about')}
-              </Button>
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.plans.title')}</h2>
+            <p className="text-xl text-muted-foreground">{t('section.plans.subtitle')}</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            {[
+              { name: "CrossFit", icon: "💪" },
+              { name: "Aerobics", icon: "🏃" },
+              { name: "Children", icon: "👶" },
+              { name: "Boxing", icon: "🥊" },
+              { name: "Pilates", icon: "🧘" },
+              { name: "Spining", icon: "🚴‍♂️" }
+            ].map((plan) => {
+              const details = planDetails[plan.name];
+              const isOpen = openPlan === plan.name;
+              return (
+                <div key={plan.name} className="relative">
+                  <Card 
+                    className="p-6 text-center hover:shadow-xl transition-all bg-card border-border group"
+                  >
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => {
+                        if (details?.intervals || details?.ageGroups) {
+                          setOpenPlan(isOpen ? null : plan.name);
+                        }
+                      }}
+                    >
+                      <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">{plan.icon}</div>
+                      <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
+                      <div className="w-12 h-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] mx-auto rounded-full mb-4"></div>
+                      
+                      {details?.message ? (
+                        <p className="text-sm text-muted-foreground mt-4">{details.message}</p>
+                      ) : (details?.intervals || details?.ageGroups) ? (
+                        <div className="mt-4">
+                          <div className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
+                            {t('index.viewHours')}
+                            <svg 
+                              className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </Card>
+                  
+                  {isOpen && (details?.intervals || details?.ageGroups) && (
+                    <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-card border border-border shadow-lg rounded-lg z-10">
+                      {details?.ageGroups ? (
+                        <div className="space-y-4">
+                          {details.ageGroups.map((group, groupIndex) => (
+                            <div key={groupIndex} className="space-y-2">
+                              <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
+                                {group.ageRange}
+                              </h4>
+                              {group.intervals.map((interval, index) => (
+                                <p key={index} className="text-sm text-muted-foreground text-left pl-2">
+                                  {interval}
+                                </p>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      ) : details?.intervals ? (
+                        <div className="space-y-2">
+                          {details.intervals.map((interval, index) => {
+                            // Split by comma and render each part on its own line
+                            return interval.split(',').map((part, subIndex) => (
+                              <p key={index + '-' + subIndex} className="text-sm text-muted-foreground text-left">
+                                {part.trim()}
+                              </p>
+                            ));
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+
+
+      {/* Client Comments Section */}
+      <section className="py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-foreground mb-6">
+              {language === 'en' ? (
+                <>
+                  Comments From <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Our</span> <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Clients</span>
+                </>
+              ) : (
+                <>
+                  Përshtypjet e <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Klientëve Tanë</span>
+                </>
+              )}
+            </h2>
+          </div>
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-full max-w-3xl mx-auto flex gap-8 flex-col md:flex-row flex-nowrap md:overflow-visible">
+              {[0, 1, 2].map((i) => {
+                const idx = (startIndex + i) % clientComments.length;
+                const isFocused = i === windowIndex;
+                return (
+                  <div
+                    key={idx}
+                    className={`flex-1 bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center relative transition-all duration-700 ${isFocused ? 'border-4 border-black/70' : 'border-4 border-transparent'}`}
+                    style={{
+                      opacity: 1,
+                      transform: 'scale(1.05)',
+                      transition: 'border-color 0.7s cubic-bezier(0.4,0,0.2,1)',
+                    }}
+                  >
+                    <span className="text-6xl mb-4">“</span>
+                    <p className="text-lg text-muted-foreground text-center mb-4 min-h-[80px]">
+                      {clientComments[idx]}
+                    </p>
+                    <div className="w-12 h-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] rounded-full mb-2"></div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -664,6 +777,8 @@ const Index = () => {
 
       {/* Locations Section */}
       <section className="py-24 px-4 bg-muted/30">
+
+
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.locations.title')}</h2>
