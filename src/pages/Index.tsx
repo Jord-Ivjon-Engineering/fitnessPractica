@@ -395,12 +395,11 @@ const Index = () => {
           <div className="w-full max-w-5xl mx-auto">
             <Card className="overflow-hidden border-border">
               <div className="relative h-96">
-                <div className="w-full h-full bg-gradient-to-br from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <Video className="w-24 h-24 mx-auto mb-4 opacity-80" />
-                    <p className="text-lg font-semibold">Live Stream</p>
-                  </div>
-                </div>
+                <img 
+                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.22%20AM.jpeg"
+                  alt="Live Stream"
+                  className="w-full h-full object-cover"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
                 <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
                   <div className="inline-block px-4 py-1 mb-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] text-sm font-semibold">
