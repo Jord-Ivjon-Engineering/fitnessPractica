@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ShoppingCart, Trash2, ArrowLeft, Loader2 } from "lucide-react";
+import { ShoppingCart, Trash2, ArrowLeft, Loader2, Video } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -169,15 +169,24 @@ const Checkout = () => {
         ) : (
           <>
             <div className="space-y-4 mb-8">
-              {cartItems.map((item) => (
+              {cartItems.map((item) => {
+                const isLiveStream = item.category === 'Live Training' || (item.polarProductId && item.months);
+                
+                return (
                 <Card key={item.id} className="p-6">
                   <div className="flex items-center gap-6">
                     <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
+                      {isLiveStream ? (
+                        <div className="w-full h-full bg-gradient-to-br from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] flex items-center justify-center">
+                          <Video className="w-12 h-12 text-white opacity-90" />
+                        </div>
+                      ) : (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -221,7 +230,8 @@ const Checkout = () => {
                     </Button>
                   </div>
                 </Card>
-              ))}
+              );
+              })}
             </div>
 
             {/* Summary */}

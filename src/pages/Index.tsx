@@ -486,7 +486,9 @@ const Index = () => {
           ) : programs.length > 0 ? (
             <Carousel className="w-full max-w-5xl mx-auto">
               <CarouselContent>
-                {programs.map((program) => {
+                {programs
+                  .filter((program) => program.category !== 'Live Training' && program.id !== 999)
+                  .map((program) => {
                   // Map category to fallback images (only used if database image fails)
                   const getFallbackImage = (category: string) => {
                     const categoryLower = category.toLowerCase();
