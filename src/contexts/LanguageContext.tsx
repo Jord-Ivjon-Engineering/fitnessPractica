@@ -80,6 +80,8 @@ const translations: Record<Language, Record<string, string>> = {
     'button.loginToPurchase': 'Log in to purchase',
     'button.continue': 'Continue',
     'button.addToCart': 'Add to Cart',
+    'button.openTelegramChannel': 'Open Telegram Channel',
+    'button.linkTelegramFirst': 'You should link with Telegram first',
     
     // Login
     'login.title': 'Welcome Back',
@@ -437,6 +439,8 @@ const translations: Record<Language, Record<string, string>> = {
     'button.loginToPurchase': 'Hyr për të blerë',
     'button.continue': 'Vazhdo',
     'button.addToCart': 'Shto në Shportë',
+    'button.openTelegramChannel': 'Hap Kanalin e Telegramit',
+    'button.linkTelegramFirst': 'Duhet të lidhni me Telegram fillimisht',
     
     // Login
     'login.title': 'Mirë Se Vini',

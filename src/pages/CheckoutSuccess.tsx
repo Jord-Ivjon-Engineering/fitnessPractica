@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { checkoutApi } from "@/services/api";
 
 const CheckoutSuccess = () => {

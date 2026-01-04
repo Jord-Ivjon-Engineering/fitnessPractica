@@ -16,6 +16,7 @@ import adminRoutes from './routes/admin';
 import checkoutRoutes from './routes/checkout';
 import webhookRoutes from './routes/webhooks';
 import { errorHandler, notFound } from './middleware/errorHandler';
+import { startTelegramScheduler } from './services/telegramScheduler';
 
 // Load environment variables from server/.env file
 // This ensures it works whether running from server/ or root directory
@@ -101,9 +102,8 @@ app.use(cors({
   credentials: true
 }));
 
-// Webhook routes (commented out - not using webhooks for now)
-// Uncomment if you want to use webhooks in the future
-// app.use('/api/webhooks', webhookRoutes);
+// Webhook routes
+app.use('/api/webhooks', webhookRoutes);
 
 app.use(express.json({ limit: '5gb' }));
 app.use(express.urlencoded({ extended: true, limit: '5gb' }));
@@ -144,5 +144,13 @@ server.listen(PORT, () => {
   console.log(`   - GET    /api/plans`);
   console.log(`   - GET    /api/members`);
   console.log(`   - GET    /api/locations`);
+  
+  // Start Telegram bot scheduler if token is configured
+  if (process.env.TELEGRAM_BOT_TOKEN) {
+    const intervalMinutes = parseInt(process.env.TELEGRAM_CHECK_INTERVAL_MINUTES || '60', 10);
+    startTelegramScheduler(intervalMinutes);
+  } else {
+    console.log('⚠️  TELEGRAM_BOT_TOKEN not configured - Telegram bot scheduler disabled');
+  }
 });
 

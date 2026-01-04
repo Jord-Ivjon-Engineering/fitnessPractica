@@ -3,12 +3,42 @@ import CountryCodeSelector from "@/components/CountryCodeSelector";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { User, Mail, Phone, Calendar, Dumbbell, Edit2, LogOut, Clock, Lock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { User, Mail, Phone, Calendar, Dumbbell, Edit2, LogOut, Clock, Lock, ExternalLink, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { profileApi, UserProfile, UserProgram, trainingProgramApi } from "@/services/api";
 import { Loader2 } from "lucide-react";
 import VideoModal from "@/components/VideoModal";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+// Declare Telegram widget types
+declare global {
+  interface Window {
+    onTelegramAuth?: (user: TelegramAuthUser) => void;
+  }
+}
+
+interface TelegramAuthUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
+
+const TELEGRAM_CHANNEL_URL = 'https://t.me/+9E6XqWmWsfo5MjM0';
+const LIVE_STREAM_PROGRAM_ID = 999;
+// Strip @ symbol if present - Telegram Login Widget expects username without @
+const TELEGRAM_BOT_USERNAME = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'your_bot_username').replace(/^@/, '');
 
 const Profile = () => {
   const { user, logout, isLoading } = useAuth();
@@ -75,11 +105,41 @@ const Profile = () => {
   const [emailPassword, setEmailPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [emailSuccess, setEmailSuccess] = useState("");
+  const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
+  const [telegramUsername, setTelegramUsername] = useState("");
+  const [telegramId, setTelegramId] = useState("");
+  const [telegramError, setTelegramError] = useState("");
+  const [telegramSuccess, setTelegramSuccess] = useState("");
   const [fullscreenVideoUrl, setFullscreenVideoUrl] = useState<string | null>(null);
   const [fullscreenVideoTitle, setFullscreenVideoTitle] = useState<string>('');
   const [fullscreenVideoId, setFullscreenVideoId] = useState<number | undefined>(undefined);
   const [fullscreenProgramId, setFullscreenProgramId] = useState<number | undefined>(undefined);
   const [fullscreenVideoInitialProgress, setFullscreenVideoInitialProgress] = useState<number | undefined>(undefined);
+
+  const handleTelegramAuth = async (telegramUser: TelegramAuthUser) => {
+    try {
+      setTelegramError("");
+      setTelegramSuccess("");
+
+      // Send the full auth data to backend for verification
+      const response = await profileApi.linkTelegram({
+        telegramAuthData: telegramUser,
+      });
+
+      if (response.data.success) {
+        setTelegramSuccess("Telegram account linked successfully!");
+        setProfile(response.data.data);
+        setTelegramUsername(response.data.data.telegramUsername || "");
+        setTelegramId(response.data.data.telegramId || "");
+        setIsLinkingTelegram(false);
+        setTimeout(() => {
+          setTelegramSuccess("");
+        }, 3000);
+      }
+    } catch (error: any) {
+      setTelegramError(error.response?.data?.error?.message || "Failed to link Telegram account");
+    }
+  };
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -93,7 +153,94 @@ const Profile = () => {
     }
     fetchProfile();
     fetchPrograms();
+
+    // Set up Telegram Login Widget callback
+    window.onTelegramAuth = handleTelegramAuth;
+
+    // Cleanup
+    return () => {
+      window.onTelegramAuth = undefined;
+    };
   }, [user, isLoading, navigate]);
+
+  // Separate effect for loading Telegram widget when dialog opens
+  useEffect(() => {
+    if (!isLinkingTelegram) {
+      return;
+    }
+
+    // Load Telegram widget when dialog is opened
+    const loadTelegramWidget = () => {
+      const container = document.getElementById('telegram-login-container');
+      if (!container) {
+        return;
+      }
+
+      // Clear container first to remove any existing widget
+      container.innerHTML = '';
+      
+      // Check if bot username is configured
+      if (!TELEGRAM_BOT_USERNAME || TELEGRAM_BOT_USERNAME === 'your_bot_username') {
+        container.innerHTML = '<p style="color: hsl(var(--destructive)); font-size: 0.875rem; padding: 0.5rem;">Telegram bot username not configured. Please set VITE_TELEGRAM_BOT_USERNAME in your environment variables (without @ symbol).</p>';
+        return;
+      }
+
+      // Check if we're on localhost - Telegram Login Widget doesn't work with localhost
+      const isLocalhost = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         window.location.hostname === '';
+      
+      if (isLocalhost) {
+        container.innerHTML = `
+          <div style="padding: 1rem; background: hsl(var(--muted)); border-radius: 0.5rem; margin-bottom: 1rem;">
+            <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; margin-bottom: 0.5rem;">
+              <strong>Note:</strong> Telegram Login Widget requires a public domain and doesn't work with localhost.
+            </p>
+            <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; margin-bottom: 0.5rem;">
+              For development, please use the <strong>Manual Entry</strong> option below, or use a tunnel service like <a href="https://ngrok.com" target="_blank" rel="noopener noreferrer" style="color: hsl(var(--primary)); text-decoration: underline;">ngrok</a> to get a public URL.
+            </p>
+            <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">
+              In production, the Telegram Login Widget will work automatically.
+            </p>
+          </div>
+        `;
+        return;
+      }
+      
+      // Create script element for Telegram widget
+      // Add timestamp to force reload each time dialog opens
+      const timestamp = Date.now();
+      const script = document.createElement('script');
+      script.src = `https://telegram.org/js/telegram-widget.js?22&t=${timestamp}`;
+      script.async = true;
+      script.setAttribute('data-telegram-login', TELEGRAM_BOT_USERNAME);
+      script.setAttribute('data-size', 'large');
+      script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      script.setAttribute('data-request-access', 'write');
+      
+      // Handle script load errors
+      script.onerror = () => {
+        container.innerHTML = '<p style="color: hsl(var(--destructive)); font-size: 0.875rem; padding: 0.5rem;">Failed to load Telegram widget. Please check your internet connection and ensure VITE_TELEGRAM_BOT_USERNAME is set correctly. Also verify your domain is whitelisted in BotFather.</p>';
+      };
+      
+      container.appendChild(script);
+      
+      // Log for debugging
+      console.log('Loading Telegram widget with bot username:', TELEGRAM_BOT_USERNAME);
+    };
+
+    // Wait for dialog to be fully rendered (longer delay for dialog)
+    const timer = setTimeout(loadTelegramWidget, 300);
+
+    return () => {
+      clearTimeout(timer);
+      // Clean up widget when dialog closes
+      const container = document.getElementById('telegram-login-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+  }, [isLinkingTelegram]);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -154,6 +301,9 @@ const Profile = () => {
           setEditCountryCode("+355");
           setEditPhone(phone);
         }
+        // Set Telegram fields
+        setTelegramUsername(response.data.data.telegramUsername || "");
+        setTelegramId(response.data.data.telegramId || "");
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -230,6 +380,57 @@ const Profile = () => {
       }
     } catch (error: any) {
       setPasswordError(error.response?.data?.error?.message || t('profile.passwordUpdateFailed'));
+    }
+  };
+
+  const handleLinkTelegram = async () => {
+    setTelegramError("");
+    setTelegramSuccess("");
+
+    // Validation
+    if (!telegramUsername && !telegramId) {
+      setTelegramError("Please enter either Telegram username or ID");
+      return;
+    }
+
+    // Validate username format if provided
+    if (telegramUsername) {
+      const cleanUsername = telegramUsername.replace('@', '').trim();
+      if (cleanUsername.length < 5) {
+        setTelegramError("Telegram username must be at least 5 characters");
+        return;
+      }
+      setTelegramUsername(cleanUsername);
+    }
+
+    // Validate ID format if provided
+    if (telegramId) {
+      const idNum = parseInt(telegramId, 10);
+      if (isNaN(idNum) || idNum <= 0) {
+        setTelegramError("Telegram ID must be a valid positive number");
+        return;
+      }
+    }
+
+    try {
+      const response = await profileApi.linkTelegram({
+        telegramUsername: telegramUsername || undefined,
+        telegramId: telegramId || undefined,
+      });
+      
+      if (response.data.success) {
+        setTelegramSuccess("Telegram account linked successfully!");
+        setProfile(response.data.data);
+        setTelegramUsername(response.data.data.telegramUsername || "");
+        setTelegramId(response.data.data.telegramId || "");
+        setTimeout(() => {
+          setIsLinkingTelegram(false);
+          setTelegramSuccess("");
+          setTelegramError("");
+        }, 2000);
+      }
+    } catch (error: any) {
+      setTelegramError(error.response?.data?.error?.message || "Failed to link Telegram account");
     }
   };
 
@@ -407,13 +608,13 @@ const Profile = () => {
                         setEditName(profile?.name || "");
                         // Reset country code and phone
                         if (profile?.phone) {
-                          const found = countryCodes.find(c => profile.phone.startsWith(c.code));
+                          const found = countryCodes.find(c => profile.phone!.startsWith(c.code));
                           if (found) {
                             setEditCountryCode(found.code);
-                            setEditPhone(profile.phone.slice(found.code.length));
+                            setEditPhone(profile.phone!.slice(found.code.length));
                           } else {
                             setEditCountryCode("+355");
-                            setEditPhone(profile.phone);
+                            setEditPhone(profile.phone!);
                           }
                         } else {
                           setEditCountryCode("+355");
@@ -621,6 +822,125 @@ const Profile = () => {
               <Button
                 variant="outline"
                 className="w-full"
+                onClick={() => setIsLinkingTelegram(true)}
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                {profile?.telegramUsername || profile?.telegramId ? 'Update Telegram' : 'Link Telegram'}
+              </Button>
+
+              <Dialog open={isLinkingTelegram} onOpenChange={setIsLinkingTelegram}>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {profile?.telegramUsername || profile?.telegramId ? 'Update Telegram Account' : 'Link Telegram Account'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Connect your Telegram account to receive updates and access exclusive content.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-4">
+                    {telegramError && (
+                      <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
+                        {telegramError}
+                      </div>
+                    )}
+                    {telegramSuccess && (
+                      <div className="bg-green-100 text-green-800 p-3 rounded-md text-sm">
+                        {telegramSuccess}
+                      </div>
+                    )}
+
+                    {profile?.telegramUsername && (
+                      <div className="text-sm text-muted-foreground mb-4">
+                        Currently linked: {profile.telegramUsername}
+                        {profile.telegramId && ` (ID: ${profile.telegramId})`}
+                      </div>
+                    )}
+
+                    {/* Telegram Login Widget */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-3 block">
+                          Login with Telegram (Recommended)
+                        </label>
+                        <div 
+                          id="telegram-login-container"
+                          className="flex justify-center min-h-[40px]"
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Click the button above to authenticate with Telegram. Your account will be automatically linked.
+                        </p>
+                      </div>
+
+                      <div className="relative flex items-center">
+                        <div className="flex-grow border-t border-border"></div>
+                        <span className="px-3 text-xs text-muted-foreground">OR</span>
+                        <div className="flex-grow border-t border-border"></div>
+                      </div>
+
+                      {/* Manual Entry Fallback */}
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 block">
+                          Manual Entry (Alternative)
+                        </label>
+                        <div className="space-y-3">
+                          <div>
+                            <input
+                              type="text"
+                              value={telegramUsername}
+                              onChange={(e) => setTelegramUsername(e.target.value)}
+                              className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                              placeholder="@username"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Telegram username
+                            </p>
+                          </div>
+
+                          <div>
+                            <input
+                              type="text"
+                              value={telegramId}
+                              onChange={(e) => setTelegramId(e.target.value)}
+                              className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                              placeholder="123456789"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Telegram ID - Find by messaging @userinfobot
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsLinkingTelegram(false);
+                        setTelegramUsername(profile?.telegramUsername || "");
+                        setTelegramId(profile?.telegramId || "");
+                        setTelegramError("");
+                        setTelegramSuccess("");
+                      }}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      onClick={handleLinkTelegram}
+                      disabled={!telegramUsername && !telegramId}
+                    >
+                      {t('common.save')} (Manual)
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <Button
+                variant="outline"
+                className="w-full"
                 onClick={() => {
                   logout();
                   navigate("/");
@@ -754,6 +1074,38 @@ const Profile = () => {
                               </div>
                             )}
                           </div>
+                          
+                          {/* Telegram channel button for live stream */}
+                          {userProgram.programId === LIVE_STREAM_PROGRAM_ID && (
+                            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                              <div className="relative group">
+                                <Button
+                                  onClick={() => {
+                                    if (profile?.telegramId || profile?.telegramUsername) {
+                                      window.open(TELEGRAM_CHANNEL_URL, '_blank', 'noopener,noreferrer');
+                                    }
+                                  }}
+                                  disabled={!profile?.telegramId && !profile?.telegramUsername}
+                                  className={`${
+                                    profile?.telegramId || profile?.telegramUsername
+                                      ? 'bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] hover:opacity-90 text-white font-semibold'
+                                      : 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                                  }`}
+                                  title={!profile?.telegramId && !profile?.telegramUsername ? t('button.linkTelegramFirst') : ''}
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  {t('button.openTelegramChannel')}
+                                </Button>
+                                {!profile?.telegramId && !profile?.telegramUsername && (
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                    {t('button.linkTelegramFirst')}
+                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
                           {/* Program videos list with progress and conditional Continue buttons */}
                           {expandedProgramId === userProgram.program?.id && (() => {
                             const videos = programVideos[userProgram.program?.id || 0] || [];

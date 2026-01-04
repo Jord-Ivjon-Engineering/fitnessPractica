@@ -82,6 +82,8 @@ export interface UserProfile {
   name: string;
   phone: string | null;
   role: string;
+  telegramUsername: string | null;
+  telegramId: string | null;
   createdAt: string;
 }
 
@@ -108,7 +110,7 @@ export interface UserProgram {
 export const profileApi = {
   getProfile: () => api.get<{ success: boolean; data: UserProfile }>('/profile'),
   getUserPrograms: () => api.get<{ success: boolean; data: UserProgram[] }>('/profile/programs'),
-  updateProfile: (data: { name?: string; phone?: string }) => 
+  updateProfile: (data: { name?: string; phone?: string; telegramUsername?: string }) => 
     api.put<{ success: boolean; data: UserProfile }>('/profile', data),
   updatePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.put<{ success: boolean; message: string }>('/profile/password', data),
@@ -116,6 +118,8 @@ export const profileApi = {
     api.put<{ success: boolean; message: string; data: UserProfile }>('/profile/email', data),
   purchaseProgram: (data: { planId?: number; programId?: number }) =>
     api.post<{ success: boolean; data: UserProgram }>('/profile/purchase', data),
+  linkTelegram: (data: { telegramUsername?: string; telegramId?: string; telegramAuthData?: any }) =>
+    api.post<{ success: boolean; message: string; data: UserProfile }>('/profile/telegram/link', data),
 };
 
 // Training Programs API
@@ -249,8 +253,8 @@ export const checkoutApi = {
   getEnvironment: () => api.get<{ success: boolean; data: { environment: 'sandbox' | 'production' } }>('/checkout/environment'),
   createCheckout: (data: CheckoutRequest) =>
     api.post<CheckoutResponse>('/checkout', data),
-  verifyCheckout: (checkoutId: string) =>
-    api.get<VerifyCheckoutResponse>(`/checkout/verify/${checkoutId}`),
+  verifyCheckout: (checkoutId: string, data?: VerifyCheckoutRequest) =>
+    api.post<VerifyCheckoutResponse>(`/checkout/verify/${checkoutId}`, data || {}),
 };
 
 // Admin API

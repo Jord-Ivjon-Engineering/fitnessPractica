@@ -6,6 +6,7 @@ import {
   purchaseProgram,
   updatePassword,
   updateEmail,
+  linkTelegram,
 } from '../controllers/profileController';
 import { authenticate } from '../middleware/auth';
 
@@ -20,6 +21,7 @@ router.put('/', updateProfile);
 router.post('/purchase', purchaseProgram);
 router.put('/password', updatePassword);
 router.put('/email', updateEmail);
+router.post('/telegram/link', linkTelegram);
 
 export default router;
 

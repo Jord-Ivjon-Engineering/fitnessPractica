@@ -101,17 +101,19 @@ model VideoProgress {
 }
 
 model User {
-  id            Int             @id @default(autoincrement())
-  email         String          @unique @db.VarChar(255)
-  password      String          @db.VarChar(255)
-  name          String          @db.VarChar(100)
-  phone         String?         @db.VarChar(20)
-  role          String          @default("member") @db.VarChar(50)
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
-  programs      UserProgram[]
-  payments      Payment[]
-  videoProgress VideoProgress[]
+  id              Int             @id @default(autoincrement())
+  email           String          @unique @db.VarChar(255)
+  password        String          @db.VarChar(255)
+  name            String          @db.VarChar(100)
+  phone           String?         @db.VarChar(20)
+  role            String          @default("member") @db.VarChar(50)
+  telegramUsername String?        @db.VarChar(100) @map("telegram_username")
+  telegramId      String?         @unique @db.VarChar(50) @map("telegram_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  programs        UserProgram[]
+  payments        Payment[]
+  videoProgress   VideoProgress[]
 
   @@map("users")
 }

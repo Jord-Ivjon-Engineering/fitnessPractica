@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import prisma from '../config/database';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
@@ -24,6 +25,8 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
         name: true,
         phone: true,
         role: true,
+        telegramUsername: true,
+        telegramId: true,
         createdAt: true,
       },
     });
@@ -108,13 +111,14 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
       return next(error);
     }
 
-    const { name, phone } = req.body;
+    const { name, phone, telegramUsername } = req.body;
 
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
         ...(name && { name }),
         ...(phone !== undefined && { phone }),
+        ...(telegramUsername !== undefined && { telegramUsername: telegramUsername || null }),
       },
       select: {
         id: true,
@@ -122,6 +126,8 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
         name: true,
         phone: true,
         role: true,
+        telegramUsername: true,
+        telegramId: true,
         createdAt: true,
       },
     });
@@ -325,6 +331,8 @@ export const updateEmail = async (req: Request, res: Response, next: NextFunctio
         name: true,
         phone: true,
         role: true,
+        telegramUsername: true,
+        telegramId: true,
         createdAt: true,
       },
     });
@@ -343,4 +351,148 @@ export const updateEmail = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+export const linkTelegram = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    const userId = authReq.userId;
+
+    if (!userId) {
+      const error: ApiError = new Error('User not authenticated');
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    const { telegramUsername, telegramId, telegramAuthData } = req.body;
+
+    // If Telegram auth data is provided (from Login Widget), verify it
+    if (telegramAuthData) {
+      const isValid = await verifyTelegramAuth(telegramAuthData);
+      if (!isValid) {
+        const error: ApiError = new Error('Invalid Telegram authentication data');
+        error.statusCode = 401;
+        return next(error);
+      }
+      // Use verified data from auth
+      const verifiedId = telegramAuthData.id.toString();
+      const verifiedUsername = telegramAuthData.username ? `@${telegramAuthData.username}` : null;
+
+      // Check if this Telegram ID is already linked to another user
+      const existingUser = await prisma.user.findUnique({
+        where: { telegramId: verifiedId },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        const error: ApiError = new Error('This Telegram account is already linked to another user');
+        error.statusCode = 409;
+        return next(error);
+      }
+
+      // Update user with verified Telegram information
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          telegramId: verifiedId,
+          telegramUsername: verifiedUsername,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          role: true,
+          telegramUsername: true,
+          telegramId: true,
+          createdAt: true,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: 'Telegram account linked successfully',
+        data: user,
+      });
+    }
+
+    // Fallback to manual entry
+    // Validation
+    if (!telegramUsername && !telegramId) {
+      const error: ApiError = new Error('Either telegramUsername or telegramId is required');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // If telegramId is provided, check if it's already linked to another user
+    if (telegramId) {
+      const existingUser = await prisma.user.findUnique({
+        where: { telegramId: telegramId.toString() },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        const error: ApiError = new Error('This Telegram account is already linked to another user');
+        error.statusCode = 409;
+        return next(error);
+      }
+    }
+
+    // Update user with Telegram information
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(telegramUsername && { telegramUsername: telegramUsername.startsWith('@') ? telegramUsername : `@${telegramUsername}` }),
+        ...(telegramId && { telegramId: telegramId.toString() }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        role: true,
+        telegramUsername: true,
+        telegramId: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Telegram account linked successfully',
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify Telegram authentication data
+ * This verifies the hash to ensure the data came from Telegram
+ */
+async function verifyTelegramAuth(authData: any): Promise<boolean> {
+  try {
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    if (!TELEGRAM_BOT_TOKEN) {
+      return false;
+    }
+
+    // Create secret key from bot token
+    const secretKey = crypto.createHash('sha256').update(TELEGRAM_BOT_TOKEN).digest();
+
+    // Create data check string
+    const { hash, ...data } = authData;
+    const dataCheckString = Object.keys(data)
+      .sort()
+      .map(key => `${key}=${data[key]}`)
+      .join('\n');
+
+    // Create HMAC
+    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+    // Verify hash
+    return hmac === hash;
+  } catch (error) {
+    console.error('Error verifying Telegram auth:', error);
+    return false;
+  }
+}
 
