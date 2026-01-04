@@ -60,7 +60,7 @@ const Header = () => {
             size="lg"
             onClick={() => navigate('/about')}
           >
-            {t('header.about')}
+            {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
           </Button>
           <Button
             variant="ghost"
@@ -155,7 +155,7 @@ const Header = () => {
                   setIsMobileMenuOpen(false);
                 }}
               >
-                {t('header.about')}
+                {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
               </Button>
               <Button
                 variant="ghost"
