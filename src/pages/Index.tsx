@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, Video } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Loader2, Video, Info } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -251,6 +251,50 @@ const Index = () => {
     },
   };
 
+  // --- Carousel logic ---
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % 3);
+    }, 4000); // Changed from 3000 to 4000 ms for 4 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const uploadedImages: string[] = []; // Specify your image paths here
+  const uploadedVideos: string[] = [
+    'https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/1.mp4',
+    'https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/2.mp4',
+    'https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/3.mp4',
+  ];
+
+  const [mediaIndex, setMediaIndex] = useState(0);
+  const [mediaType] = useState<'video'>('video'); // Only videos now
+
+  useEffect(() => {
+    if (uploadedVideos.length === 0) return;
+    let videoElement: HTMLVideoElement | null = null;
+    let timeout: NodeJS.Timeout;
+
+    const playNextVideo = () => {
+      setMediaIndex((prev) => (prev + 1) % uploadedVideos.length);
+    };
+
+    // Wait for video to end, then play next
+    const setVideoListener = () => {
+      videoElement = document.getElementById('media-gallery-video') as HTMLVideoElement;
+      if (videoElement) {
+        videoElement.onended = playNextVideo;
+      }
+    };
+
+    setVideoListener();
+
+    return () => {
+      if (videoElement) videoElement.onended = null;
+      clearTimeout(timeout);
+    };
+  }, [mediaIndex, uploadedVideos.length, uploadedVideos]);
+
   return (
     <div className="min-h-screen bg-background">
 
@@ -258,24 +302,36 @@ const Index = () => {
       <section className="relative h-screen flex items-center justify-center overflow-hidden pt-0">
         {/* Video Background */}
         <div className="absolute inset-0">
-          {videoUrl && !videoError ? (
+          {videoUrl && !videoError && (
             <video
               ref={videoRef}
+              src={videoUrl}
               autoPlay
               loop
               muted
               playsInline
-              className="w-full h-full object-cover"
-              poster={heroImage}
+              className="w-full h-full object-cover object-center"
               onError={() => setVideoError(true)}
-             src={videoUrl}
-            />
-          ) : (
-            <div 
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${heroImage})` }}
             />
           )}
+          <Button 
+            size="lg" 
+            className="bg-white text-[hsl(14,100.00%,80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
+            onClick={() => {
+              const element = document.getElementById("livestreams");
+              if (element) {
+                const headerOffset = 80;
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                window.scrollTo({
+                  top: offsetPosition,
+                  behavior: "smooth"
+                });
+              }
+            }}
+          >
+            {t('hero.button')}
+          </Button>
           <div className="absolute inset-0 bg-gradient-to-r from-[hsl(14,90%,55%,0.4)] to-[hsl(25,95%,53%,0.35)]"></div>
         </div>
         <div className="relative z-10 text-center px-4">
@@ -301,7 +357,7 @@ const Index = () => {
             size="lg" 
             className="bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
             onClick={() => {
-              const element = document.getElementById("plans");
+              const element = document.getElementById("livestreams");
               if (element) {
                 const headerOffset = 80;
                 const elementPosition = element.getBoundingClientRect().top;
@@ -319,7 +375,70 @@ const Index = () => {
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent"></div>
       </section>
 
-        {/* About Section */}
+        {/* Advertising Carousel Section */}
+      <section className="w-full flex justify-center items-center py-8 bg-white">
+        <div className="w-full max-w-4xl overflow-hidden relative rounded-2xl border-4 border-primary shadow-xl bg-white">
+          <div
+            className="flex transition-transform duration-700"
+            style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
+          >
+            {/* Livestream Slide */}
+            <div
+              className="min-w-full flex flex-col items-center justify-center p-8 bg-cover bg-center"
+              style={{ backgroundImage: `url(${heroImage})` }}
+            >
+              <h3 className="text-3xl font-bold mb-2 text-white drop-shadow-lg">
+                {language === 'en' ? 'Live Stream Workouts!' : 'Transmetim Direkt!'}
+              </h3>
+              <p className="text-lg font-bold text-white text-center drop-shadow-lg mb-4">
+                {language === 'en'
+                  ? 'Join our real-time online classes from anywhere. Experience interactive training with our expert coaches—now available on Fitness Practica!'
+                  : 'Bashkohuni në klasat tona online në kohë reale nga kudo që ndodheni. Përjetoni trajnime interaktive me trajnerët tanë ekspertë — tani të disponueshme në Fitness Practica!'}
+              </p>
+            </div>
+            {/* Training Program Slide */}
+            <div
+              className="min-w-full flex flex-col items-center justify-center p-8 bg-cover bg-center"
+              style={{ backgroundImage: `url(${planWeightLoss})` }}
+            >
+              <h3 className="text-3xl font-bold mb-2 text-white drop-shadow-lg">
+                {language === 'en' ? 'Training Programs' : 'Programet e Trajnimit'}
+              </h3>
+              <p className="text-lg font-bold text-white text-center drop-shadow-lg mb-4">
+                {language === 'en'
+                  ? 'Explore our personalized training programs designed for all fitness levels. Start your journey to a healthier, stronger you!'
+                  : 'Zbuloni programet tona të personalizuara të trajnimit, të dizajnuara për të gjitha nivelet e formës fizike. Filloni udhëtimin tuaj drejt një versioni më të shëndetshëm dhe më të fortë të vetes!'}
+              </p>
+            </div>
+            {/* Upcoming Events Slide */}
+            <div className="min-w-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-red-600 via-red-400 to-yellow-200 relative overflow-hidden">
+              {/* Sparkles SVG overlay */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" fill="none">
+                <g opacity="0.3">
+                  <circle cx="100" cy="100" r="3" fill="white" />
+                  <circle cx="400" cy="120" r="2" fill="white" />
+                  <circle cx="250" cy="300" r="4" fill="white" />
+                  <circle cx="350" cy="400" r="2.5" fill="white" />
+                  <circle cx="200" cy="200" r="2" fill="white" />
+                  <circle cx="420" cy="350" r="3" fill="white" />
+                  <circle cx="80" cy="420" r="2" fill="white" />
+                  <circle cx="300" cy="80" r="2.5" fill="white" />
+                </g>
+              </svg>
+              <h3 className="text-3xl font-bold mb-2 text-white drop-shadow-lg">
+                {language === 'en' ? 'Upcoming Events' : 'Eventet e Ardhshme'}
+              </h3>
+              <p className="text-lg font-bold text-white text-center drop-shadow-lg mb-4">
+                {language === 'en'
+                  ? 'Stay tuned for exciting events. More info coming soon! 🎉'
+                  : 'Qëndroni të informuar për evente emocionuese. Më shumë informacion së shpejti! 🎉'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
       <section className="py-24 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -331,12 +450,12 @@ const Index = () => {
                   className="w-full h-64 object-cover rounded-xl border border-border"
                 />
                 <img 
-                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(2).jpeg" 
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(2).jpeg" 
                   alt="Modern gym facility 3" 
                   className="w-full h-64 object-cover rounded-xl border border-border"
                 />
                 <img 
-                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(1).jpeg" 
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(1).jpeg" 
                   alt="Modern gym facility 4" 
                   className="w-full h-64 object-cover rounded-xl border border-border"
                 />
@@ -394,9 +513,10 @@ const Index = () => {
                   navigate('/about');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="mt-6"
+                className="mt-6 flex items-center gap-2"
                 size="lg"
               >
+                <Info className="w-5 h-5" />
                 {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
               </Button>
             </div>
@@ -419,7 +539,7 @@ const Index = () => {
             <Card className="overflow-hidden border-border">
               <div className="relative h-96">
                 <img 
-                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.22%20AM.jpeg"
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.22%20AM.jpeg"
                   alt="Live Stream"
                   className="w-full h-full object-cover"
                 />
@@ -636,6 +756,32 @@ const Index = () => {
         </div>
       </section>
 
+        {/* Media Gallery Section */}
+      <section className="py-12 px-4 flex flex-col items-center justify-center">
+        <h2 className="text-3xl font-bold text-foreground mb-8 text-center">
+          {language === 'en' ? (
+            <>
+              Selected Moments From <span className="text-orange-500">Our Programs</span>
+            </>
+          ) : (
+            <>
+              Momente Të Përzgjedhura Nga <span className="text-orange-500">Programet Tona</span>
+            </>
+          )}
+        </h2>
+        <div className="w-[500px] h-[500px] bg-white border-4 border-primary rounded-2xl shadow-xl flex items-center justify-center overflow-hidden">
+          <video
+            id="media-gallery-video"
+            src={uploadedVideos[mediaIndex]}
+            controls={false}
+            autoPlay
+            muted
+            className="object-cover w-full h-full"
+          />
+        </div>
+      </section>
+
+
         {/* Plans Section */}
       <section id="plans" className="py-24 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
@@ -776,6 +922,7 @@ const Index = () => {
         </div>
       </section>
 
+    
       {/* Locations Section */}
       <section className="py-24 px-4 bg-muted/30">
 
@@ -792,7 +939,7 @@ const Index = () => {
               <div className="flex items-start gap-4">
                 <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden">
                   <img 
-                    src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202025-12-10%20at%2021.30.13.jpeg" 
+                    src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202025-12-10%20at%2021.30.13.jpeg" 
                     alt="Fitness Practica Location" 
                     className="w-full h-full object-cover" 
                   />
@@ -820,7 +967,7 @@ const Index = () => {
               <div className="flex items-start gap-4">
                 <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden">
                   <img 
-                    src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/program_1764986739884-572851476.jpg" 
+                    src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/program_1764986739884-572851476.jpg" 
                     alt="Fitness Practica 2 Location" 
                     className="w-full h-full object-cover" 
                   />
