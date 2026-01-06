@@ -1,14 +1,14 @@
 import { Request } from 'express';
 
 /**
- * Get the frontend URL from the request origin, handling both www and non-www versions
+ * Get the frontend URL from the request origin, always redirecting www to non-www
  * Falls back to environment variables if origin is not available
  * 
- * This function ensures that redirect URLs match the domain the user is visiting from,
- * so if they visit from www.fitnesspractica.com, they'll be redirected back to www.fitnesspractica.com
+ * This function ensures that all redirect URLs use fitnesspractica.com (without www)
+ * to maintain consistency with the Telegram bot domain requirement.
  * 
  * @param req - Express request object
- * @returns The frontend URL to use for redirects
+ * @returns The frontend URL to use for redirects (always non-www)
  */
 export function getFrontendUrl(req: Request): string {
   // Try to get the origin from the request headers (preferred)
@@ -24,14 +24,11 @@ export function getFrontendUrl(req: Request): string {
       
       // Check if it's one of our allowed domains (with or without www)
       if (hostname === 'fitnesspractica.com' || hostname === 'www.fitnesspractica.com') {
-        // Use the same protocol and hostname from the request
-        // This ensures www.fitnesspractica.com redirects to www.fitnesspractica.com
-        // and fitnesspractica.com redirects to fitnesspractica.com
-        // Default to HTTPS for production domains
+        // Always use non-www version for consistency with Telegram bot
         const protocol = hostname.includes('localhost') || hostname.includes('127.0.0.1') 
           ? refererUrl.protocol 
           : 'https:';
-        return `${protocol}//${hostname}`;
+        return `${protocol}//fitnesspractica.com`;
       }
       
       // For localhost/development, use as-is
@@ -51,9 +48,9 @@ export function getFrontendUrl(req: Request): string {
       const envUrlObj = new URL(envUrl);
       const hostname = envUrlObj.hostname.toLowerCase();
       
-      // For production domains, ensure HTTPS
+      // For production domains, always use non-www version
       if (hostname === 'fitnesspractica.com' || hostname === 'www.fitnesspractica.com') {
-        return `https://${hostname}`;
+        return 'https://fitnesspractica.com';
       }
       
       return envUrl;
