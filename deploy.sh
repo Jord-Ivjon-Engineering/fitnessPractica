@@ -67,6 +67,19 @@ chmod -R 775 $BACKEND_DIR/uploads
 echo -e "${YELLOW}🔄 Restarting application...${NC}"
 pm2 restart all
 
+# Update Nginx configuration
+echo -e "${YELLOW}🌐 Updating Nginx configuration...${NC}"
+if [ -f "$APP_DIR/nginx.conf" ]; then
+    cp "$APP_DIR/nginx.conf" /etc/nginx/sites-available/fitness-practica
+    # Ensure symlink exists
+    if [ ! -L /etc/nginx/sites-enabled/fitness-practica ]; then
+        ln -s /etc/nginx/sites-available/fitness-practica /etc/nginx/sites-enabled/fitness-practica
+    fi
+    echo -e "${GREEN}✓ Nginx configuration updated${NC}"
+else
+    echo -e "${YELLOW}⚠️  nginx.conf not found, skipping nginx config update${NC}"
+fi
+
 # Reload Nginx
 echo -e "${YELLOW}🌐 Reloading Nginx...${NC}"
 nginx -t && systemctl reload nginx
