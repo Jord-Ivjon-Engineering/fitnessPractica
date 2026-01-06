@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { User, LogOut, Languages, ShoppingCart, LayoutDashboard, Menu, X } from "lucide-react";
+import { User, LogOut, Languages, ShoppingCart, LayoutDashboard, Menu, X, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -59,7 +59,9 @@ const Header = () => {
             variant="ghost"
             size="lg"
             onClick={() => navigate('/about')}
+            className="flex items-center gap-2"
           >
+            <Info className="w-5 h-5" />
             {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
           </Button>
           <Button
@@ -149,12 +151,13 @@ const Header = () => {
               <Button
                 variant="ghost"
                 size="lg"
-                className="w-full justify-start"
+                className="w-full justify-start flex items-center gap-2"
                 onClick={() => {
                   navigate('/about');
                   setIsMobileMenuOpen(false);
                 }}
               >
+                <Info className="w-5 h-5" />
                 {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
               </Button>
               <Button
