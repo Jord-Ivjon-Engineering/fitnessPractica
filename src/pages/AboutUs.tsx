@@ -2,6 +2,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card } from "@/components/ui/card";
 import { Target } from "lucide-react";
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 
 const AboutUs = () => {
   const { t } = useLanguage();
@@ -88,7 +89,7 @@ const AboutUs = () => {
         </div>
 
         {/* Story Section */}
-        <Card className="p-8">
+        <Card className="p-8 mb-12">
           <h2 className="text-3xl font-bold mb-6 text-foreground">
             {t('about.story.title')}
           </h2>
@@ -98,6 +99,27 @@ const AboutUs = () => {
             <p>{t('about.story.paragraph3')}</p>
           </div>
         </Card>
+
+        {/* Image Section */}
+        <div className="mb-12">
+          <h2 className="text-5xl font-bold mb-6 text-foreground text-center">
+            {t('about.image.header')}
+          </h2>
+          <div className="flex justify-center">
+            <div className="w-full max-w-4xl">
+              <Link
+                to="/learn-more"
+                className="block overflow-hidden rounded-lg shadow-lg cursor-pointer"
+              >
+                <img
+                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/Picture%20pro%20max.jpg"
+                  alt="Fitness Practica"
+                  className="w-full h-auto object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

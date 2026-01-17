@@ -314,24 +314,6 @@ const Index = () => {
               onError={() => setVideoError(true)}
             />
           )}
-          <Button 
-            size="lg" 
-            className="bg-white text-[hsl(14,100.00%,80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
-            onClick={() => {
-              const element = document.getElementById("livestreams");
-              if (element) {
-                const headerOffset = 80;
-                const elementPosition = element.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-                window.scrollTo({
-                  top: offsetPosition,
-                  behavior: "smooth"
-                });
-              }
-            }}
-          >
-            {t('hero.button')}
-          </Button>
           <div className="absolute inset-0 bg-gradient-to-r from-[hsl(14,90%,55%,0.4)] to-[hsl(25,95%,53%,0.35)]"></div>
         </div>
         <div className="relative z-10 text-center px-4">
@@ -353,24 +335,36 @@ const Index = () => {
               </p>
             ))}
           </div>
-          <Button 
-            size="lg" 
-            className="bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
-            onClick={() => {
-              const element = document.getElementById("livestreams");
-              if (element) {
-                const headerOffset = 80;
-                const elementPosition = element.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-                window.scrollTo({
-                  top: offsetPosition,
-                  behavior: "smooth"
-                });
-              }
-            }}
-          >
-            {t('hero.button')}
-          </Button>
+          <div className="flex flex-col items-center gap-4">
+            <Button 
+              size="lg" 
+              className="bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
+              onClick={() => {
+                const element = document.getElementById("programs");
+                if (element) {
+                  const headerOffset = 80;
+                  const elementPosition = element.getBoundingClientRect().top;
+                  const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                  window.scrollTo({
+                    top: offsetPosition,
+                    behavior: "smooth"
+                  });
+                }
+              }}
+            >
+              {t('hero.button')}
+            </Button>
+            <Button
+              onClick={() => {
+                navigate('/about');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-2 bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
+              size="lg"
+            >
+              {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
+            </Button>
+          </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent"></div>
       </section>

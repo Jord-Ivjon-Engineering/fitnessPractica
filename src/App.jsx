@@ -15,6 +15,7 @@ import ProgramVideoEditor from './pages/ProgramVideoEditor'
 import AdminDashboard from './pages/AdminDashboard'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 import AboutUs from './pages/AboutUs'
+import LearnMore from './pages/LearnMore'
 import './App.css'
 
 function AppContent() {
@@ -36,6 +37,7 @@ function AppContent() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
         <Route path="/about" element={<AboutUs />} />
+        <Route path="/learn-more" element={<LearnMore />} />
       </Routes>
       {!hideFooter && <Footer />}
     </>
